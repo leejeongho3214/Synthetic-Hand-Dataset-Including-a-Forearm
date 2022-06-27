@@ -12,7 +12,9 @@ import torchvision.models as models
 from torch.utils import data
 
 import sys
-sys.path.append("/home/jeongho/tmp/MeshGraphormer")
+
+# sys.path.append("/home/jeongho/tmp/MeshGraphormer")
+# sys.path.append("C:\\Users\\jeongho\\PycharmProjects\\PoseEstimation\\HandPose\\MeshGraphormer-main")
 from dataset import CustomDataset_test, save_checkpoint, CustomDataset_train
 from loss import calcu, keypoint_2d_loss, calcu_one, adjust_learning_rate, keypoint_3d_loss
 from src.datasets.build import make_hand_data_loader
@@ -383,6 +385,7 @@ def main(args):
             best_loss = state_dict['best_loss']
             epo = state_dict['epoch']
             _model.load_state_dict(state_dict['model_state_dict'], strict=False)
+            logger.info("Resume: Loading from checkpoint {}\n".format(args.resume_checkpoint))
             del state_dict
             gc.collect()
             torch.cuda.empty_cache()
@@ -397,7 +400,7 @@ def main(args):
     concat_dataset = ConcatDataset([trainset, train_dataset])
     set_loader = data.DataLoader(dataset=concat_dataset, batch_size=args.batch_size, num_workers=0, shuffle=True)
     sset_loader = data.DataLoader(dataset=testset, batch_size=args.batch_size, num_workers=0, shuffle=False)
-    logger.info("Resume: Loading from checkpoint {}".format(args.resume_checkpoint))
+
     count = 0
     for epoch in range(epo, 1000):
         Graphormer_model, optimizer, _ = train(args, set_loader, _model, epoch, best_loss)
@@ -407,7 +410,7 @@ def main(args):
         if is_best:
             count = 0
             _model = Graphormer_model
-            save_checkpoint(Graphormer_model, args, epoch, optimizer, best_loss, 'good')
+            save_checkpoint(Graphormer_model, args, epoch, optimizer, best_loss, 'good',logger=logger)
             del Graphormer_model
         else:
             count += 1
