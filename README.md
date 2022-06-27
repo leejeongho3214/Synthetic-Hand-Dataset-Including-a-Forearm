@@ -28,7 +28,7 @@ conda env create -f requirements.yaml
 ```
 
 ## Model Download
-Please download our files that are important to run our code. [download]("https://dkuniv-my.sharepoint.com/:f:/g/personal/72210297_dankook_ac_kr/ErCq94ft2qtBmge2ixadHdQBUL7PXBecYlOKu7BYNW1Liw")
+Please download our files that are important to run our code. [download](https://dkuniv-my.sharepoint.com/:f:/g/personal/72210297_dankook_ac_kr/ErCq94ft2qtBmge2ixadHdQBUL7PXBecYlOKu7BYNW1Liw)
 
 ## Result
  <img src="docs/result1.png" width="650"> 
