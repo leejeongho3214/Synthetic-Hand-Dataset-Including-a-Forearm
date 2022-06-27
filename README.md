@@ -31,9 +31,7 @@ conda env create -f requirements.yaml
 Please download our files that are important to run our code. [download](https://dkuniv-my.sharepoint.com/:f:/g/personal/72210297_dankook_ac_kr/ErCq94ft2qtBmge2ixadHdQBUL7PXBecYlOKu7BYNW1Liw)
 
 ## Train
-```bash
-python src/tools/train.py
-```
+run 'src/tools/train.py'
 
 ## Result
  <img src="docs/result1.png" width="650"> 
