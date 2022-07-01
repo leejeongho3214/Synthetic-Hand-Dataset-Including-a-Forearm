@@ -12,8 +12,7 @@ import torchvision.models as models
 from torch.utils import data
 
 import sys
-
-# sys.path.append("/home/jeongho/tmp/MeshGraphormer")
+sys.path.append("/home/jeongho/tmp/MeshGraphormer")
 # sys.path.append("C:\\Users\\jeongho\\PycharmProjects\\PoseEstimation\\HandPose\\MeshGraphormer-main")
 from dataset import CustomDataset_test, save_checkpoint, CustomDataset_train
 from loss import calcu, keypoint_2d_loss, calcu_one, adjust_learning_rate, keypoint_3d_loss
@@ -49,9 +48,9 @@ def parse_args():
                         help = "it is weight of 3d regression and '0' mean only 2d joint regression")
     parser.add_argument("--train", default='train', type=str, choices=['pre-train, train, fine-tuning'],
                         help = "3 type train method")
-    parser.add_argument("--train_data", default='FreiHAND+20k', choices = ['FreiHAND,FreiHAND+20k, FreiHAND+40k, FreiHAND+60k '],
+    parser.add_argument("--train_data", default='FreiHAND+10k', choices = ['FreiHAND+5k, FreiHAND+10k, FreiHAND+20k, FreiHAND+40k, FreiHAND+60k'],
                         help = '20k means CISLAB 20,000 images',type=str)
-    parser.add_argument("--output_dir", default=f'output/global/', type=str, required=False,
+    parser.add_argument("--output_dir", default=f'output/now/', type=str, required=False,
                         help="The output directory to save checkpoint and test results.")
     parser.add_argument("--batch_size", default=32, type=int)
     parser.add_argument("--num_train_epochs", default=50, type=int,
@@ -198,7 +197,7 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss):
                 ' '.join(
                     ['epoch: {ep}', 'iter: {iter}', '/{maxi}']
                 ).format(ep=epoch, iter=iteration, maxi=max_iter)
-                + ' 2d_loss: {:.6f}, 3d_loss: {:.6f}, toatl_loss: {:.6f}, best_distance: {:.2f} pixel, distance: {:.2f} pixel, lr: {:.6f}, time: {:.6f}'.format(
+                + ' 2d_loss: {:.6f}, 3d_loss: {:.6f}, toatl_loss: {:.6f}, best_distance: {:.2f} mm, distance: {:.2f} mmd, lr: {:.6f}, time: {:.6f}'.format(
                     log_loss_2djoints.avg,
                     log_loss_3djoints.avg,
                     log_losses.avg,
@@ -297,7 +296,7 @@ def main(args):
         args.resume_checkpoint = op.join(args.output_dir, 'checkpoint-good/state_dict.bin')
     if os.path.isdir(args.output_dir) == False:
         mkdir(args.output_dir)
-    logger = setup_logger(args.output_dir[14:], args.output_dir, get_rank())
+    logger = setup_logger(args.train_data, args.output_dir, get_rank())
     args.num_gpus = int(os.environ['WORLD_SIZE']) if 'WORLD_SIZE' in os.environ else 1
     os.environ['OMP_NUM_THREADS'] = str(args.num_workers)
     args.distributed = args.num_gpus > 1

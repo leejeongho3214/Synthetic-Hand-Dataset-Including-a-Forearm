@@ -13,44 +13,33 @@ from src.utils.miscellaneous import mkdir
 
 class CustomDataset_train(Dataset):
     def __init__(self,args):
-        if int(args.train_data[-3]) > 0:
-            with open(f"../../datasets/our_data/CISLAB_HAND_{int(args.train_data[-3])}0K/annotations/train/CISLAB_train_camera.json", "r") as st_json:
-                self.camera = json.load(st_json)
-            with open(f"../../datasets/our_data/CISLAB_HAND_{int(args.train_data[-3])}0K/annotations/train/CISLAB_train_joint_3d.json", "r") as st_json:
-                self.joint = json.load(st_json)
-            with open(f"../../datasets/our_data/CISLAB_HAND_{int(args.train_data[-3])}0K/annotations/train/CISLAB_train_data.json", "r") as st_json:
-                self.meta = json.load(st_json)
-            self.num = int(args.train_data[-3])
-        else:
-            assert 'It is not correct dataset name'
+        self.num = int(args.train_data[9:-1])
+        with open(f"../../datasets/our_data/CISLAB_HAND_{self.num}K/annotations/train/CISLAB_train_camera.json", "r") as st_json:
+            self.camera = json.load(st_json)
+        with open(f"../../datasets/our_data/CISLAB_HAND_{self.num}K/annotations/train/CISLAB_train_joint_3d.json", "r") as st_json:
+            self.joint = json.load(st_json)
+        with open(f"../../datasets/our_data/CISLAB_HAND_{self.num}K/annotations/train/CISLAB_train_data.json", "r") as st_json:
+            self.meta = json.load(st_json)
+
 
     # 총 데이터의 개수를 리턴
     def __len__(self):
-        # return len(self.meta['images'])
-        return 5000
+        return len(self.meta['images'])
 
     # 인덱스를 입력받아 그에 맵핑되는 입출력 데이터를 파이토치의 Tensor 형태로 리턴
     def __getitem__(self, idx):
         name = self.meta['images'][idx]['file_name']
         camera = self.meta['images'][idx]['camera']
         id = self.meta['images'][idx]['frame_idx']
-        image = Image.open(f'../../datasets/our_data/CISLAB_HAND_{self.num}0K/images/train/{name}')
+        image = Image.open(f'../../datasets/our_data/CISLAB_HAND_{self.num}K/images/train/{name}')
         trans = transforms.Compose([transforms.Resize((224, 224)),
                                     transforms.ToTensor(),
                                     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
         image = trans(image)
-        if id > 11499:
-            joint = torch.tensor(self.joint['1'][f'{id}']['world_coord'][21:])
-            focal_length = self.camera['1']['focal'][f'{camera}'][0] * (
-                    6 / 7)  ## only one scalar (later u need x,y focal_length)
-            translation = self.camera['1']['campos'][f'{camera}']
-            rot = self.camera['1']['camrot'][f'{camera}']
-        else:
-            joint = torch.tensor(self.joint['0'][f'{id}']['world_coord'][:21])
-            focal_length = self.camera['0']['focal'][f'{camera}'][0] * (
-                    6 / 7)  ## only one scalar (later u need x,y focal_length)
-            translation = self.camera['0']['campos'][f'{camera}']
-            rot = self.camera['0']['camrot'][f'{camera}']
+        joint = torch.tensor(self.joint['0'][f'{id}']['world_coord'][:21])
+        focal_length = self.camera['0']['focal'][f'{camera}'][0] * (6 / 7)  ## only one scalar (later u need x,y focal_length)
+        translation = self.camera['0']['campos'][f'{camera}']
+        rot = self.camera['0']['camrot'][f'{camera}']
 
         c = []
 
