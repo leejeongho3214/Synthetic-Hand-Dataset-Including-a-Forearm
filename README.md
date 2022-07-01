@@ -34,6 +34,12 @@ Please download our files that are important to run our code. [download](https:/
 ```
 run 'src/tools/train.py'
 ```
+## Error
+If it happens error message about path as "src/...", you can insert below code.
+```python
+import sys
+sys.path.append("/usr/your/path/Wearable_Pose_Model")
+```
 
 ## Result
  <img src="docs/result1.png" width="650"> 
