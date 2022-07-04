@@ -10,7 +10,7 @@ In this work, We study how to use our synthetic images.
  <img src="docs/model.png" width="650"> 
 
 ## Installation(Download)
-Build as below architecture 
+Build as the below architecture 
 ```
 {$ROOT}
 |-- build
@@ -35,7 +35,7 @@ Please download our files that are important to run our code. [download](https:/
 run 'src/tools/train.py'
 ```
 ## Error
-If it happens error message about path as "src/...", you can insert below code.
+If it happens error message about path as "src/...", you can insert the below code.
 ```python
 import sys
 sys.path.append("/usr/your/path/Wearable_Pose_Model")
