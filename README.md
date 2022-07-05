@@ -46,7 +46,7 @@ sys.path.append("/usr/your/path/Wearable_Pose_Model")
  <img src="docs/result2.png" width="650"> 
  <img src="docs/result3.png" width="650"> 
 
-## Compare
+## Compare(ing)
 1st, 2nd column: images
 3rd column: distance between g.t and prediction
 |FreiHAND(real)|CISLAB(synthetic)|Total|MPJPE(mm)|
