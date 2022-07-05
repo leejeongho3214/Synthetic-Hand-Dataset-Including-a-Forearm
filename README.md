@@ -45,4 +45,20 @@ sys.path.append("/usr/your/path/Wearable_Pose_Model")
  <img src="docs/result1.png" width="650"> 
  <img src="docs/result2.png" width="650"> 
  <img src="docs/result3.png" width="650"> 
- 
+
+## Compare
+1st, 2nd column: images
+3rd column: distance between g.t and prediction
+|FreiHAND(real)|CISLAB(systhetic)|MPJPE(mm)|
+|:----------------:|:-----------------:|:------:|
+|120,000|0| 4.73|
+|120,000|5,000| 3.03|
+|120,000|10,000| **2.77**|
+|120,000|20,000| 2.92|
+|120,000|40,000|3.07 |
+|120,000|60,000| 4.84|
+|110,000|10,000| 2.35|
+|100,000|20,000| 2.75|
+
+
+
