@@ -1,7 +1,7 @@
 # Wearable_Pose_Model ✨✨
 
 
-This is our research code of [Our_Model]("docs/2022_KSCI.pdf"). 
+This is our research code of [Our_Model](docs/2022_KSCI.pdf). 
 
 Our Model is a transformer-based method for hand pose from an input image. 
 This image is obtained from wrist-attached RGB camera.
