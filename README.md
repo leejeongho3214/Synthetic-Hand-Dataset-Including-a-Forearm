@@ -51,7 +51,8 @@ sys.path.append("/usr/your/path/Wearable_Pose_Model")
 3rd column: distance between g.t and prediction
 |FreiHAND(real)|CISLAB(synthetic)|Total|MPJPE(mm)|
 |:----------------:|:-----------------:|:------:|:------:|
-|120,000|0| 120,000|4.62|
+|100,000|0| 120,000|5.02|
+|120,000|0| 120,000|4.71|
 |110,000|10,000| 120,000|**2.35**|
 |100,000|20,000|120,000| 2.75|
 |120,000|5,000|125,000| 3.03|
