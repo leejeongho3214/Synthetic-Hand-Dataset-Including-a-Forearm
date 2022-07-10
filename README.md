@@ -60,6 +60,5 @@ sys.path.append("/usr/your/path/Wearable_Pose_Model")
 |120,000|40,000|160,000|3.07 |
 |120,000|60,000|180,000| 4.84|
 
-
-
+<img width="929" alt="image" src="https://user-images.githubusercontent.com/69295565/178143011-0ebb0ee8-e937-4541-8dbe-9d6d4fcc4973.png">
 
