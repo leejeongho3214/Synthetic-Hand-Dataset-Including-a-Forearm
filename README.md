@@ -47,6 +47,7 @@ sys.path.append("/usr/your/path/Wearable_Pose_Model")
  <img src="docs/result3.png" width="650"> 
 
 ## Compare(ing)
+### Full contidition
 1st, 2nd column: images
 
 3rd column: distance between g.t and prediction
@@ -63,6 +64,7 @@ sys.path.append("/usr/your/path/Wearable_Pose_Model")
 |120,000|40,000|160,000|3.07 |
 |120,000|60,000|180,000| 4.84|
 
+### Some part of condition
 Frei: 100,000 images
 
 CIS: 100,000 images
