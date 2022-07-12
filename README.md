@@ -48,6 +48,7 @@ sys.path.append("/usr/your/path/Wearable_Pose_Model")
 
 ## Compare(ing)
 1st, 2nd column: images
+
 3rd column: distance between g.t and prediction
 |FreiHAND(real)|CISLAB(synthetic)|Total|MPJPE(mm)|
 |:----------------:|:-----------------:|:------:|:------:|
