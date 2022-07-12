@@ -64,8 +64,11 @@ sys.path.append("/usr/your/path/Wearable_Pose_Model")
 |120,000|60,000|180,000| 4.84|
 
 Frei: 100,000 images
+
 CIS: 100,000 images
+
 below number means ratio of dataset
+
 |Frei|CIS|error|
 |:--:|:--:|:--:|
 |100|0||
