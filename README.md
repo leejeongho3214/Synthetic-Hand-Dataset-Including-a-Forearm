@@ -70,9 +70,7 @@ sys.path.append("/usr/your/path/Wearable_Pose_Model")
 
 
 ### Some part of condition
-Frei: 100,000 images
-
-CIS: 100,000 images
+Total images are 100,000 images
 
 below number means ratio of dataset
 stop to train when count is 50
