@@ -75,11 +75,12 @@ Frei: 100,000 images
 CIS: 100,000 images
 
 below number means ratio of dataset
+stop to train when count is 50
 
 |Frei|CIS|error|
 |:--:|:--:|:--:|
-|100|0||
-|95|5||
+|100|0|8.38|
+|95|5|6.73|
 |90|10||
 |85|15||
 
