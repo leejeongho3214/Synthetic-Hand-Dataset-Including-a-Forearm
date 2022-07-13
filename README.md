@@ -34,7 +34,7 @@ Please download our files that are important to run our code. [download](https:/
 ```
 run 'src/tools/train.py'
 ```
-## Error
+## Solution
 If it happens error message about path as "src/...", you can insert the below code.
 ```python
 import sys
