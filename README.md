@@ -88,6 +88,8 @@ stop to train when count is 50
 |60|40|2.97|
 |55|45|3.87|
 |50|50|3.49|
+|45|55|3.28|
+|40|60|3.39|
 
 
 ### Visualize(Some part)
