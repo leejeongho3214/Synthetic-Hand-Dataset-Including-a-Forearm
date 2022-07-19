@@ -84,9 +84,13 @@ stop to train when count is 50
 |80|20|3.11|
 |75|25|3.42|
 |70|30|3.92|
+|65|35||
+|60|40||
 |55|45||
+|50|50||
 
 
 ### Visualize(Some part)
 
+<img src="docs/visualize(some_part).png" width="600"> 
 
