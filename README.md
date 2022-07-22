@@ -47,29 +47,33 @@ sys.path.append("/usr/your/path/Wearable_Pose_Model")
  <img src="docs/result3.png" width="650"> 
 
 ## Compare(ing)
-### Full contidition
+### Full FreiHAND Dataset
 1st, 2nd column: images
 
 3rd column: distance between g.t and prediction
+
+4th column: a ratio of synthetic image in dataset
+|FreiHAND(real)|CISLAB(synthetic)|Total|ratio|MPJPE(mm)|
+|:----------------:|:-----------------:|:------:|:------:|:------:|
+|120,000|0| 120,000|0%|4.71|
+|120,000|5,000|125,000|4%| 3.03|
+|120,000|10,000| 130,000|7.7%|2.77|
+|120,000|20,000| 140,000|14.3%|2.92|
+|120,000|30,000| 150,000|20%|2.82|
+|120,000|40,000|160,000|25%|3.07|
+|120,000|50,000|170,000|30%|2.80|
+|120,000|60,000|180,000|33.3%| 4.84|
+|120,000|120,000|240,000|50%|2.91|
+
+### Total 120k Dataset
 |FreiHAND(real)|CISLAB(synthetic)|Total|MPJPE(mm)|
 |:----------------:|:-----------------:|:------:|:------:|
-|100,000|0| 100,000|5.02|
-|110,000|0| 110,000|4.60|
 |120,000|0| 120,000|4.71|
 |110,000|10,000| 120,000|**2.35**|
 |100,000|20,000|120,000| 2.75|
-|120,000|5,000|125,000| 3.03|
-|120,000|10,000| 130,000|2.77|
-|120,000|20,000| 140,000|2.92|
-|120,000|40,000|160,000|3.07 |
-|120,000|60,000|180,000| 4.84|
 
 
-<img width="929" alt="image" src="https://user-images.githubusercontent.com/69295565/178143011-0ebb0ee8-e937-4541-8dbe-9d6d4fcc4973.png">
-
-
-
-### Some part of condition
+### Some part of Dataset
 Total images are 10,000 images
 
 below number means ratio of dataset
@@ -79,7 +83,7 @@ stop to train when count is 50
 |:--:|:--:|:--:|
 |100|0|8.38|
 |95|5|6.73|
-|90|10|2.95|
+|90|10|**2.95**|
 |85|15|3.11|
 |80|20|3.11|
 |75|25|3.42|
@@ -91,7 +95,7 @@ stop to train when count is 50
 |45|55|3.28|
 |40|60|3.39|
 
-### Visualize(Some part)
+### Visualize
 
 <img src="docs/visualize(some_part).png" width="600"> 
 
