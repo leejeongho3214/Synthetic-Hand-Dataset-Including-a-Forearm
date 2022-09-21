@@ -43,7 +43,7 @@ sys.path.append("/usr/your/path/Wearable_Pose_Model")
 
 ## Result
 
- Coming soon
+## Coming soon
 
 ## Compare(ing)
 ### Full FreiHAND Dataset
