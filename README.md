@@ -84,6 +84,6 @@ T = [0.1, 0.2, 0.3, 0.4 ,0.5]
 
 
 
-## Compare(ing)
-### Full FreiHAND Dataset
+## Visualize
+ <img src="docs/output.png" width="650"> 
 
