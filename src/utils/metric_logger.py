@@ -16,6 +16,12 @@ class AverageMeter(object):
         self.sum = 0
         self.count = 0
 
+    def update_p(self, val, point):
+        self.val = val
+        self.sum += val
+        self.count += point
+        self.avg = self.sum / self.count
+
     def update(self, val, n=1):
         self.val = val
         self.sum += val * n
