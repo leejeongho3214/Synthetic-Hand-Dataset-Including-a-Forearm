@@ -11,14 +11,17 @@ from src.utils.miscellaneous import mkdir
 
 
 class CustomDataset_train(Dataset):
-    def __init__(self, args):
-        self.num = int(args.train_data[9:-1])
-        with open(f"../../datasets/our_data/CISLAB_HAND_{self.num}K/annotations/train/CISLAB_train_camera.json", "r") as st_json:
+    def __init__(self):
+        # self.num = int(args.train_data[9:-1])
+        with open(f"../../datasets/CISLAB_Full/annotations/train/CISLAB_train_camera.json", "r") as st_json:
             self.camera = json.load(st_json)
-        with open(f"../../datasets/our_data/CISLAB_HAND_{self.num}K/annotations/train/CISLAB_train_joint_3d.json", "r") as st_json:
+        with open(f"../../datasets/CISLAB_Full/annotations/train/CISLAB_train_joint_3d.json", "r") as st_json:
             self.joint = json.load(st_json)
-        with open(f"../../datasets/our_data/CISLAB_HAND_{self.num}K/annotations/train/CISLAB_train_data.json", "r") as st_json:
+        with open(f"../../datasets/CISLAB_Full/annotations/train/CISLAB_train_data.json", "r") as st_json:
             self.meta = json.load(st_json)
+        for idx, i in enumerate(self.meta['images']):
+            if i['camera'] == '0':
+                del self.meta['images'][idx]
 
 
 
@@ -29,16 +32,27 @@ class CustomDataset_train(Dataset):
     def __getitem__(self, idx):
         name = self.meta['images'][idx]['file_name']
         camera = self.meta['images'][idx]['camera']
+        # if camera == '0':
+        #     break
         id = self.meta['images'][idx]['frame_idx']
-        image = Image.open(f'../../datasets/our_data/CISLAB_HAND_{self.num}K/images/train/{name}')
+        image = Image.open(f'../../datasets/CISLAB_Full/images/train/{name}')
         trans = transforms.Compose([transforms.Resize((224, 224)),
                                     transforms.ToTensor(),
                                     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
         image = trans(image)
         joint = torch.tensor(self.joint['0'][f'{id}']['world_coord'][:21])
-        focal_length = self.camera['0']['focal'][f'{camera}'][0] * (6 / 7)  ## only one scalar (later u need x,y focal_length)
+        focal_length = self.camera['0']['focal'][f'{camera}'][0]  ## only one scalar (later u need x,y focal_length)
         translation = self.camera['0']['campos'][f'{camera}']
         rot = self.camera['0']['camrot'][f'{camera}']
+        rot2 = sum(rot, [])
+        parameter =[]
+       
+        for i in rot2:
+            parameter.append(i)
+        for i in translation:
+            parameter.append(i)
+        parameter.append(focal_length)
+        camera_parameter = torch.tensor(parameter)
 
         c = []
 
@@ -48,6 +62,9 @@ class CustomDataset_train(Dataset):
             a[:2] = a[:2] / a[2]
             b = a[:2] * focal_length + 112
             b = torch.tensor(b)
+            for o in b:
+                if o >224:
+                    assert "incorrect_image"
             if i == 0:  ## 112 is image center
                 c = b
             elif i == 1:
@@ -56,8 +73,8 @@ class CustomDataset_train(Dataset):
                 c = torch.concat([c, b.reshape(1, 2)], dim=0)
 
 
-        return image,  c, joint
 
+        return image,  c, joint, camera_parameter
 
 class CustomDataset_test(Dataset):
     def __init__(self):
@@ -77,7 +94,7 @@ class CustomDataset_test(Dataset):
         trans_image = trans(image)[(2,1,0),:,:]
         c = torch.tensor(self.anno[idx]['joint_2d'])
 
-        return trans_image, c, c
+        return trans_image, c
 
 class AverageMeter(object):
 
@@ -125,12 +142,11 @@ class HIU_Dataset(Dataset):
         image_list = []
         for (root, directories, files) in os.walk("../../datasets/HIU_DMTL"):
             for file in files:
-                if not 'mask.png' in file:
-                    if not 'mask.jpg' in file:
-                        if not '.json' in file:
-                            file_path = os.path.join(root, file)
-                            anno_name = file_path[:-4] + '.json'
-                            image_list.append((file_path, anno_name))
+                if not '.json' in file:
+                    if not '.DS_Store' in file:
+                        file_path = os.path.join(root, file)
+                        anno_name = file_path[:-4] + '.json'
+                        image_list.append((file_path, anno_name))
         self.image = image_list
 
     def __len__(self):
@@ -138,7 +154,8 @@ class HIU_Dataset(Dataset):
 
     def __getitem__(self, idx):
         image = Image.open(self.image[idx][0])
-        scale = 224 / image.height
+        scale_x = 224 / image.width
+        scale_y = 224 / image.height
         with open(self.image[idx][1], "r") as st_json:
             annotation = json.load(st_json)
         if annotation['hand_type'][0] == 0:
@@ -150,7 +167,9 @@ class HIU_Dataset(Dataset):
                                     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
         trans_image = trans(image)[(2, 1, 0), :, :]
-        c = torch.tensor(joint) * scale
+        c = torch.tensor(joint)
+        c[:, 0] = c[:, 0] * scale_x
+        c[:, 1] = c[:, 1] * scale_y
 
         return trans_image, c
 
