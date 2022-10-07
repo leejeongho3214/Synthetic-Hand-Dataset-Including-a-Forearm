@@ -246,7 +246,7 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
     log_loss_3djoints = AverageMeter()
     # log_loss_camera = AverageMeter()
     logger.info(f'loss_2d = {args.loss_2d} // loss_3d = {args.loss_3d}\n')
-    for iteration, (images, gt_2d_joints, gt_3d_joints, _) in enumerate(train_dataloader):
+    for iteration, (images, gt_2d_joints, gt_3d_joints) in enumerate(train_dataloader):
         batch_time = AverageMeter()
         batch_inference_time = time.time()
         Graphormer_model.train()
@@ -354,7 +354,8 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
     log_loss_2djoints = AverageMeter()
     log_loss_3djoints = AverageMeter()
     with torch.no_grad():
-        for iteration, (images, gt_2d_joints, _, _) in enumerate(test_dataloader):
+        
+        for iteration, (images, gt_2d_joints, _) in enumerate(test_dataloader):
 
             Graphormer_model.eval()
             batch_size = images.size(0)

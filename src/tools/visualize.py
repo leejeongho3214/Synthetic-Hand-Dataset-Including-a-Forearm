@@ -13,7 +13,7 @@ trans = transforms.Compose([transforms.Resize((224, 224)),
                             transforms.ToTensor(),
                             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
-def visualize_prediction(images, pred_2d_joint, fig, iteration):
+def visualize_prediction(images, pred_2d_joint, fig, epoch,iteration):
     image = np.moveaxis(images[0].detach().cpu().numpy(), 0, -1)
     image = ((image + abs(image.min())) / (image + abs(image.min())).max()).copy()
     parents = np.array([-1, 0, 1, 2, 3, 0, 5, 6, 7, 0, 9, 10, 11, 0, 13, 14, 15, 0, 17, 18, 19,])
@@ -31,8 +31,10 @@ def visualize_prediction(images, pred_2d_joint, fig, iteration):
     ax1.axis("off")
     if os.path.isdir("test_image") == False:
         mkdir("test_image")
-    plt.savefig(f'test_image/{iteration}.jpg')
+    if os.path.isdir(f'test_image/{epoch}epoch') == False:
+        mkdir(f'test_image/{epoch}epoch')
     # plt.show()
+    plt.savefig(f"test_image/{epoch}epoch/{iteration}_image.jpg")
 
 def visualize_gt(images, gt_2d_joint, fig):
     # for j in gt_2d:

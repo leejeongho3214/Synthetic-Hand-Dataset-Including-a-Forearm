@@ -11,14 +11,15 @@ class Graphormer_Hand_Network(torch.nn.Module):
     '''
     End-to-end Graphormer network for hand pose and mesh reconstruction from a single image.
     '''
-    def __init__(self, args, config, backbone, trans_encoder, token):
+    def __init__(self, args, config, backbone, trans_encoder, token, camera= False):
         super(Graphormer_Hand_Network, self).__init__()
         self.config = config
         self.token = token
+        self.camera = camera
         self.backbone = backbone
         self.trans_encoder = trans_encoder
         self.cam_param_fc = torch.nn.Linear(3, 1)
-        self.cam_param_fc2 = torch.nn.Linear(token, 7)
+        self.cam_param_fc2 = torch.nn.Linear(token, 3)
         # self.cam_param_fc3 = torch.nn.Linear(3, 1)
         # self.cam_param_fc4 = torch.nn.Linear(21, 1)
         # self.cam_param_fc5 = torch.nn.Linear(3, 1)

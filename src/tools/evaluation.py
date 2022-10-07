@@ -10,12 +10,13 @@ from torch.utils.data import ConcatDataset, Dataset
 import torch
 import torchvision.models as models
 from torch.utils import data
-
+os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"  # Arrange GPU devices starting from 0
+os.environ["CUDA_VISIBLE_DEVICES"]= "3"  # Set the GPU 2 to use
 import sys
 sys.path.append("/home/jeongho/tmp/Wearable_Pose_Model")
 # sys.path.append("C:\\Users\\jeongho\\PycharmProjects\\PoseEstimation\\HandPose\\MeshGraphormer-main")
 from dataset import CustomDataset_test, save_checkpoint, CustomDataset_train,Our_testset
-from loss import calcu, keypoint_2d_loss, calcu_one, adjust_learning_rate, keypoint_3d_loss, PCK_2d_loss
+from loss import  keypoint_2d_loss, calcu_one, adjust_learning_rate, keypoint_3d_loss, PCK_2d_loss, MPJPE
 from src.datasets.build import make_hand_data_loader
 from src.modeling.bert import BertConfig, Graphormer
 from src.modeling.bert import Graphormer_Hand_Network as Graphormer_Network
@@ -306,6 +307,7 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss, T):
         )
 
     pck_losses = AverageMeter()
+    mpjpe_losses = AverageMeter()
     log_loss_2djoints = AverageMeter()
     log_loss_3djoints = AverageMeter()
     with torch.no_grad():
@@ -326,19 +328,21 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss, T):
             if args.loss_3d == 0:
                 pred_2d_joints = pred_2d_joints * 224
             correct, visible_point = PCK_2d_loss(pred_2d_joints, gt_2d_joint, images, T)
+            mpjpe_loss = MPJPE(pred_2d_joints, gt_2d_joint)
             pck_losses.update_p(correct, visible_point)
+            mpjpe_losses.update(mpjpe_loss, args.batch_size)
 
             # fig = plt.figure()
             # visualize_gt(images, gt_2d_joint, fig)
             # visualize_prediction(images, pred_2d_joints, fig)
             # plt.close()
 
-            if args.visualize == True:
-                if iteration % 10000 == 1:
-                    fig = plt.figure()
-                    visualize_gt(images, gt_2d_joint, fig)
-                    visualize_prediction(images, pred_2d_joints, fig)
-                    plt.close()
+            # if args.visualize == True:
+                # if iteration % 10000 == 1:
+            fig = plt.figure()
+            visualize_gt(images, gt_2d_joint, fig)
+            visualize_prediction(images, pred_2d_joints, fig, 0, iteration)
+            plt.close()
 
             # if iteration == len(test_dataloader) - 1:
             #     logger.info(
@@ -368,7 +372,7 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss, T):
     del test_dataloader
     gc.collect()
 
-    return pck_losses.avg
+    return pck_losses.avg, mpjpe_losses.avg
 
 def main(args, T):
     global logger
@@ -455,7 +459,7 @@ def main(args, T):
         # build end-to-end Graphormer network (CNN backbone + multi-layer Graphormer encoder)
         _model = Graphormer_Network(args, config, backbone, trans_encoder, token = 70)
 
-    name = "output/synthetic/only_2d/checkpoint-good/state_dict.bin"
+    name = "output/new_synthetic/only2d/checkpoint-good/state_dict.bin"
     state_dict = torch.load(name)
     _model.load_state_dict(state_dict['model_state_dict'], strict=False)
     _model.to(args.device)
@@ -467,17 +471,21 @@ def main(args, T):
     # train_dataset, testset = random_split(dataset, [int(len(dataset)*0.9), len(dataset)-(int(len(dataset)*0.9))])
     data_loader = data.DataLoader(dataset=dataset, batch_size=args.batch_size, num_workers=0, shuffle=False)
 
-    loss = test(args, data_loader, _model, 0, 0, best_loss, T)
+    pck, mpjpe = test(args, data_loader, _model, 0, 0, best_loss, T)
     # print("Model_Name = {}  // Threshold = {} // pck===> {:.2f}%".format(name[15:-31],T, loss*100))
-    print("Model_Name = {}  // Threshold = {} // pck===> {:.2f}%".format(name[7:-31], T, loss * 100))
+    print("Model_Name = {}  // Threshold = {} // pck===> {:.2f}% // mpjpe===> {:.2f}mm".format(name[7:-31], T, pck * 100, mpjpe * 0.26))
     gc.collect()
     torch.cuda.empty_cache()
+
+    return pck * 100, mpjpe * 0.26
 
 
 if __name__ == "__main__":
     args = parse_args()
-    main(args, T=0.1)
-    main(args, T=0.2)
-    main(args, T=0.3)
-    main(args, T=0.4)
-    main(args, T=0.5)
+    loss, mp = main(args, T=0.1)
+    loss1, _ =main(args, T=0.2)
+    loss2, _ = main(args, T=0.3)
+    loss3, _ = main(args, T=0.4)
+    loss4, _ =main(args, T=0.5)
+    print("{:.2f}, {:.2f}, {:.2f}, {:.2f}, {:.2f}".format(loss, loss1, loss2, loss3, loss4))
+    print(mp)
