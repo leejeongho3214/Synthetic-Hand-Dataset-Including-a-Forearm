@@ -1,8 +1,11 @@
+
+import os
 import cv2
 import numpy as np
 import torch
 from matplotlib import pyplot as plt
 import json
+from src.utils.miscellaneous import mkdir
 from PIL import Image
 from torchvision.transforms import transforms
 
@@ -10,7 +13,7 @@ trans = transforms.Compose([transforms.Resize((224, 224)),
                             transforms.ToTensor(),
                             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
-def visualize_prediction(images, pred_2d_joint, fig):
+def visualize_prediction(images, pred_2d_joint, fig, iteration):
     image = np.moveaxis(images[0].detach().cpu().numpy(), 0, -1)
     image = ((image + abs(image.min())) / (image + abs(image.min())).max()).copy()
     parents = np.array([-1, 0, 1, 2, 3, 0, 5, 6, 7, 0, 9, 10, 11, 0, 13, 14, 15, 0, 17, 18, 19,])
@@ -26,7 +29,10 @@ def visualize_prediction(images, pred_2d_joint, fig):
     ax1.imshow(image[:, :, (2, 1, 0)])
     ax1.set_title('pred_image')
     ax1.axis("off")
-    plt.show()
+    if os.path.isdir("test_image") == False:
+        mkdir("test_image")
+    plt.savefig(f'test_image/{iteration}.jpg')
+    # plt.show()
 
 def visualize_gt(images, gt_2d_joint, fig):
     # for j in gt_2d:
@@ -99,6 +105,17 @@ def visualize_our(image_path, json_path, trans):
     joint_2d = torch.tensor(joint_2d)
     # visualize(image, joint_2d)
 
+def visualize(image, gt_2d_joint):
+    parents = np.array([-1, 0, 1, 2, 3, 0, 5, 6, 7, 0, 9, 10, 11, 0, 13, 14, 15, 0, 17, 18, 19,])
+    for i in range(21):
+        cv2.circle(image, (int(gt_2d_joint[i][0]), int(gt_2d_joint[i][1])), 2, [0, 1, 0],
+                   thickness=-1)
+        if i != 0:
+            cv2.line(image, (int(gt_2d_joint[i][0]), int(gt_2d_joint[i][1])),
+                     (int(gt_2d_joint[parents[i]][0]), int(gt_2d_joint[parents[i]][1])),
+                     [0, 0, 1], 1)
+
+    cv2.imwrite('vis.jpg', image)
 
 def visualize_HIU(image_path, json_path, trans):
 

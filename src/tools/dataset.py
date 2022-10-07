@@ -9,15 +9,15 @@ import torch
 from src.utils.comm import is_main_process
 from src.utils.miscellaneous import mkdir
 
-
-class CustomDataset_train(Dataset):
-    def __init__(self):
+class CustomDataset_train_new(Dataset):
+    def __init__(self, degree):
+        self.degree = degree
         # self.num = int(args.train_data[9:-1])
-        with open(f"../../datasets/CISLAB_Full/annotations/train/CISLAB_train_camera.json", "r") as st_json:
+        with open(f"../../datasets/CISLAB_various/{degree}/annotations/train/CISLAB_train_camera.json", "r") as st_json:
             self.camera = json.load(st_json)
-        with open(f"../../datasets/CISLAB_Full/annotations/train/CISLAB_train_joint_3d.json", "r") as st_json:
+        with open(f"../../datasets/CISLAB_various/{degree}/annotations/train/CISLAB_train_joint_3d.json", "r") as st_json:
             self.joint = json.load(st_json)
-        with open(f"../../datasets/CISLAB_Full/annotations/train/CISLAB_train_data.json", "r") as st_json:
+        with open(f"../../datasets/CISLAB_various/{degree}/annotations/train/CISLAB_train_data.json", "r") as st_json:
             self.meta = json.load(st_json)
         for idx, i in enumerate(self.meta['images']):
             if i['camera'] == '0':
@@ -35,7 +35,7 @@ class CustomDataset_train(Dataset):
         # if camera == '0':
         #     break
         id = self.meta['images'][idx]['frame_idx']
-        image = Image.open(f'../../datasets/CISLAB_Full/images/train/{name}')
+        image = Image.open(f'../../datasets/CISLAB_various/{self.degree}/images/train/{name}')
         trans = transforms.Compose([transforms.Resize((224, 224)),
                                     transforms.ToTensor(),
                                     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
@@ -46,12 +46,78 @@ class CustomDataset_train(Dataset):
         rot = self.camera['0']['camrot'][f'{camera}']
         rot2 = sum(rot, [])
         parameter =[]
-       
+        parameter.append(focal_length)
         for i in rot2:
             parameter.append(i)
         for i in translation:
             parameter.append(i)
+        camera_parameter = torch.tensor(parameter)
+
+        c = []
+
+        for i in range(21):
+            a = np.dot(np.array(rot, dtype='float32'),
+                       np.array(joint[i], dtype='float32') - np.array(translation, dtype='float32'))
+            a[:2] = a[:2] / a[2]
+            b = a[:2] * focal_length + 112
+            b = torch.tensor(b)
+            for o in b:
+                if o >224:
+                    assert "incorrect_image"
+            if i == 0:  ## 112 is image center
+                c = b
+            elif i == 1:
+                c = torch.stack([c, b], dim=0)
+            else:
+                c = torch.concat([c, b.reshape(1, 2)], dim=0)
+
+
+
+        return image,  c, joint
+
+
+
+class CustomDataset_train(Dataset):
+    def __init__(self):
+        # self.num = int(args.train_data[9:-1])
+        with open(f"../../datasets/CISLAB_various/-10/annotations/train/CISLAB_train_camera.json", "r") as st_json:
+            self.camera = json.load(st_json)
+        with open(f"../../datasets/CISLAB_various/-10/annotations/train/CISLAB_train_joint_3d.json", "r") as st_json:
+            self.joint = json.load(st_json)
+        with open(f"../../datasets/CISLAB_various/-10/annotations/train/CISLAB_train_data.json", "r") as st_json:
+            self.meta = json.load(st_json)
+        for idx, i in enumerate(self.meta['images']):
+            if i['camera'] == '0':
+                del self.meta['images'][idx]
+
+
+
+    def __len__(self):
+        return len(self.meta['images'])
+
+
+    def __getitem__(self, idx):
+        name = self.meta['images'][idx]['file_name']
+        camera = self.meta['images'][idx]['camera']
+        # if camera == '0':
+        #     break
+        id = self.meta['images'][idx]['frame_idx']
+        image = Image.open(f'../../datasets/CISLAB_various/-10/images/train/{name}')
+        trans = transforms.Compose([transforms.Resize((224, 224)),
+                                    transforms.ToTensor(),
+                                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+        image = trans(image)
+        joint = torch.tensor(self.joint['0'][f'{id}']['world_coord'][:21])
+        focal_length = self.camera['0']['focal'][f'{camera}'][0]  ## only one scalar (later u need x,y focal_length)
+        translation = self.camera['0']['campos'][f'{camera}']
+        rot = self.camera['0']['camrot'][f'{camera}']
+        rot2 = sum(rot, [])
+        parameter =[]
         parameter.append(focal_length)
+        for i in rot2:
+            parameter.append(i)
+        for i in translation:
+            parameter.append(i)
         camera_parameter = torch.tensor(parameter)
 
         c = []
@@ -137,7 +203,8 @@ def save_checkpoint(model, args, epoch,optimizer, best_loss,ment, num_trial=10, 
         logger.info("Failed to save checkpoint after {} trails.".format(num_trial))
     return model_to_save, checkpoint_dir
 
-class HIU_Dataset(Dataset):
+
+class HIU_Dataset_Align(Dataset):
     def __init__(self):
         image_list = []
         for (root, directories, files) in os.walk("../../datasets/HIU_DMTL"):
@@ -160,8 +227,86 @@ class HIU_Dataset(Dataset):
             annotation = json.load(st_json)
         if annotation['hand_type'][0] == 0:
             joint = annotation['pts2d_2hand'][21:]
+            joint_3d = annotation['pts3d_2hand'][21:]
         else:
             joint = annotation['pts2d_2hand'][:21]
+            joint_3d = annotation['pts3d_2hand'][21:]
+        trans = transforms.Compose([transforms.Resize((224, 224)),
+                                    transforms.ToTensor(),
+                                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+
+        trans_image = trans(image)[(2, 1, 0), :, :]
+        c = torch.tensor(joint)
+        c[:, 0] = c[:, 0] * scale_x
+        c[:, 1] = c[:, 1] * scale_y
+        
+        import math
+        def cal_rad(arr):
+            rad = math.atan2(arr[3]-arr[1],arr[2]-arr[0])
+
+            return rad
+        def im_rotate(img, degree):
+            h, w = img.shape[:-1]
+
+            crossLine = int(((w * h + h * w) ** 0.5))
+            centerRotatePT = 112, 112
+            new_h, new_w = 224, 224
+
+            rotatefigure = cv2.getRotationMatrix2D(centerRotatePT, degree, 1)
+            result = cv2.warpAffine(img, rotatefigure, (new_w, new_h))
+            
+            return result , rotatefigure
+
+
+        point = [0,0, c[0,0]-112, c[0,1]-112]
+        rad = cal_rad(point)
+        import cv2
+        degree = math.degrees(rad) + 270 
+
+        iimage = cv2.imread(self.image[idx][0])
+        iimage = cv2.resize(iimage, (224,224))
+        result, matrix = im_rotate(iimage, degree)
+        
+        x = c[:,0] - 112
+        y = c[:,1] - 112
+        rad = math.radians(degree)
+        c[:,0] =  math.cos(rad) * x + math.sin(rad) * y + 112
+        c[:,1] = math.cos(rad) * y - math.sin(rad) * x + 112
+
+        # visualize(result, c)
+        pil_img = Image.fromarray(result)
+        trans_image = trans(pil_img)
+
+        return trans_image, c, torch.tensor(joint_3d)
+
+class HIU_Dataset(Dataset):
+        
+    def __init__(self):
+        image_list = []
+        for (root, directories, files) in os.walk("../../datasets/HIU_DMTL"):
+            for file in files:
+                if not '.json' in file:
+                    if not '.DS_Store' in file:
+                        file_path = os.path.join(root, file)
+                        anno_name = file_path[:-4] + '.json'
+                        image_list.append((file_path, anno_name))
+        self.image = image_list
+
+    def __len__(self):
+        return len(self.image)
+
+    def __getitem__(self, idx):
+        image = Image.open(self.image[idx][0])
+        scale_x = 224 / image.width
+        scale_y = 224 / image.height
+        with open(self.image[idx][1], "r") as st_json:
+            annotation = json.load(st_json)
+        if annotation['hand_type'][0] == 0:
+            joint = annotation['pts2d_2hand'][21:]
+            joint_3d = annotation['pts3d_2hand'][21:]
+        else:
+            joint = annotation['pts2d_2hand'][:21]
+            joint_3d = annotation['pts3d_2hand'][21:]
         trans = transforms.Compose([transforms.Resize((224, 224)),
                                     transforms.ToTensor(),
                                     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
@@ -171,7 +316,7 @@ class HIU_Dataset(Dataset):
         c[:, 0] = c[:, 0] * scale_x
         c[:, 1] = c[:, 1] * scale_y
 
-        return trans_image, c
+        return trans_image, c, torch.tensor(joint_3d)
 
 class Our_testset(Dataset):
     def __init__(self):

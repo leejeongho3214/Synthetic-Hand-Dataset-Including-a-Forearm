@@ -63,13 +63,13 @@ def PCK_2d_loss(pred_2d, gt_2d, images, T = 0.1):
     visible_joint = 0
     for box_num, box_size in enumerate(bbox_size):
         for joint_num in range(21):
-            if gt_2d[box_num][joint_num][2] == 1:
-                visible_joint += 1
-                x = gt_2d[box_num][joint_num][0] - pred_2d[box_num][joint_num][0]
-                y = gt_2d[box_num][joint_num][1] - pred_2d[box_num][joint_num][1]
-                distance = np.sqrt((x ** 2 + y ** 2))/box_size
-                if distance < T:
-                    correct += 1
+            # if gt_2d[box_num][joint_num][2] == 1:
+            visible_joint += 1
+            x = gt_2d[box_num][joint_num][0] - pred_2d[box_num][joint_num][0]
+            y = gt_2d[box_num][joint_num][1] - pred_2d[box_num][joint_num][1]
+            distance = np.sqrt((x ** 2 + y ** 2))/box_size
+            if distance < T:
+                correct += 1
 
     return correct, visible_joint
 
@@ -90,7 +90,7 @@ def PCK_2d_loss_HIU(pred_2d, gt_2d, images):
     #     visualize_with_bbox(k, l, point[0], point[1])
     correct = 0
     visible_joint = 0
-    T = 0.3
+    T = 0.05
     for box_num, box_size in enumerate(bbox_size):
         for joint_num in range(21):
             visible_joint += 1

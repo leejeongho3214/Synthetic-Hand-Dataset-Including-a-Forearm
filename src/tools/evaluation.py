@@ -6,7 +6,7 @@ import time
 import os.path as op
 import numpy as np
 from matplotlib import pyplot as plt
-from torch.utils.data import ConcatDataset
+from torch.utils.data import ConcatDataset, Dataset
 import torch
 import torchvision.models as models
 from torch.utils import data
@@ -27,7 +27,7 @@ from src.utils.geometric_layers import camera_calibration
 from src.utils.logger import setup_logger
 from src.utils.metric_logger import AverageMeter
 from src.utils.miscellaneous import mkdir
-from visualize import visualize_prediction, visualize_gt
+from visualize import visualize_prediction, visualize_gt, visualize
 
 
 def parse_args():
@@ -159,7 +159,7 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len):
         log_loss_2djoints.update(loss_2d_joints, batch_size)
         log_loss_3djoints.update(loss_3d_joints, batch_size)
         log_mpjpe_2d.update(mpjpe_2d, batch_size)
-        log_losses.update(loss.item(), batch_size)
+        log_losses.update(loss.item(), batch_size)  
 
        # back prop
         optimizer.zero_grad()
@@ -212,7 +212,87 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len):
             torch.cuda.empty_cache()
 
     return Graphormer_model, optimizer, log_mpjpe_2d.avg
+class HIU_Dataset(Dataset):
+    def __init__(self):
+        image_list = []
+        for (root, directories, files) in os.walk("../../datasets/HIU_DMTL"):
+            for file in files:
+                if not '.json' in file:
+                    if not '.DS_Store' in file:
+                        file_path = os.path.join(root, file)
+                        anno_name = file_path[:-4] + '.json'
+                        image_list.append((file_path, anno_name))
+        self.image = image_list
 
+    def __len__(self):
+        return len(self.image)
+
+    def __getitem__(self, idx):
+        def im_rotate(img, degree):
+            h, w = img.shape[:-1]
+
+            crossLine = int(((w * h + h * w) ** 0.5))
+            centerRotatePT = 112, 112
+            new_h, new_w = 224, 224
+
+            rotatefigure = cv2.getRotationMatrix2D(centerRotatePT, degree, 1)
+            result = cv2.warpAffine(img, rotatefigure, (new_w, new_h))
+            
+            return result , rotatefigure
+
+
+        from PIL import Image
+        image = Image.open(self.image[idx][0])
+        scale_x = 224 / image.width
+        scale_y = 224 / image.height
+        with open(self.image[idx][1], "r") as st_json:
+            annotation = json.load(st_json)
+        if annotation['hand_type'][0] == 0:
+            joint = annotation['pts2d_2hand'][21:]
+        else:
+            joint = annotation['pts2d_2hand'][:21]
+        from torchvision.transforms import transforms
+        trans = transforms.Compose([transforms.Resize((224, 224)),
+                                    transforms.ToTensor(),
+                                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+
+        trans_image = trans(image)[(2, 1, 0), :, :]
+        c = torch.tensor(joint)
+        c[:, 0] = c[:, 0] * scale_x
+        c[:, 1] = c[:, 1] * scale_y
+        
+        import math
+        def cal_rad(arr):
+            rad = math.atan2(arr[3]-arr[1],arr[2]-arr[0])
+
+            return rad
+
+
+        point = [0,0, c[0,0]-112, c[0,1]-112]
+        rad = cal_rad(point)
+        import cv2
+        degree = math.degrees(rad) + 270 
+
+        iimage = cv2.imread(self.image[idx][0])
+        iimage = cv2.resize(iimage, (224,224))
+        result, matrix = im_rotate(iimage, degree)
+
+        cv2.imwrite('rot.jpg', result)
+        
+        x = c[:,0] - 112
+        y = c[:,1] - 112
+        rad = math.radians(degree)
+        c[:,0] =  math.cos(rad) * x + math.sin(rad) * y + 112
+        c[:,1] = math.cos(rad) * y - math.sin(rad) * x + 112
+
+        # visualize(result, c)
+        pil_img = Image.fromarray(result)
+        trans_image = trans(pil_img)
+
+
+        return trans_image, c
+
+        
 def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss, T):
 
     max_iter = len(test_dataloader)
@@ -247,6 +327,11 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss, T):
                 pred_2d_joints = pred_2d_joints * 224
             correct, visible_point = PCK_2d_loss(pred_2d_joints, gt_2d_joint, images, T)
             pck_losses.update_p(correct, visible_point)
+
+            # fig = plt.figure()
+            # visualize_gt(images, gt_2d_joint, fig)
+            # visualize_prediction(images, pred_2d_joints, fig)
+            # plt.close()
 
             if args.visualize == True:
                 if iteration % 10000 == 1:
@@ -290,11 +375,7 @@ def main(args, T):
     epo = 0
     best_loss = np.inf
 
-    args.output_dir = op.join(args.output_dir, args.train_data)
-
-    if os.path.isdir(args.output_dir) == False:
-        mkdir(args.output_dir)
-    logger = setup_logger(args.train_data, args.output_dir, get_rank())
+    # logger = setup_logger(args.train_data, args.output_dir, get_rank())
     args.num_gpus = int(os.environ['WORLD_SIZE']) if 'WORLD_SIZE' in os.environ else 1
     os.environ['OMP_NUM_THREADS'] = str(args.num_workers)
     args.distributed = args.num_gpus > 1
@@ -310,7 +391,7 @@ def main(args, T):
 
     if args.resume_checkpoint != None and args.resume_checkpoint != 'None' and 'state_dict' not in args.resume_checkpoint:
         # if only run eval, load checkpoint
-        logger.info("Evaluation: Loading from checkpoint {}".format(args.resume_checkpoint))
+        # logger.info("Evaluation: Loading from checkpoint {}".format(args.resume_checkpoint))
         _model = torch.load(args.resume_checkpoint)
 
     else:
@@ -374,18 +455,21 @@ def main(args, T):
         # build end-to-end Graphormer network (CNN backbone + multi-layer Graphormer encoder)
         _model = Graphormer_Network(args, config, backbone, trans_encoder, token = 70)
 
-    name = "output/HIU/checkpoint-good/state_dict.bin"
+    name = "output/synthetic/only_2d/checkpoint-good/state_dict.bin"
     state_dict = torch.load(name)
     _model.load_state_dict(state_dict['model_state_dict'], strict=False)
     _model.to(args.device)
 
-    testset = Our_testset()
+    dataset = Our_testset()
+    # dataset = CustomDataset_train()
+    # dataset = HIU_Dataset()
+    # from torch.utils.data import random_split
+    # train_dataset, testset = random_split(dataset, [int(len(dataset)*0.9), len(dataset)-(int(len(dataset)*0.9))])
+    data_loader = data.DataLoader(dataset=dataset, batch_size=args.batch_size, num_workers=0, shuffle=False)
 
-    sset_loader = data.DataLoader(dataset=testset, batch_size=args.batch_size, num_workers=0, shuffle=False)
-
-    loss = test(args, sset_loader, _model, 0, 0, best_loss, T)
+    loss = test(args, data_loader, _model, 0, 0, best_loss, T)
     # print("Model_Name = {}  // Threshold = {} // pck===> {:.2f}%".format(name[15:-31],T, loss*100))
-    print("Model_Name = {}  // Threshold = {} // pck===> {:.2f}%".format('HIU_Full', T, loss * 100))
+    print("Model_Name = {}  // Threshold = {} // pck===> {:.2f}%".format(name[7:-31], T, loss * 100))
     gc.collect()
     torch.cuda.empty_cache()
 
