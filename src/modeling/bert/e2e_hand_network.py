@@ -19,7 +19,8 @@ class Graphormer_Hand_Network(torch.nn.Module):
         self.backbone = backbone
         self.trans_encoder = trans_encoder
         self.cam_param_fc = torch.nn.Linear(3, 1)
-        self.cam_param_fc2 = torch.nn.Linear(token, 3)
+        self.cam_param_fc1 = torch.nn.Linear(10,3)
+        self.cam_param_fc2 = torch.nn.Linear(token, 10)
         # self.cam_param_fc3 = torch.nn.Linear(3, 1)
         # self.cam_param_fc4 = torch.nn.Linear(21, 1)
         # self.cam_param_fc5 = torch.nn.Linear(3, 1)
@@ -72,10 +73,12 @@ class Graphormer_Hand_Network(torch.nn.Module):
             x = self.cam_param_fc(features[:,21:,:])
             x = x.transpose(1,2)
             x = self.cam_param_fc2(x)
+            x = self.cam_param_fc1(x)
         else:
             x = self.cam_param_fc(features[:, :, :])
             x = x.transpose(1, 2)
             x = self.cam_param_fc2(x)
+            x = self.cam_param_fc1(x)
 
         cam_param = x.transpose(1,2)
         cam_param = cam_param.squeeze()

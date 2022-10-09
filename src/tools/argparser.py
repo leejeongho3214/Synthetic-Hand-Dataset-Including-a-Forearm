@@ -23,10 +23,10 @@ import numpy as np
 from matplotlib import pyplot as plt
 from torch.utils.data import ConcatDataset
 import torch
-from loss import keypoint_2d_loss, calcu_one, adjust_learning_rate, keypoint_3d_loss, PCK_2d_loss, PCK_2d_loss_HIU
-from src.utils.geometric_layers import camera_calibration, orthographic_projection
+from loss import *
+from src.utils.geometric_layers import *
 from src.utils.metric_logger import AverageMeter
-from visualize import visualize_prediction, visualize_gt
+from visualize import *
 import sys
 
 def parse_args():
@@ -60,6 +60,7 @@ def parse_args():
                         help="The initial lr.")
     parser.add_argument("--visualize", action='store_true')
     parser.add_argument("--iter", action='store_true')
+    parser.add_argument("--iter2", action='store_true')
     parser.add_argument("--resume", action='store_true')
     #############################################################################################
 
@@ -122,6 +123,8 @@ def load_model(args):
 
     if args.iter == True:
         args.resume_checkpoint = os.path.join(os.path.join(args.root_path, args.output_path),'checkpoint-iter/state_dict.bin')
+    elif args.iter2 == True:
+        args.resume_checkpoint = os.path.join(os.path.join(args.root_path, args.output_path),'checkpoint-iter2/state_dict.bin')
     else:
         args.resume_checkpoint = os.path.join(os.path.join(args.root_path, args.output_path),'checkpoint-good/state_dict.bin')
     args.output_dir = os.path.join(args.root_path, args.output_path)
@@ -240,12 +243,10 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
             find_unused_parameters=True,
         )
 
-
     log_losses = AverageMeter()
     log_loss_2djoints = AverageMeter()
     log_loss_3djoints = AverageMeter()
-    # log_loss_camera = AverageMeter()
-    logger.info(f'loss_2d = {args.loss_2d} // loss_3d = {args.loss_3d}\n')
+
     for iteration, (images, gt_2d_joints, gt_3d_joints) in enumerate(train_dataloader):
         batch_time = AverageMeter()
         batch_inference_time = time.time()
@@ -253,32 +254,25 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
         batch_size = images.size(0)
         adjust_learning_rate(optimizer, epoch, args)
         images = images.cuda()
-        gt_2d_joints = gt_2d_joints/224
+        gt_2d_joints = gt_2d_joints/224  ## 2d joint value rearrange from 0 to 1
         gt_2d_joint = gt_2d_joints.clone().detach()
         gt_2d_joint = gt_2d_joint.cuda()
         gt_3d_joints = gt_3d_joints.cuda()
-        # gt_camera = camera.cuda()
 
         pred_camera, pred_3d_joints = Graphormer_model(images)
 
         if args.loss_3d == 0:
-            pred_2d_joints = pred_3d_joints[:,:,:-1]
+            pred_2d_joints = pred_3d_joints[:,:,:-1]  ## Model regress directly 2d joint from 0 to 1
             loss_3d_joints = 0
         else:
-            # pred_2d_joints, rot = camera_calibration(pred_3d_joints.contiguous(), pred_camera.contiguous())
             pred_2d_joints = orthographic_projection(pred_3d_joints.contiguous(), pred_camera.contiguous())
             loss_3d_joints = keypoint_3d_loss(criterion_3d_keypoints, pred_3d_joints, gt_3d_joints)
 
-        pred_2d_joints = pred_2d_joints/224
-        # pred_camera = torch.concat([rot.cuda(), pred_camera[:,3:]],1)
-        # loss_camera = criterion_2d_keypoints(pred_camera, gt_camera).mean()
         loss_2d_joints = keypoint_2d_loss(criterion_2d_keypoints, pred_2d_joints, gt_2d_joint)
-        # loss = args.loss_2d * loss_2d_joints + args.loss_3d * loss_3d_joints + 0.01 * loss_camera
         loss = args.loss_2d * loss_2d_joints + args.loss_3d * loss_3d_joints
         # loss = args.loss_2d * loss_2d_joints
         log_loss_2djoints.update(loss_2d_joints, batch_size)
         log_loss_3djoints.update(loss_3d_joints, batch_size)
-        # log_loss_camera.update(loss_camera, batch_size)
         log_losses.update(loss.item(), batch_size)
 
        # back prop
@@ -288,16 +282,16 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
 
         batch_time.update(time.time() - batch_inference_time, n=1)
         if iteration % 1000 == 800:
-            save_checkpoint(Graphormer_model, args, epoch, optimizer, best_loss, 'iter_2', iteration=iteration, logger=logger)
+            save_checkpoint(Graphormer_model, args, epoch, optimizer, best_loss, 'iter2', iteration=iteration, logger=logger)
 
-        elif iteration % 1000 == 500:
+        elif iteration % 1000 == 400:
             save_checkpoint(Graphormer_model, args, epoch, optimizer, best_loss, 'iter', iteration=iteration, logger=logger)
-            
+
         if args.visualize == True:
             # if iteration % 10000 == 1:
             fig = plt.figure()
             visualize_gt(images, gt_2d_joint * 224, fig)
-            visualize_prediction(images, pred_2d_joints * 224, fig)
+            visualize_prediction_show(images, pred_2d_joints * 224, fig)
             plt.close()
 
         if iteration == len(train_dataloader) - 1:
@@ -305,33 +299,27 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
                 ' '.join(
                     ['dataset_length: {len}','epoch: {ep}', 'iter: {iter}', '/{maxi}']
                 ).format(len=data_len,ep=epoch, iter=iteration, maxi=max_iter)
-                # + ' 2d_loss: {:.6f}, 3d_loss: {:.6f}, camera: {:.6f}, toatl_loss: {:.6f}, best_pck: {:.2f} %, lr: {:.6f}, time: {:.6f}\n'.format(
-                + ' 2d_loss: {:.6f}, 3d_loss: {:.6f},  toatl_loss: {:.6f}, best_pck: {:.2f} %, lr: {:.6f}, time: {:.6f}\n'.format(
+                + ' 2d_loss: {:.6f}, 3d_loss: {:.6f}, toatl_loss: {:.6f}, best_pck: {:.2f} %'.format(
                     log_loss_2djoints.avg,
                     log_loss_3djoints.avg,
-                    # log_loss_camera.avg,
                     log_losses.avg,
-                    best_loss*100,
-                    optimizer.param_groups[0]['lr'],
-                    batch_time.avg)
+                    best_loss*100)
             )
 
         else:
             logger.info(
                 ' '.join(
                     ['dataset_length: {len}', 'epoch: {ep}', 'iter: {iter}', '/{maxi}']
-                ).format(len=data_len,ep=epoch, iter=iteration, maxi=max_iter)
-                + ' 2d_loss: {:.6f}, 3d_loss: {:.6f},  toatl_loss: {:.6f}, best_pck: {:.2f} %, lr: {:.6f}, time: {:.6f}'.format(
+                ).format(len=data_len, ep=epoch, iter=iteration, maxi=max_iter)
+                + ' 2d_loss: {:.6f}, 3d_loss: {:.6f}, toatl_loss: {:.6f}, best_pck: {:.2f} %'.format(
                     log_loss_2djoints.avg,
                     log_loss_3djoints.avg,
-                    # log_loss_camera.avg,zc
                     log_losses.avg,
-                    best_loss * 100,
-                    optimizer.param_groups[0]['lr'],
-                    batch_time.avg)
+                    best_loss * 100
+                    )
             )
 
-        if iteration % 5000 == 4999:
+        if iteration % 10000 == 5000:
             gc.collect()
             torch.cuda.empty_cache()
 
@@ -341,7 +329,6 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
 def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logger):
 
     max_iter = len(test_dataloader)
-    criterion_2d_keypoints = torch.nn.L1Loss(reduction='none').cuda(args.device)
 
     if args.distributed:
         Graphormer_model = torch.nn.parallel.DistributedDataParallel(
@@ -351,10 +338,8 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
         )
 
     pck_losses = AverageMeter()
-    log_loss_2djoints = AverageMeter()
-    log_loss_3djoints = AverageMeter()
+    mpjpe_losses = AverageMeter()
     with torch.no_grad():
-        
         for iteration, (images, gt_2d_joints, _) in enumerate(test_dataloader):
 
             Graphormer_model.eval()
@@ -368,19 +353,22 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
             pred_camera, pred_3d_joints = Graphormer_model(images)
             if args.loss_3d == 0:
                 pred_2d_joints = pred_3d_joints[:, :, :-1]
+
             else:
-                pred_2d_joints = camera_calibration(pred_3d_joints.contiguous(), pred_camera.contiguous())
+                pred_2d_joints = orthographic_projection(pred_3d_joints.contiguous(), pred_camera.contiguous())
 
-            pred_2d_joints = pred_2d_joints * 224
+            pred_2d_joints[:,1] = pred_2d_joints[:,1] * images.size(1)
+            pred_2d_joints[:,0] = pred_2d_joints[:,0] * images.size(2)
+
             correct, visible_point = PCK_2d_loss_HIU(pred_2d_joints, gt_2d_joint, images)
+            mpjpe = MPJPE(pred_2d_joints, gt_2d_joint)
             pck_losses.update_p(correct, visible_point)
+            mpjpe_losses.update(mpjpe, batch_size)
 
-            # if args.visualize == True:
-            if iteration % 1000 == 1:
-        # if iteration == 0:
-                fig = plt.figure()
+            if iteration % 10 == 0:
+                fig = plt.figure()  
                 visualize_gt(images, gt_2d_joint, fig)
-                visualize_prediction(images, pred_2d_joints, fig, epoch,iteration)
+                visualize_prediction(images, pred_2d_joints, fig, epoch, iteration)
                 plt.close()
 
             if iteration == len(test_dataloader) - 1:
@@ -388,10 +376,9 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
                     ' '.join(
                         ['Test =>> epoch: {ep}', 'iter: {iter}', '/{maxi}']
                     ).format(ep=epoch, iter=iteration, maxi=max_iter)
-                    + ' pck: {:.2f}%, 3d: {},  count: {} / 50,best_pck: {:.2f} %\n'.format(
+                    + ' pck: {:.2f}%, mpjpe: {:.2f}mm,  count: {} / 50,best_pck: {:.2f} %\n'.format(
                         pck_losses.avg * 100,
-                        # log_loss_3djoints.avg,
-                        0,
+                        mpjpe_losses.avg * 0.26,
                         int(count),
                         best_loss*100)
                 )
@@ -400,10 +387,9 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
                     ' '.join(
                         ['Test =>> epoch: {ep}', 'iter: {iter}', '/{maxi}']
                     ).format(ep=epoch, iter=iteration, maxi=max_iter)
-                    + '  pck: {:.2f}%, 3d: {}, count: {} / 50, best_pck: {:.2f} %'.format(
+                    + '  pck: {:.2f}%, mpjpe: {:.2f}mm, count: {} / 50, best_pck: {:.2f} %'.format(
                         pck_losses.avg * 100,
-                        # log_loss_3djoints.avg,
-                        0,
+                        mpjpe_losses.avg * 0.26,
                         int(count),
                         best_loss*100)
                 )

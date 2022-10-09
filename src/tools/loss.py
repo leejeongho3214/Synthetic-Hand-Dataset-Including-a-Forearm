@@ -2,9 +2,27 @@ import numpy as np
 import torch
 from visualize import visualize_with_bbox, visualize_media
 
+def MPJPE_visible(pred_2d_joints, gt_2d_joint):
+    distance = 0
+    for j in range(batch_size):
+        for i in range(pred_2d_joints.size(1)):
+            if gt_2d_joint[j][i][2] == 1:
+                assert gt_2d_joint[j][0][2] == 0, "wrist joint is not visible"
+
+                align_pred_x = int(pred_2d_joints[j][i][0]) - int(pred_2d_joints[j][0][0])
+                align_pred_y = int(pred_2d_joints[j][i][1]) - int(pred_2d_joints[j][0][1])
+                align_gt_x = gt_2d_joint[j][i][0] - gt_2d_joint[j][0][0]
+                align_gt_y = gt_2d_joint[j][i][1] - gt_2d_joint[j][0][1]
+                pred = np.array((align_pred_x, align_pred_y))
+                gt = np.array((align_gt_x.detach().cpu(), align_gt_y.detach().cpu()))
+                pixel = np.sqrt(np.sum((pred - gt)**2))
+                distance += np.sqrt(pixel)
+    mpjpe = distance/(batch_size*pred_2d_joints.size(1))
+
+    return mpjpe
+
 def MPJPE(pred_2d_joints, gt_2d_joint):
     batch_size = pred_2d_joints.size(0)
-    count = 0
     distance = 0
     for j in range(batch_size):
         for i in range(pred_2d_joints.size(1)):
@@ -20,21 +38,6 @@ def MPJPE(pred_2d_joints, gt_2d_joint):
 
     return mpjpe
 
-def calcu_one(pred_2d_joints, gt_2d_joint):
-    distance = 0
-    for i in range(21):
-        x = int(pred_2d_joints[i][0]) - int(pred_2d_joints[0][0])
-        y = int(pred_2d_joints[i][1]) - int(pred_2d_joints[0][1])
-        x1 = gt_2d_joint[i][0] - gt_2d_joint[0][0]
-        y1 = gt_2d_joint[i][1] - gt_2d_joint[0][1]
-        pred_joint_coord = np.sqrt((x ** 2 + y ** 2))
-        gt_joint_coord = np.sqrt((x1 ** 2 + y1 ** 2).detach().cpu())
-        pixel = (pred_joint_coord - gt_joint_coord) ** 2
-        distance += np.sqrt(pixel)
-    pred = distance/21
-
-    return pred
-
 def keypoint_2d_loss(criterion_keypoints, pred_keypoints_2d, gt_keypoints_2d):
     """
     Compute 2D reprojection loss if 2D keypoint annotations are available.
@@ -44,7 +47,7 @@ def keypoint_2d_loss(criterion_keypoints, pred_keypoints_2d, gt_keypoints_2d):
     loss = (conf * criterion_keypoints(pred_keypoints_2d, gt_keypoints_2d)).mean()
     return loss
 
-def PCK_2d_loss(pred_2d, gt_2d, images, T = 0.1):
+def PCK_2d_loss_visible(pred_2d, gt_2d, images, T = 0.1):
     bbox_size = []
     point = []
     pred_2d = pred_2d.detach().cpu()
@@ -73,7 +76,7 @@ def PCK_2d_loss(pred_2d, gt_2d, images, T = 0.1):
 
     return correct, visible_joint
 
-def PCK_2d_loss_HIU(pred_2d, gt_2d, images):
+def PCK_2d_loss(pred_2d, gt_2d, images):
     bbox_size = []
     point = []
     pred_2d = pred_2d.detach().cpu()
@@ -126,11 +129,11 @@ def PCK_2d_loss_No_batch(pred_2d, gt_2d, images,T=0.1, file = None):
             distance = np.sqrt((x ** 2 + y ** 2))/box_size
             if distance < T:
                 correct += 1
-    if (correct/visible_joint) < 0.6:
-        # visualize_with_bbox(images, pred_2d, point[0][0], point[0][1], file)
-        from matplotlib import pyplot as plt
-        fig = plt.figure()
-        visualize_media(images, pred_2d, gt_2d,file, fig)
+    # if (correct/visible_joint) < 0.6:
+    #     # visualize_with_bbox(images, pred_2d, point[0][0], point[0][1], file)
+    #     from matplotlib import pyplot as plt
+    #     fig = plt.figure()
+    #     visualize_media(images, pred_2d, gt_2d,file, fig)
     return correct, visible_joint
 
 

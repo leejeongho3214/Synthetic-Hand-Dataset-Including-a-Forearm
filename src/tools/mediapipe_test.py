@@ -8,10 +8,11 @@ import torch
 from PIL import Image
 from matplotlib import pyplot as plt
 from torchvision import transforms
-
+import sys
+sys.path.append("/home/jeongho/tmp/Wearable_Pose_Model")
 from src.tools.visualize import visualize_gt, visualize_prediction
 from src.utils.drewing_utils import *
-from loss import PCK_2d_loss_No_batch
+from loss import PCK_2d_loss_No_batch, MPJPE
 
 mp_drawing_styles = mp.solutions.drawing_styles
 mp_hands = mp.solutions.hands
@@ -26,13 +27,15 @@ def resize_and_show(image):
   plt.imshow(img[:,:,[2,1,0]])
   plt.show()
 # For static images:
-path = '../../datasets/our_testset/rgb'
-anno =  '../../datasets/our_testset/annotation'
+path = '../../datasets/our_testset/1/rgb'
+anno =  '../../datasets/our_testset/1/annotation'
 IMAGE_FILES = os.listdir(path)
 
 def main(T):
     correct = 0
     visible_point = 0
+    mp = 0
+    bat = 0
     with mp_hands.Hands(
         static_image_mode=True,
         max_num_hands=1,
@@ -88,6 +91,7 @@ def main(T):
         if len(results.multi_hand_landmarks) > 1:
             assert "This has two-hands"
         joint_2d = []
+
         for hand_landmarks in results.multi_hand_landmarks:
             # Print index finger tip coordinates.
             # print(
@@ -111,6 +115,9 @@ def main(T):
             joint_2d[:,0] = 224 - joint_2d[:,0]
             correct_, visible_point_ = PCK_2d_loss_No_batch(joint_2d, gt_2d ,image, T, file)
 
+            mpjpe, batch = MPJPE(joint_2d.view(1,21,2), gt_2d.view(1,21,3))
+            mp += mpjpe
+            bat += batch
             # fig = plt.figure()
             # visualize_gt(trans_image.unsqueeze(0), gt_2d.unsqueeze(0), fig)
             # visualize_prediction(trans_image.unsqueeze(0), joint_2d.unsqueeze(0), fig)
@@ -120,7 +127,8 @@ def main(T):
             visible_point += visible_point_
 
     # resize_and_show(cv2.flip(annotated_image, 1))
-    print("Model_Name = MediePipe // Threshold = {} // pck===> {:.2f}%".format(T, (correct/visible_point)*100))
+    print("Model_Name = MediePipe // Threshold = {} // pck===> {:.2f}% // mpjpe ====> {:.2f}".format(T, (correct/visible_point)*100, mp/bat))
+    print(mp, bat)
 
 if __name__ == '__main__':
     main(T=0.1)
