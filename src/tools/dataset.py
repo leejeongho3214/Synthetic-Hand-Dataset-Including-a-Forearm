@@ -353,9 +353,10 @@ class HIU_Dataset_align(Dataset):
 
 
 class Our_testset(Dataset):
-    def __init__(self):
-        self.image_path = '../../datasets/our_testset/rgb'
-        self.anno_path = '../../datasets/our_testset/annotation'
+    def __init__(self, folder_name):
+       
+        self.image_path = f'../../datasets/our_testset/{folder_name}/rgb'
+        self.anno_path = f'../../datasets/our_testset/{folder_name}/annotation'
     def __len__(self):
         return len(os.listdir(self.image_path))
 

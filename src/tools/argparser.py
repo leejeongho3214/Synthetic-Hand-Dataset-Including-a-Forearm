@@ -28,6 +28,8 @@ from src.utils.geometric_layers import *
 from src.utils.metric_logger import AverageMeter
 from visualize import *
 import sys
+os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"  # Arrange GPU devices starting from 0
+os.environ["CUDA_VISIBLE_DEVICES"]= "1"  # Set the GPU 2 to use
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -357,10 +359,10 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
             else:
                 pred_2d_joints = orthographic_projection(pred_3d_joints.contiguous(), pred_camera.contiguous())
 
-            pred_2d_joints[:,1] = pred_2d_joints[:,1] * images.size(1)
-            pred_2d_joints[:,0] = pred_2d_joints[:,0] * images.size(2)
+            pred_2d_joints[:,:,1] = pred_2d_joints[:,:,1] * images.size(2) ## You Have to check whether weight and height is correct dimenstion
+            pred_2d_joints[:,:,0] = pred_2d_joints[:,:,0] * images.size(3)
 
-            correct, visible_point = PCK_2d_loss_HIU(pred_2d_joints, gt_2d_joint, images)
+            correct, visible_point = PCK_2d_loss(pred_2d_joints, gt_2d_joint, images)
             mpjpe = MPJPE(pred_2d_joints, gt_2d_joint)
             pck_losses.update_p(correct, visible_point)
             mpjpe_losses.update(mpjpe, batch_size)
@@ -368,7 +370,7 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
             if iteration % 10 == 0:
                 fig = plt.figure()  
                 visualize_gt(images, gt_2d_joint, fig)
-                visualize_prediction(images, pred_2d_joints, fig, epoch, iteration)
+                visualize_prediction(images, pred_2d_joints, fig, epoch, iteration, args)
                 plt.close()
 
             if iteration == len(test_dataloader) - 1:
@@ -397,5 +399,5 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
 
     del test_dataloader
     gc.collect()
-
+    torch.cuda.empty_cache()
     return pck_losses.avg

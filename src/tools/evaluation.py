@@ -12,11 +12,13 @@ import torchvision.models as models
 from torch.utils import data
 from argparser import parse_args, load_model
 import sys
+os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"  # Arrange GPU devices starting from 0
+os.environ["CUDA_VISIBLE_DEVICES"]= "2"  #
 sys.path.append("/home/jeongho/tmp/Wearable_Pose_Model")
 # sys.path.append("C:\\Users\\jeongho\\PycharmProjects\\PoseEstimation\\HandPose\\MeshGraphormer-main")
-from dataset import CustomDataset_test, save_checkpoint, CustomDataset_train,Our_testset, Our_testset_1
+from dataset import *
 
-from loss import  *
+from loss import *
 from src.datasets.build import make_hand_data_loader
 from src.modeling.bert import BertConfig, Graphormer
 from src.modeling.bert import Graphormer_Hand_Network as Graphormer_Network
@@ -61,17 +63,17 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss, T):
             else:
                 pred_2d_joints = orthographic_projection(pred_3d_joints.contiguous(), pred_camera.contiguous())
 
-            pred_2d_joints[:,1] = pred_2d_joints[:,1] * images.size(1) ## You Have to check whether weight and height is correct dimenstion
-            pred_2d_joints[:,0] = pred_2d_joints[:,0] * images.size(2)
+            pred_2d_joints[:,:,1] = pred_2d_joints[:,:,1] * images.size(2) ## You Have to check whether weight and height is correct dimenstion
+            pred_2d_joints[:,:,0] = pred_2d_joints[:,:,0] * images.size(3)
 
-            correct, visible_point = PCK_2d_loss(pred_2d_joints, gt_2d_joint, images, T)
+            correct, visible_point = PCK_2d_loss_visible(pred_2d_joints, gt_2d_joint, images, T)
             mpjpe_loss = MPJPE_visible(pred_2d_joints, gt_2d_joint)
             pck_losses.update_p(correct, visible_point)
             mpjpe_losses.update(mpjpe_loss, args.batch_size)
 
             fig = plt.figure()
             visualize_gt(images, gt_2d_joint, fig)
-            visualize_prediction(images, pred_2d_joints, fig, 0, iteration)
+            visualize_prediction(images, pred_2d_joints, fig, 'evaluation', iteration,args)
             plt.close()
 
     del test_dataloader
@@ -81,25 +83,26 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss, T):
 
 def main(args, T):
     count = 0
+    args.name = "output/new_synthetic/only_2d/checkpoint-good/state_dict.bin"
     _model, logger, best_loss, epo = load_model(args)
-    
-    name = "output/synthetic/only_2d/checkpoint-good/state_dict.bin"
-    state_dict = torch.load(name)
+    state_dict = torch.load(args.name)
     _model.load_state_dict(state_dict['model_state_dict'], strict=False)
     _model.to(args.device)
 
-    dataset = Our_testset()
-    dataset1 = Our_testset_1()
-    dataset = ConcatDataset([dataset,dataset1])
-    # dataset = CustomDataset_train()
-    # dataset = HIU_Dataset()
-    # from torch.utils.data import random_split
-    # train_dataset, testset = random_split(dataset, [int(len(dataset)*0.9), len(dataset)-(int(len(dataset)*0.9))])
+    folder_path = os.listdir("../../datasets/our_testset")
+    for idx, num in enumerate(folder_path):
+        if len(num) > 2:
+            continue
+        dataset = Our_testset(num)
+        if idx > 0:
+            previous_dataset = Our_testset(num)
+            dataset = ConcatDataset([previous_dataset, dataset])
+
     data_loader = data.DataLoader(dataset=dataset, batch_size=args.batch_size, num_workers=0, shuffle=False)
 
     pck, mpjpe = test(args, data_loader, _model, 0, 0, best_loss, T)
 
-    print("Model_Name = {}  // Threshold = {} // pck===> {:.2f}% // mpjpe===> {:.2f}mm // {}".format(name[7:-31], T, pck * 100, mpjpe * 0.26, len(dataset)))
+    print("Model_Name = {}  // Threshold = {} // pck===> {:.2f}% // mpjpe===> {:.2f}mm // {}".format(args.name[7:-31], T, pck * 100, mpjpe * 0.26, len(dataset)))
     gc.collect()
     torch.cuda.empty_cache()
 

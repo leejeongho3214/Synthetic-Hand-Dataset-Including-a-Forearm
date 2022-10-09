@@ -32,6 +32,7 @@ def visualize_prediction_show(images, pred_2d_joint, fig):
     plt.show()
 
 def visualize_prediction(images, pred_2d_joint, fig, epoch,iteration,args):
+
     image = np.moveaxis(images[0].detach().cpu().numpy(), 0, -1)
     image = ((image + abs(image.min())) / (image + abs(image.min())).max()).copy()
     parents = np.array([-1, 0, 1, 2, 3, 0, 5, 6, 7, 0, 9, 10, 11, 0, 13, 14, 15, 0, 17, 18, 19,])
@@ -47,14 +48,22 @@ def visualize_prediction(images, pred_2d_joint, fig, epoch,iteration,args):
     ax1.imshow(image[:, :, (2, 1, 0)])
     ax1.set_title('pred_image')
     ax1.axis("off")
-    if os.path.isdir("test_image") == False:
-        mkdir("test_image")
-    if os.path.isdir(f'test_image/{args.name}') == False:
-        mkdir(f'test_image/{args.name}')
-    if os.path.isdir(f'test_image/{args.name}/{epoch}_epoch') == False:
-        mkdir(f'test_image/{args.name}/{epoch}_epoch')
-    
-    plt.savefig(f"test_image/{args.name}/{epoch}_epoch/{iteration}_iter.jpg")
+    if epoch == 'evaluation':
+        if os.path.isdir("eval_image") == False:
+            mkdir("eval_image")
+        if os.path.isdir(f'eval_image/{args.name[7:-31]}') == False:
+            mkdir(f'eval_image/{args.name[7:-31]}')
+        plt.savefig(f"eval_image/{args.name[7:-31]}/{iteration}.jpg")
+
+    else:
+        if os.path.isdir("test_image") == False:
+            mkdir("test_image")
+        if os.path.isdir(f'test_image/{args.name}') == False:
+            mkdir(f'test_image/{args.name}')
+        if os.path.isdir(f'test_image/{args.name}/{epoch}_epoch') == False:
+            mkdir(f'test_image/{args.name}/{epoch}_epoch')
+        plt.savefig(f"test_image/{args.name}/{epoch}_epoch/{iteration}_iter.jpg")
+
 
 def visualize_gt(images, gt_2d_joint, fig):
     # for j in gt_2d:

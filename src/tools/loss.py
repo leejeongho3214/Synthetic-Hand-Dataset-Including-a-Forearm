@@ -3,6 +3,7 @@ import torch
 from visualize import visualize_with_bbox, visualize_media
 
 def MPJPE_visible(pred_2d_joints, gt_2d_joint):
+    batch_size = pred_2d_joints.size(0)
     distance = 0
     for j in range(batch_size):
         for i in range(pred_2d_joints.size(1)):
