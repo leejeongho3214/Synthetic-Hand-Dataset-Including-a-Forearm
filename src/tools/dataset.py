@@ -356,7 +356,8 @@ class Our_testset(Dataset):
     def __init__(self, folder_name):
        
         self.image_path = f'../../datasets/our_testset/{folder_name}/rgb'
-        self.anno_path = f'../../datasets/our_testset/{folder_name}/annotation'
+        self.anno_path = f'../../datasets/our_testset/{folder_name}/annotations'
+
     def __len__(self):
         return len(os.listdir(self.image_path))
 

@@ -27,7 +27,7 @@ from loss import *
 from src.utils.geometric_layers import *
 from src.utils.metric_logger import AverageMeter
 from visualize import *
-import sys
+
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"  # Arrange GPU devices starting from 0
 os.environ["CUDA_VISIBLE_DEVICES"]= "1"  # Set the GPU 2 to use
 
@@ -205,9 +205,9 @@ def load_model(args):
 
     trans_encoder = torch.nn.Sequential(*trans_encoder)
     total_params = sum(p.numel() for p in trans_encoder.parameters())
-    logger.info('Graphormer encoders total parameters: {}\n'.format(total_params))
-    backbone_total_params = sum(p.numel() for p in backbone.parameters())
-    logger.info('Backbone total parameters: {}\n'.format(backbone_total_params))
+    # logger.info('Graphormer encoders total parameters: {}\n'.format(total_params))
+    # backbone_total_params = sum(p.numel() for p in backbone.parameters())
+    # logger.info('Backbone total parameters: {}\n'.format(backbone_total_params))
 
     # build end-to-end Graphormer network (CNN backbone + multi-layer Graphormer encoder)
     _model = Graphormer_Network(args, config, backbone, trans_encoder, token = 70)
@@ -367,7 +367,7 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
             pck_losses.update_p(correct, visible_point)
             mpjpe_losses.update(mpjpe, batch_size)
 
-            if iteration % 10 == 0:
+            if iteration % 100 == 0:
                 fig = plt.figure()  
                 visualize_gt(images, gt_2d_joint, fig)
                 visualize_prediction(images, pred_2d_joints, fig, epoch, iteration, args)

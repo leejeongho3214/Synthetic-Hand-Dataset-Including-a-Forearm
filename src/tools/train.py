@@ -6,6 +6,8 @@ from argparser import parse_args, load_model, train, test
 from dataset import *
 
 sys.path.append("/home/jeongho/tmp/Wearable_Pose_Model")
+os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"  # Arrange GPU devices starting from 0
+os.environ["CUDA_VISIBLE_DEVICES"]= "0"  #
 # sys.path.append("C:\\Users\\jeongho\\PycharmProjects\\PoseEstimation\\HandPose\\MeshGraphormer-main")
 
 

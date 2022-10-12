@@ -66,7 +66,7 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss, T):
             pred_2d_joints[:,:,1] = pred_2d_joints[:,:,1] * images.size(2) ## You Have to check whether weight and height is correct dimenstion
             pred_2d_joints[:,:,0] = pred_2d_joints[:,:,0] * images.size(3)
 
-            correct, visible_point = PCK_2d_loss_visible(pred_2d_joints, gt_2d_joint, images, T)
+            correct, visible_point = PCK_2d_loss_visible(pred_2d_joints, gt_2d_joint, images, T, threshold='pixel')
             mpjpe_loss = MPJPE_visible(pred_2d_joints, gt_2d_joint)
             pck_losses.update_p(correct, visible_point)
             mpjpe_losses.update(mpjpe_loss, args.batch_size)
@@ -90,11 +90,14 @@ def main(args, T):
     _model.to(args.device)
 
     folder_path = os.listdir("../../datasets/our_testset")
+    count = 0
     for idx, num in enumerate(folder_path):
-        if len(num) > 2:
+        if num[0] == '.':
             continue
-        dataset = Our_testset(num)
-        if idx > 0:
+        if count == 0:
+            dataset = Our_testset(num)
+        count += 1
+        if count > 1:
             previous_dataset = Our_testset(num)
             dataset = ConcatDataset([previous_dataset, dataset])
 

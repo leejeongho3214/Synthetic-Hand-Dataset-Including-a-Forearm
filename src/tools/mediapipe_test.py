@@ -1,3 +1,4 @@
+import argparse
 import json
 
 import os
@@ -13,6 +14,89 @@ sys.path.append("/home/jeongho/tmp/Wearable_Pose_Model")
 from src.tools.visualize import visualize_gt, visualize_prediction
 from src.utils.drewing_utils import *
 from loss import PCK_2d_loss_No_batch, MPJPE
+def parse_args():
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("--multiscale_inference", default=False, action='store_true', )
+    parser.add_argument("--rot", default=0, type=float)
+    parser.add_argument("--sc", default=1.0, type=float)
+    parser.add_argument("--aml_eval", default=False, action='store_true', )
+    parser.add_argument('--logging_steps', type=int, default=100,
+                        help="Log every X steps.")
+    parser.add_argument("--resume_path", default='HIU', type=str)
+    #############################################################################################
+            ## Set hyper parameter ##
+    #############################################################################################
+    parser.add_argument("--loss_2d", default=1, type=float,)
+    parser.add_argument("--loss_3d", default=1, type=float,
+                        help = "it is weight of 3d regression and '0' mean only 2d joint regression")
+    parser.add_argument("--train", default='train', type=str, choices=['pre-train, train, fine-tuning'],
+                        help = "3 type train method")
+    parser.add_argument("--name", default='HIU_DMTL_full',
+                        help = '20k means CISLAB 20,000 images',type=str)
+    parser.add_argument("--root_path", default=f'output', type=str, required=False,
+                        help="The output directory to save checkpoint and test results.")
+    parser.add_argument("--output_path", default='HIU', type=str, required=False,
+                        help="The output directory to save checkpoint and test results.")
+    parser.add_argument("--batch_size", default=32, type=int)
+    parser.add_argument("--num_train_epochs", default=50, type=int,
+                        help="Total number of training epochs to perform.")
+    parser.add_argument('--lr', "--learning_rate", default=1e-4, type=float,
+                        help="The initial lr.")
+    parser.add_argument("--visualize", action='store_true')
+    parser.add_argument("--iter", action='store_true')
+    parser.add_argument("--iter2", action='store_true')
+    parser.add_argument("--resume", action='store_true')
+    #############################################################################################
+
+    #############################################################################################
+    parser.add_argument("--vertices_loss_weight", default=1.0, type=float)
+    parser.add_argument("--joints_loss_weight", default=1.0, type=float)
+    parser.add_argument("--vloss_w_full", default=0.5, type=float)
+    parser.add_argument("--vloss_w_sub", default=0.5, type=float)
+    parser.add_argument("--drop_out", default=0.1, type=float,
+                        help="Drop out ratio in BERT.")
+    parser.add_argument("--num_workers", default=4, type=int,
+                        help="Workers in dataloader.")
+    parser.add_argument("--img_scale_factor", default=1, type=int,
+                        help="adjust image resolution.")
+    parser.add_argument("--image_file_or_path", default='../../samples/unity/images/train/Capture0', type=str,
+                        help="test data")
+    parser.add_argument("--train_yaml", default='../../datasets/freihand/train.yaml', type=str, required=False,
+                        help="Yaml file with all data for validation.")
+    parser.add_argument("--val_yaml", default='../../datasets/freihand/test.yaml', type=str, required=False,
+                        help="Yaml file with all data for validation.")
+    parser.add_argument("--data_dir", default='datasets', type=str, required=False,
+                        help="Directory with all datasets, each in one subfolder")
+    parser.add_argument("--model_name_or_path", default='../modeling/bert/bert-base-uncased/', type=str, required=False,
+                        help="Path to pre-trained transformer model or model type.")
+    parser.add_argument("--config_name", default="", type=str,
+                        help="Pretrained config name or path if not the same as model_name.")
+    parser.add_argument('-a', '--arch', default='hrnet-w64',
+                        help='CNN backbone architecture: hrnet-w64, hrnet, resnet50')
+    parser.add_argument("--num_hidden_layers", default=4, type=int, required=False,
+                        help="Update model config if given")
+    parser.add_argument("--hidden_size", default=-1, type=int, required=False,
+                        help="Update model config if given")
+    parser.add_argument("--num_attention_heads", default=4, type=int, required=False,
+                        help="Update model config if given. Note that the division of "
+                             "hidden_size / num_attention_heads should be in integer.")
+    parser.add_argument("--intermediate_size", default=-1, type=int, required=False,
+                        help="Update model config if given.")
+    parser.add_argument("--input_feat_dim", default='2048,512,128', type=str,
+                        help="The Image Feature Dimension.")
+    parser.add_argument("--hidden_feat_dim", default='1024,256,64', type=str,
+                        help="The Image Feature Dimension.")
+    parser.add_argument("--which_gcn", default='0,0,1', type=str,
+                        help="which encoder block to have graph conv. Encoder1, Encoder2, Encoder3. Default: only Encoder3 has graph conv")
+    parser.add_argument("--mesh_type", default='hand', type=str, help="body or hand")
+    parser.add_argument("--run_eval_only", default=True, action='store_true', )
+    parser.add_argument("--device", type=str, default='cuda',
+                        help="cuda or cpu")
+    parser.add_argument('--seed', type=int, default=88,
+                        help="random seed for initialization.")
+    args = parser.parse_args()
+    return args
 
 mp_drawing_styles = mp.solutions.drawing_styles
 mp_hands = mp.solutions.hands
@@ -32,6 +116,7 @@ anno =  '../../datasets/our_testset/1/annotation'
 IMAGE_FILES = os.listdir(path)
 
 def main(T):
+    args = parse_args()
     correct = 0
     visible_point = 0
     mp = 0
@@ -118,10 +203,12 @@ def main(T):
             mpjpe, batch = MPJPE(joint_2d.view(1,21,2), gt_2d.view(1,21,3))
             mp += mpjpe
             bat += batch
-            # fig = plt.figure()
-            # visualize_gt(trans_image.unsqueeze(0), gt_2d.unsqueeze(0), fig)
-            # visualize_prediction(trans_image.unsqueeze(0), joint_2d.unsqueeze(0), fig)
-            # plt.close()
+            args.name[7:-31] = 'mediapipe'
+            if idx % 50 == 1:
+                fig = plt.figure()
+                visualize_gt(trans_image.unsqueeze(0), gt_2d.unsqueeze(0), fig)
+                visualize_prediction(trans_image.unsqueeze(0), joint_2d.unsqueeze(0), fig, 'evaluation', idx, args)
+                plt.close()
 
             correct += correct_
             visible_point += visible_point_
