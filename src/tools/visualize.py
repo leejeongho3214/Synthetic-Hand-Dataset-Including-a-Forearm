@@ -31,8 +31,8 @@ def visualize_prediction_show(images, pred_2d_joint, fig):
     ax1.axis("off")
     plt.show()
 
-def visualize_prediction(images, pred_2d_joint, fig, epoch,iteration,args):
-    
+def visualize_prediction(images, pred_2d_joint, fig, epoch,iteration,args =None):
+
     image = np.moveaxis(images[0].detach().cpu().numpy(), 0, -1)
     image = ((image + abs(image.min())) / (image + abs(image.min())).max()).copy()
     parents = np.array([-1, 0, 1, 2, 3, 0, 5, 6, 7, 0, 9, 10, 11, 0, 13, 14, 15, 0, 17, 18, 19,])
@@ -54,6 +54,13 @@ def visualize_prediction(images, pred_2d_joint, fig, epoch,iteration,args):
         if os.path.isdir(f'eval_image/{args.name[7:-31]}') == False:
             mkdir(f'eval_image/{args.name[7:-31]}')
         plt.savefig(f"eval_image/{args.name[7:-31]}/{iteration}.jpg")
+
+    elif epoch == 'mediapipe':
+        if os.path.isdir("eval_image") == False:
+            mkdir("eval_image")
+        if os.path.isdir('eval_image/mediapipe') == False:
+            mkdir('eval_image/mediapipe')
+        plt.savefig(f"eval_image/mediapipe/{iteration}.jpg")
 
     else:
         if os.path.isdir("test_image") == False:

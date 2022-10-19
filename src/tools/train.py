@@ -20,25 +20,25 @@ def main(args):
     #                                                                       args.distributed, is_train=True,
     #                                                                       scale_factor=args.img_scale_factor)
 
-    folder_num = os.listdir("../../datasets/CISLAB_various")
+    # folder_num = os.listdir("../../datasets/CISLAB_various")
 
-    for iter, degree in enumerate(folder_num):
+    # for iter, degree in enumerate(folder_num):
         
-        dataset = CustomDataset_train_new(degree)
-        if iter == 0:
-            train_dataset, test_dataset = random_split(dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
-        else:
-            train_dataset_new, test_dataset_new = random_split(dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
-            train_dataset  = ConcatDataset([train_dataset, train_dataset_new])        
-            test_dataset = ConcatDataset([test_dataset, test_dataset_new])    
+    #     dataset = CustomDataset_train_new(degree)
+    #     if iter == 0:
+    #         train_dataset, test_dataset = random_split(dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
+    #     else:
+    #         train_dataset_new, test_dataset_new = random_split(dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
+    #         train_dataset  = ConcatDataset([train_dataset, train_dataset_new])        
+    #         test_dataset = ConcatDataset([test_dataset, test_dataset_new])    
         
     # train_dataset, test_dataset = random_split(dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
     # test_dataset = CustomDataset_test()
     ## trainset = CISLAB_HAND , train_dataset = FreiHAND
     # concat_dataset = ConcatDataset([trainset, train_dataset])
 
-    # dataset = HIU_Dataset()
-    # train_dataset, test_dataset = random_split(dataset, [int(len(dataset)*0.9), len(dataset)-(int(len(dataset)*0.9))])
+    dataset = HIU_Dataset_align()
+    train_dataset, test_dataset = random_split(dataset, [int(len(dataset)*0.9), len(dataset)-(int(len(dataset)*0.9))])
 
     trainset_loader = data.DataLoader(dataset=train_dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True)
     testset_loader = data.DataLoader(dataset=test_dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=False)

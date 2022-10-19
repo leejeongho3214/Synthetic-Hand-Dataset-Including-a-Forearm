@@ -238,13 +238,14 @@ def save_checkpoint(model, args, epoch,optimizer, best_loss,ment, num_trial=10, 
 class HIU_Dataset(Dataset):
     def __init__(self):
         image_list = []
-        for (root, directories, files) in os.walk("../../datasets/HIU_DMTL"):
+        for (root, directories, files) in os.walk("../../datasets/HIU_DMTL_Full"):
             for file in files:
-                if not '.json' in file:
-                    if not '.DS_Store' in file:
-                        file_path = os.path.join(root, file)
-                        anno_name = file_path[:-4] + '.json'
-                        image_list.append((file_path, anno_name))
+                if not 'mask' in file:
+                    if not '.json' in file:
+                        if not '.DS_Store' in file:
+                            file_path = os.path.join(root, file)
+                            anno_name = file_path[:-4] + '.json'
+                            image_list.append((file_path, anno_name))
         self.image = image_list
 
     def __len__(self):
@@ -269,7 +270,7 @@ class HIU_Dataset(Dataset):
         c[:, 0] = c[:, 0] * scale_x
         c[:, 1] = c[:, 1] * scale_y
 
-        return trans_image, c
+        return trans_image, c, c
 
 
 
@@ -347,9 +348,9 @@ class HIU_Dataset_align(Dataset):
         # visualize(result, c)
         pil_img = Image.fromarray(result)
         trans_image = trans(pil_img)
-
-
-        return trans_image, torch.tensor(c)
+        c = c.clone().detach()
+        c = torch.tensor(c)
+        return trans_image, c, c
 
 
 class Our_testset(Dataset):

@@ -212,6 +212,8 @@ def load_model(args):
     # build end-to-end Graphormer network (CNN backbone + multi-layer Graphormer encoder)
     _model = Graphormer_Network(args, config, backbone, trans_encoder, token = 70)
 
+    args.resume_checkpoint = 'output/new_synthetic/only_2d/checkpoint-good/state_dict.bin'
+
     if args.resume_checkpoint != None and args.resume_checkpoint != 'None':
         state_dict = torch.load(args.resume_checkpoint)
         best_loss = state_dict['best_loss']
@@ -221,9 +223,13 @@ def load_model(args):
         del state_dict
         gc.collect()
         torch.cuda.empty_cache()
+    
+    for param in _model.trans_encoder.parameters():
+        param.requires_grad = False
 
     _model.to(args.device)
-    return _model, logger, best_loss, epo
+    # return _model, logger, best_loss, epo
+    return _model, logger, 0, 0
 
 def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,logger):
     gc.collect()
@@ -249,7 +255,7 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
     log_loss_2djoints = AverageMeter()
     log_loss_3djoints = AverageMeter()
 
-    for iteration, (images, gt_2d_joints, gt_3d_joints) in enumerate(train_dataloader):
+    for iteration, (images, gt_2d_joints, _) in enumerate(train_dataloader):
         batch_time = AverageMeter()
         batch_inference_time = time.time()
         Graphormer_model.train()
@@ -259,7 +265,7 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
         gt_2d_joints = gt_2d_joints/224  ## 2d joint value rearrange from 0 to 1
         gt_2d_joint = gt_2d_joints.clone().detach()
         gt_2d_joint = gt_2d_joint.cuda()
-        gt_3d_joints = gt_3d_joints.cuda()
+        # gt_3d_joints = gt_3d_joints.cuda()
 
         pred_camera, pred_3d_joints = Graphormer_model(images)
 
@@ -268,19 +274,20 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
             loss_3d_joints = 0
         else:
             pred_2d_joints = orthographic_projection(pred_3d_joints.contiguous(), pred_camera.contiguous())
-            loss_3d_joints = keypoint_3d_loss(criterion_3d_keypoints, pred_3d_joints, gt_3d_joints)
+            # loss_3d_joints = keypoint_3d_loss(criterion_3d_keypoints, pred_3d_joints, gt_3d_joints)
 
         loss_2d_joints = keypoint_2d_loss(criterion_2d_keypoints, pred_2d_joints, gt_2d_joint)
-        loss = args.loss_2d * loss_2d_joints + args.loss_3d * loss_3d_joints
-        # loss = args.loss_2d * loss_2d_joints
+        # loss = args.loss_2d * loss_2d_joints + args.loss_3d * loss_3d_joints
+        loss = args.loss_2d * loss_2d_joints
         log_loss_2djoints.update(loss_2d_joints, batch_size)
-        log_loss_3djoints.update(loss_3d_joints, batch_size)
+        # log_loss_3djoints.update(loss_3d_joints, batch_size)
         log_losses.update(loss.item(), batch_size)
 
        # back prop
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
+
 
         batch_time.update(time.time() - batch_inference_time, n=1)
         if iteration % 1000 == 800:
@@ -301,9 +308,9 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
                 ' '.join(
                     ['dataset_length: {len}','epoch: {ep}', 'iter: {iter}', '/{maxi}']
                 ).format(len=data_len,ep=epoch, iter=iteration, maxi=max_iter)
-                + ' 2d_loss: {:.6f}, 3d_loss: {:.6f}, toatl_loss: {:.6f}, best_pck: {:.2f} %'.format(
+                + ' 2d_loss: {:.6f},  toatl_loss: {:.6f}, best_pck: {:.2f} %'.format(
                     log_loss_2djoints.avg,
-                    log_loss_3djoints.avg,
+                    # log_loss_3djoints.avg,
                     log_losses.avg,
                     best_loss*100)
             )
@@ -313,9 +320,9 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
                 ' '.join(
                     ['dataset_length: {len}', 'epoch: {ep}', 'iter: {iter}', '/{maxi}']
                 ).format(len=data_len, ep=epoch, iter=iteration, maxi=max_iter)
-                + ' 2d_loss: {:.6f}, 3d_loss: {:.6f}, toatl_loss: {:.6f}, best_pck: {:.2f} %'.format(
+                + ' 2d_loss: {:.6f}, , toatl_loss: {:.6f}, best_pck: {:.2f} %'.format(
                     log_loss_2djoints.avg,
-                    log_loss_3djoints.avg,
+                    # log_loss_3djoints.avg,
                     log_losses.avg,
                     best_loss * 100
                     )

@@ -13,7 +13,7 @@ from torch.utils import data
 from argparser import parse_args, load_model
 import sys
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"  # Arrange GPU devices starting from 0
-os.environ["CUDA_VISIBLE_DEVICES"]= "2"  #
+os.environ["CUDA_VISIBLE_DEVICES"]= "3"  #
 sys.path.append("/home/jeongho/tmp/Wearable_Pose_Model")
 # sys.path.append("C:\\Users\\jeongho\\PycharmProjects\\PoseEstimation\\HandPose\\MeshGraphormer-main")
 from dataset import *
@@ -66,7 +66,7 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss, T):
             pred_2d_joints[:,:,1] = pred_2d_joints[:,:,1] * images.size(2) ## You Have to check whether weight and height is correct dimenstion
             pred_2d_joints[:,:,0] = pred_2d_joints[:,:,0] * images.size(3)
 
-            correct, visible_point = PCK_2d_loss_visible(pred_2d_joints, gt_2d_joint, images, T, threshold='pixel')
+            correct, visible_point = PCK_2d_loss_visible(pred_2d_joints, gt_2d_joint, images, T, threshold='proportion')
             mpjpe_loss = MPJPE_visible(pred_2d_joints, gt_2d_joint)
             pck_losses.update_p(correct, visible_point)
             mpjpe_losses.update(mpjpe_loss, args.batch_size)
@@ -83,7 +83,7 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss, T):
 
 def main(args, T):
     count = 0
-    args.name = "output/new_synthetic/only_2d/checkpoint-good/state_dict.bin"
+    args.name = "output/new_synthetic_trans/frei/checkpoint-good/state_dict.bin"
     _model, logger, best_loss, epo = load_model(args)
     state_dict = torch.load(args.name)
     _model.load_state_dict(state_dict['model_state_dict'], strict=False)
@@ -96,8 +96,9 @@ def main(args, T):
             continue
         if count == 0:
             dataset = Our_testset(num)
-        count += 1
-        if count > 1:
+            count += 1
+            continue
+        if count > 0:
             previous_dataset = Our_testset(num)
             dataset = ConcatDataset([previous_dataset, dataset])
 
@@ -114,10 +115,15 @@ def main(args, T):
 
 if __name__ == "__main__":
     args = parse_args()
-    loss, mp = main(args, T=0.1)
-    loss1, _ =main(args, T=0.2)
-    loss2, _ = main(args, T=0.3)
-    loss3, _ = main(args, T=0.4)
-    loss4, _ =main(args, T=0.5)
-    print("{:.2f}, {:.2f}, {:.2f}, {:.2f}, {:.2f}".format(loss, loss1, loss2, loss3, loss4))
+    loss, mp =main(args, T=0.05)
+    loss1, _ = main(args, T=0.1)
+    loss2, _ = main(args, T=0.15)
+    loss3, _ =main(args, T=0.2)
+    loss4, _ =main(args, T=0.25)
+    loss5, _ = main(args, T=0.3)
+    loss6, _ = main(args, T=0.35)
+    loss7, _ = main(args, T=0.4)
+    loss8, _ = main(args, T=0.45)
+    loss9, _ = main(args, T=0.5)
+    print("{:.2f}, {:.2f}, {:.2f}, {:.2f}, {:.2f}, {:.2f}, {:.2f}, {:.2f}, {:.2f}, {:.2f}".format(loss, loss1, loss2, loss3, loss4, loss5, loss6, loss7, loss8, loss9))
     print(mp)
