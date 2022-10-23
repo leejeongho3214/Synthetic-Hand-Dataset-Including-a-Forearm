@@ -81,7 +81,7 @@ def visualize_gt_media(images, gt_2d_joint, fig, num):
         #     cv2.rectangle(image, (int(box_left_bottom[0]),int(box_left_bottom[1])), (int(box_right_top[0]),int(box_right_top[1])), (0, 255, 0), 1)
 
     ax1 = fig.add_subplot(1, 2, 1)
-    ax1.imshow(image[:, :, (2, 1, 0)])
+    ax1.imshow(image)
     ax1.set_title('gt_image')
     ax1.axis("off")
 

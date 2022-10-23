@@ -128,6 +128,7 @@ class CustomDataset_train_new(Dataset):
             flag = False
             name = j['file_name']
             ori_image = cv2.imread(f'{path}/{self.degree}/images/train/{name}')
+            ori_image = ori_image[:, :, (2,1,0)]
             degrees = random.uniform(-30, 30)
             move_x = random.uniform(-30, 30)
             move_y = random.uniform(0, 50)
@@ -161,7 +162,7 @@ class CustomDataset_train_new(Dataset):
             d = c.clone()
             x = c[:,0] - 112
             y = c[:,1] - 112
-            c[:,0] =  math.cos(rad) * x + math.sin(rad) * y + 112
+            c[:,0] =  math.cos(rad) * x + math.sin(rad) * y + 112 + move_x
             c[:,1] = math.cos(rad) * y - math.sin(rad) * x + 112 + move_y
 
             flag = False
@@ -173,11 +174,11 @@ class CustomDataset_train_new(Dataset):
             if flag:
                 continue
 
-            j['image'] = image
+            j['image'] = image ## RGB image
             j['joint_2d'] = c
             j['joint_3d'] = joint
 
-            self.meta['images'].append({'image': ori_image, 'joint_2d': d, 'joint_3d':joint})
+            self.meta['images'].append({'image': ori_image, 'joint_2d': d, 'joint_3d':joint}) 
  
         count = 0 
         for w in index:

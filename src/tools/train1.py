@@ -9,7 +9,7 @@ from src.datasets.build import make_hand_data_loader
 sys.path.append("/home/jeongho/tmp/Wearable_Pose_Model")
 # sys.path.append("C:\\Users\\jeongho\\PycharmProjects\\PoseEstimation\\HandPose\\MeshGraphormer-main")
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"  # Arrange GPU devices starting from 0
-os.environ["CUDA_VISIBLE_DEVICES"]= "1" 
+os.environ["CUDA_VISIBLE_DEVICES"]= "2" 
 
 def main(args):
     count = 0
@@ -17,7 +17,7 @@ def main(args):
 
     # train_dataloader, test_dataloader, train_dataset1, test_dataset1 = make_hand_data_loader(args, args.train_yaml,
     #                                                                       args.distributed, is_train=True,
-    #                                                                       scale_factor=args.img_scale_factor)
+    #                                                                       scale_factor=args.img_scale_factor) ## RGB image
     path = "../../datasets/org"
     folder_num = os.listdir(path)
 
@@ -36,14 +36,14 @@ def main(args):
     ## trainset = CISLAB_HAND , train_dataset = FreiHAND
     # concat_dataset = ConcatDataset([trainset, train_dataset])
 
-    dataset = HIU_Dataset_align()
-    train_dataset1, test_dataset1 = random_split(dataset, [int(len(dataset)*0.9), len(dataset)-(int(len(dataset)*0.9))])
+    # dataset = HIU_Dataset_align()
+    # train_dataset1, test_dataset1 = random_split(dataset, [int(len(dataset)*0.9), len(dataset)-(int(len(dataset)*0.9))])
 
-    train_dataset = ConcatDataset([train_dataset1, train_dataset])
-    test_dataset = ConcatDataset([test_dataset1, test_dataset])
+    # train_dataset = ConcatDataset([train_dataset1, train_dataset])
+    # test_dataset = ConcatDataset([test_dataset1, test_dataset])
     trainset_loader = data.DataLoader(dataset=train_dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True)
     testset_loader = data.DataLoader(dataset=test_dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=False)
-    logger.info("Name: {} // loss_2d: {} // loss_3d: {} // Train_length: {} // Test_length: {} \n".format(args.name, args.loss_2d, args.loss_3d, len(train_dataset), len(test_dataset)))
+    logger.info("Name: {} // loss_2d: {} // loss_3d: {} // Train_length: {} // Test_length: {} \n".format(args.name, args.loss_2d, args.loss_3d, len(train_dataset), len(test_datase1)))
 
     for epoch in range(epo, 1000):
         Graphormer_model, optimizer = train(args, trainset_loader, _model, epoch, best_loss, len(train_dataset),logger, count)
