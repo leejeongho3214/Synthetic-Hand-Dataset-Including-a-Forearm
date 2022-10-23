@@ -36,7 +36,7 @@ def main(args):
     ## trainset = CISLAB_HAND , train_dataset = FreiHAND
     # concat_dataset = ConcatDataset([trainset, train_dataset])
 
-    dataset = HIU_Dataset()
+    dataset = HIU_Dataset_align()
     train_dataset1, test_dataset1 = random_split(dataset, [int(len(dataset)*0.9), len(dataset)-(int(len(dataset)*0.9))])
 
     train_dataset = ConcatDataset([train_dataset1, train_dataset])

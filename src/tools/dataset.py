@@ -176,10 +176,7 @@ class CustomDataset_train_new(Dataset):
             j['image'] = image
             j['joint_2d'] = c
             j['joint_3d'] = joint
-            # self.list.append({'image': ori_image, 'joint_2d': d})
-            # self.list.append({'image': image, 'joint_2d': c})
-            # self.meta['images'][len(self.meta['images'])]['image'] = ori_image
-            # self.meta['images'][len(self.meta['images'])]['joint_2d'] = d
+
             self.meta['images'].append({'image': ori_image, 'joint_2d': d, 'joint_3d':joint})
  
         count = 0 
@@ -275,7 +272,7 @@ class HIU_Dataset(Dataset):
                                     transforms.ToTensor(),
                                     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
-        trans_image = trans(image)[(2, 1, 0), :, :]
+        trans_image = trans(image)
         c = torch.tensor(joint)
         c[:, 0] = c[:, 0] * scale_x
         c[:, 1] = c[:, 1] * scale_y

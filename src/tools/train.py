@@ -26,6 +26,7 @@ def main(args):
         dataset = CustomDataset_train_new(degree, path)
         if iter == 0:
             train_dataset, test_dataset = random_split(dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
+            break
         else:
             train_dataset_new, test_dataset_new = random_split(dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
             train_dataset  = ConcatDataset([train_dataset, train_dataset_new])        
@@ -39,8 +40,8 @@ def main(args):
     # dataset = HIU_Dataset_align()
     # train_dataset1, test_dataset1 = random_split(dataset, [int(len(dataset)*0.9), len(dataset)-(int(len(dataset)*0.9))])
 
-    train_dataset = ConcatDataset([train_dataset1, train_dataset])
-    test_dataset = ConcatDataset([test_dataset1, test_dataset])
+    # train_dataset = ConcatDataset([train_dataset1, train_dataset])
+    # test_dataset = ConcatDataset([test_dataset1, test_dataset])
     trainset_loader = data.DataLoader(dataset=train_dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True)
     testset_loader = data.DataLoader(dataset=test_dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=False)
     logger.info("Name: {} // loss_2d: {} // loss_3d: {} // Train_length: {} // Test_length: {} \n".format(args.name, args.loss_2d, args.loss_3d, len(train_dataset), len(test_dataset)))
