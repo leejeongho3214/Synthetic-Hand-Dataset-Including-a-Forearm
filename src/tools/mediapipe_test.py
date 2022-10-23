@@ -1,103 +1,39 @@
 import argparse
+import gc
 import json
-
 import os
-import math
+import time
+import os.path as op
 import cv2
-import mediapipe as mp
-import torch
-from PIL import Image
+import numpy as np
 from matplotlib import pyplot as plt
-from torchvision import transforms
+from torch.utils.data import ConcatDataset, Dataset
+import torch
+import torchvision.models as models
+from torch.utils import data
+from argparser import parse_args, load_model
 import sys
+os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"  # Arrange GPU devices starting from 0
+os.environ["CUDA_VISIBLE_DEVICES"]= "1"  #
 sys.path.append("/home/jeongho/tmp/Wearable_Pose_Model")
-from src.tools.visualize import visualize_gt, visualize_prediction
+# sys.path.append("C:\\Users\\jeongho\\PycharmProjects\\PoseEstimation\\HandPose\\MeshGraphormer-main")
+from dataset import *
+
+from loss import *
+from src.datasets.build import make_hand_data_loader
+from src.modeling.bert import BertConfig, Graphormer
+from src.modeling.bert import Graphormer_Hand_Network as Graphormer_Network
+from src.modeling.hrnet.hrnet_cls_net_gridfeat import get_cls_net_gridfeat
+from src.modeling.hrnet.config import config as hrnet_config
+from src.modeling.hrnet.config import update_config as hrnet_update_config
+from src.utils.comm import get_rank
+from src.utils.geometric_layers import *
+from src.utils.logger import setup_logger
+from src.utils.metric_logger import AverageMeter
+from src.utils.miscellaneous import mkdir
+from visualize import *
+import mediapipe as mp
 from src.utils.drewing_utils import *
-from loss import PCK_2d_loss_No_batch, MPJPE
-def parse_args():
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument("--multiscale_inference", default=False, action='store_true', )
-    parser.add_argument("--rot", default=0, type=float)
-    parser.add_argument("--sc", default=1.0, type=float)
-    parser.add_argument("--aml_eval", default=False, action='store_true', )
-    parser.add_argument('--logging_steps', type=int, default=100,
-                        help="Log every X steps.")
-    parser.add_argument("--resume_path", default='HIU', type=str)
-    #############################################################################################
-            ## Set hyper parameter ##
-    #############################################################################################
-    parser.add_argument("--loss_2d", default=1, type=float,)
-    parser.add_argument("--loss_3d", default=1, type=float,
-                        help = "it is weight of 3d regression and '0' mean only 2d joint regression")
-    parser.add_argument("--train", default='train', type=str, choices=['pre-train, train, fine-tuning'],
-                        help = "3 type train method")
-    parser.add_argument("--name", default='HIU_DMTL_full',
-                        help = '20k means CISLAB 20,000 images',type=str)
-    parser.add_argument("--root_path", default=f'output', type=str, required=False,
-                        help="The output directory to save checkpoint and test results.")
-    parser.add_argument("--output_path", default='HIU', type=str, required=False,
-                        help="The output directory to save checkpoint and test results.")
-    parser.add_argument("--batch_size", default=32, type=int)
-    parser.add_argument("--num_train_epochs", default=50, type=int,
-                        help="Total number of training epochs to perform.")
-    parser.add_argument('--lr', "--learning_rate", default=1e-4, type=float,
-                        help="The initial lr.")
-    parser.add_argument("--visualize", action='store_true')
-    parser.add_argument("--iter", action='store_true')
-    parser.add_argument("--iter2", action='store_true')
-    parser.add_argument("--resume", action='store_true')
-    #############################################################################################
-
-    #############################################################################################
-    parser.add_argument("--vertices_loss_weight", default=1.0, type=float)
-    parser.add_argument("--joints_loss_weight", default=1.0, type=float)
-    parser.add_argument("--vloss_w_full", default=0.5, type=float)
-    parser.add_argument("--vloss_w_sub", default=0.5, type=float)
-    parser.add_argument("--drop_out", default=0.1, type=float,
-                        help="Drop out ratio in BERT.")
-    parser.add_argument("--num_workers", default=4, type=int,
-                        help="Workers in dataloader.")
-    parser.add_argument("--img_scale_factor", default=1, type=int,
-                        help="adjust image resolution.")
-    parser.add_argument("--image_file_or_path", default='../../samples/unity/images/train/Capture0', type=str,
-                        help="test data")
-    parser.add_argument("--train_yaml", default='../../datasets/freihand/train.yaml', type=str, required=False,
-                        help="Yaml file with all data for validation.")
-    parser.add_argument("--val_yaml", default='../../datasets/freihand/test.yaml', type=str, required=False,
-                        help="Yaml file with all data for validation.")
-    parser.add_argument("--data_dir", default='datasets', type=str, required=False,
-                        help="Directory with all datasets, each in one subfolder")
-    parser.add_argument("--model_name_or_path", default='../modeling/bert/bert-base-uncased/', type=str, required=False,
-                        help="Path to pre-trained transformer model or model type.")
-    parser.add_argument("--config_name", default="", type=str,
-                        help="Pretrained config name or path if not the same as model_name.")
-    parser.add_argument('-a', '--arch', default='hrnet-w64',
-                        help='CNN backbone architecture: hrnet-w64, hrnet, resnet50')
-    parser.add_argument("--num_hidden_layers", default=4, type=int, required=False,
-                        help="Update model config if given")
-    parser.add_argument("--hidden_size", default=-1, type=int, required=False,
-                        help="Update model config if given")
-    parser.add_argument("--num_attention_heads", default=4, type=int, required=False,
-                        help="Update model config if given. Note that the division of "
-                             "hidden_size / num_attention_heads should be in integer.")
-    parser.add_argument("--intermediate_size", default=-1, type=int, required=False,
-                        help="Update model config if given.")
-    parser.add_argument("--input_feat_dim", default='2048,512,128', type=str,
-                        help="The Image Feature Dimension.")
-    parser.add_argument("--hidden_feat_dim", default='1024,256,64', type=str,
-                        help="The Image Feature Dimension.")
-    parser.add_argument("--which_gcn", default='0,0,1', type=str,
-                        help="which encoder block to have graph conv. Encoder1, Encoder2, Encoder3. Default: only Encoder3 has graph conv")
-    parser.add_argument("--mesh_type", default='hand', type=str, help="body or hand")
-    parser.add_argument("--run_eval_only", default=True, action='store_true', )
-    parser.add_argument("--device", type=str, default='cuda',
-                        help="cuda or cpu")
-    parser.add_argument('--seed', type=int, default=88,
-                        help="random seed for initialization.")
-    args = parser.parse_args()
-    return args
-
 mp_drawing_styles = mp.solutions.drawing_styles
 mp_hands = mp.solutions.hands
 DESIRED_HEIGHT = 480
@@ -110,116 +46,109 @@ def resize_and_show(image):
     img = cv2.resize(image, (math.floor(w/(h/DESIRED_HEIGHT)), DESIRED_HEIGHT))
   plt.imshow(img[:,:,[2,1,0]])
   plt.show()
-# For static images:
-path = '../../datasets/our_testset/1/rgb'
-anno =  '../../datasets/our_testset/1/annotation'
-IMAGE_FILES = os.listdir(path)
 
-def main(T):
-    args = parse_args()
-    correct = 0
-    visible_point = 0
-    mp = 0
-    bat = 0
+
+def media_test(args, test_dataloader, T, dataset_name):
     with mp_hands.Hands(
-        static_image_mode=True,
-        max_num_hands=1,
-        min_detection_confidence=0.5) as hands:
-      for idx, file in enumerate(IMAGE_FILES):
-        # Read an image, flip it around y-axis for correct handedness output (see
-        # above).
-        # image = cv2.flip(cv2.imread(os.path.join(path, file)), 1)
-        imagea = Image.open(os.path.join(path, file))
-        trans = transforms.Compose([transforms.Resize((224, 224)),
-                                    transforms.ToTensor(),
-                                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
-        trans_image = trans(imagea)[(2, 1, 0), :, :]
+    static_image_mode=True,
+    max_num_hands=1,
+    min_detection_confidence=0.1) as hands:
+        pck_losses = AverageMeter()
+        mpjpe_losses = AverageMeter()
+        count = 0
+        for iteration, (images, gt_2d, annotated_image) in enumerate(test_dataloader):
+            images = images[0]
+            images = np.array(images)
+            results = hands.process(cv2.flip(cv2.cvtColor(images, cv2.COLOR_BGR2RGB), 1))
+            if not results.multi_hand_landmarks:
+                continue
+            # Draw hand landmarks of each hand.
+            # print(f'Hand landmarks of {file}:')
+            # image_hight, image_width = image.shape
 
-        image = cv2.imread(os.path.join(path, file))
-        scale_x = 224 / image.shape[1]
-        scale_y = 224 / image.shape[0]
-        with open(os.path.join(anno, file)[:-4]+'.json', "r") as st_json:
-            json_data = json.load(st_json)
-            joint_total = json_data['annotations']
-            joint = {}
-            gt_2d = []
-            for j in joint_total:
-                if j['label'] != 'Pose':
-                    if len(j['metadata']['system']['attributes']) > 0:
-                        # Change 'z' to 'indicator function'
-                        # Ex. 0 means visible joint, 1 means invisible joint
-                        j['coordinates']['z'] = 0
-                        joint[f"{int(j['label'])}"] = j['coordinates']
-                    else:
-                        j['coordinates']['z'] = 1
-                        joint[f"{int(j['label'])}"] = j['coordinates']
+            if len(results.multi_hand_landmarks) > 1:
+                assert "This has two-hands"
+            joint_2d = []
+            iimage = images.copy()
+            for hand_landmarks in results.multi_hand_landmarks:
 
-            if len(joint) < 21:
-                assert f"This {idx}.json is not correct"
+                joint = draw_landmarks(
+                    iimage,
+                    hand_landmarks,
+                    mp_hands.HAND_CONNECTIONS,
+                    mp_drawing_styles.get_default_hand_landmarks_style(),
+                    mp_drawing_styles.get_default_hand_connections_style())
 
-            for h in range(0, 21):
-                gt_2d.append([joint[f'{h}']['x'], joint[f'{h}']['y'], joint[f'{h}']['z']])
-        # Convert the BGR image to RGB before processing.
-        results = hands.process(cv2.flip(cv2.cvtColor(image, cv2.COLOR_BGR2RGB), 1))
-
-        # Print handedness (left v.s. right hand).
-        # print(f'Handedness of {file}:')
-        # print(results.multi_handedness)
-
-        if not results.multi_hand_landmarks:
-            continue
-        # Draw hand landmarks of each hand.
-        # print(f'Hand landmarks of {file}:')
-        image_hight, image_width, _ = image.shape
-        annotated_image = cv2.flip(image.copy(), 1)
-
-        if len(results.multi_hand_landmarks) > 1:
-            assert "This has two-hands"
-        joint_2d = []
-
-        for hand_landmarks in results.multi_hand_landmarks:
-            # Print index finger tip coordinates.
-            # print(
-            #     f'Index finger tip coordinate: (',
-            #     f'{hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP].x * image_width}, '
-            #     f'{hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP].y * image_hight})'
-            # )
-            # I change this function from original resolution to 224 x 224
-            joint = draw_landmarks(
-                annotated_image,
-                hand_landmarks,
-                mp_hands.HAND_CONNECTIONS,
-                mp_drawing_styles.get_default_hand_landmarks_style(),
-                mp_drawing_styles.get_default_hand_connections_style())
             for i in range(21):
                 joint_2d.append(joint[i])
-            gt_2d = torch.tensor(gt_2d)
-            gt_2d[:,0] = gt_2d[:,0] * scale_x
-            gt_2d[:, 1] = gt_2d[:, 1] * scale_y
+
             joint_2d = torch.tensor(joint_2d)
             joint_2d[:,0] = 224 - joint_2d[:,0]
-            correct_, visible_point_ = PCK_2d_loss_No_batch(joint_2d, gt_2d ,image, T, file)
+            pck, thresh = PCK_2d_loss_No_batch(joint_2d, gt_2d[0] ,images, T, threshold = 'pixel')
+            pck_losses.update(pck, args.batch_size)
 
-            mpjpe, batch = MPJPE(joint_2d.view(1,21,2), gt_2d.view(1,21,3))
-            mp += mpjpe
-            bat += batch
-            args.name[7:-31] = 'mediapipe'
-            if idx % 50 == 1:
+            mpjpe = MPJPE_visible(joint_2d.view(1,21,2), gt_2d.view(1,21,3))
+            mpjpe_losses.update(mpjpe,args.batch_size)
+            count += 1
+            if T == 0.05:
                 fig = plt.figure()
-                visualize_gt(trans_image.unsqueeze(0), gt_2d.unsqueeze(0), fig)
-                visualize_prediction(trans_image.unsqueeze(0), joint_2d.unsqueeze(0), fig, 'evaluation', idx, args)
+                visualize_gt_media(images, gt_2d, fig, iteration)
+                visualize_prediction_media(images, joint_2d.unsqueeze(0), fig, 'evaluation', iteration,args, dataset_name)
                 plt.close()
+            if iteration == len(test_dataloader)-1:
+                print(count)
+        return pck_losses.avg, mpjpe_losses.avg, thresh
 
-            correct += correct_
-            visible_point += visible_point_
 
-    # resize_and_show(cv2.flip(annotated_image, 1))
-    print("Model_Name = MediePipe // Threshold = {} // pck===> {:.2f}% // mpjpe ====> {:.2f}".format(T, (correct/visible_point)*100, mp/bat))
-    print(mp, bat)
+def main(args, T):
+    count = 0
+    args.name = "final_models/MediaPipe/checkpoint-good/state_dict.bin"
 
-if __name__ == '__main__':
-    main(T=0.1)
-    main(T=0.2)
-    main(T=0.3)
-    main(T=0.4)
-    main(T=0.5)
+    path = "../../datasets/our_testset"
+    folder_path = os.listdir(path)
+
+    categories = ['general', 'out_of_bound', 'p', 't', 't+p']
+
+    for name in categories:
+        count = 0
+        for  num in folder_path:
+            if num[0] == '.':
+                continue
+            if count == 0:
+                dataset = Our_testset_media(path, os.path.join(num,name))
+                count += 1
+                continue
+            if count > 0:
+                previous_dataset = Our_testset_media(path, os.path.join(num,name))
+                globals()[f'dataset_{name}'] = ConcatDataset([previous_dataset, dataset])
+
+    loss = []
+    for set_name in categories:
+        
+        data_loader = data.DataLoader(dataset=globals()[f'dataset_{set_name}'], batch_size=args.batch_size, num_workers=0, shuffle=False)
+
+        # pck, mpjpe = test(args, data_loader, _model, 0, 0, best_loss, T, set_name)
+        pck, mpjpe, thresh = media_test(args, data_loader, T, set_name)
+        if thresh == 'pixel':
+            print("Model_Name = {}  // {} //Threshold = {} mm // pck===> {:.2f}% // mpjpe===> {:.2f}mm // {} // {}".format(args.name[13:-31], thresh, T * 20, pck * 100, mpjpe * 0.26, len(globals()[f'dataset_{set_name}']), set_name))
+        else:
+            print("Model_Name = {}  // {} //Threshold = {} // pck===> {:.2f}% // mpjpe===> {:.2f}mm // {} // {}".format(args.name[13:-31], thresh, T, pck * 100, mpjpe * 0.26, len(globals()[f'dataset_{set_name}']), set_name))
+        loss.append([set_name, pck * 100, mpjpe * 0.26])
+    print("==" * 80)
+    return loss
+
+
+if __name__ == "__main__":
+    args = parse_args()
+    loss = main(args, T=0.05)
+    loss1 = main(args, T=0.1)
+    loss2 = main(args, T=0.15)
+    loss3 = main(args, T=0.2)
+    loss4 = main(args, T=0.25)
+    loss5 = main(args, T=0.3)
+    loss6 = main(args, T=0.35)
+    loss7 = main(args, T=0.4)
+    loss8 = main(args, T=0.45)
+    loss9 = main(args, T=0.5)
+    for idx,i in enumerate(loss):
+        print("dataset = {} ,{:.2f}, {:.2f}, {:.2f}, {:.2f}, {:.2f}, {:.2f}, {:.2f}, {:.2f}, {:.2f}, {:.2f}, mpjpe = {:.2f}mm".format(i[0],loss[idx][1], loss1[idx][1], loss2[idx][1], loss3[idx][1], loss4[idx][1], loss5[idx][1], loss6[idx][1], loss7[idx][1], loss8[idx][1], loss9[idx][1], loss[idx][2]))

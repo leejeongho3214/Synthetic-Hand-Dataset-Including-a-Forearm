@@ -65,23 +65,23 @@ class Graphormer_Hand_Network(torch.nn.Module):
         else:
             features = self.trans_encoder(features)
 
-        pred_3d_joints = features[:,:21,:]
+        pred_2d_joints = features[:,:21,:2]
         # pred_vertices_sub = features[:,num_joints:-49,:]
 
-        if self.token == 49:
-        # learn camera parameters
-            x = self.cam_param_fc(features[:,21:,:])
-            x = x.transpose(1,2)
-            x = self.cam_param_fc2(x)
-            x = self.cam_param_fc1(x)
-        else:
-            x = self.cam_param_fc(features[:, :, :])
-            x = x.transpose(1, 2)
-            x = self.cam_param_fc2(x)
-            x = self.cam_param_fc1(x)
+        # if self.token == 49:
+        # # learn camera parameters
+        #     x = self.cam_param_fc(features[:,21:,:])
+        #     x = x.transpose(1,2)
+        #     x = self.cam_param_fc2(x)
+        #     x = self.cam_param_fc1(x)
+        # else:
+        #     x = self.cam_param_fc(features[:, :, :])
+        #     x = x.transpose(1, 2)
+        #     x = self.cam_param_fc2(x)
+        #     x = self.cam_param_fc1(x)
 
-        cam_param = x.transpose(1,2)
-        cam_param = cam_param.squeeze()
+        # cam_param = x.transpose(1,2)
+        # cam_param = cam_param.squeeze()
 
            # return cam_param, pred_3d_joints, pred_vertices_sub, pred_vertices, hidden_states, att
-        return cam_param, pred_3d_joints
+        return pred_2d_joints

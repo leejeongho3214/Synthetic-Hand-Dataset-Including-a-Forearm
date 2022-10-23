@@ -253,6 +253,7 @@ class EncoderBlock(BertPreTrainedModel):
 
         # Project input token features to have spcified hidden size
         img_embedding_output = self.img_embedding(img_feats)
+        # img_embedding_output = img_feats
 
         # We empirically observe that adding an additional learnable position embedding leads to more stable training
         embeddings = position_embeddings + img_embedding_output
