@@ -23,7 +23,7 @@ def main(args):
 
     for iter, degree in enumerate(folder_num):
         
-        dataset = CustomDataset_train_new(degree, path)
+        dataset = CustomDataset_train_new(degree, path, rotation = True)
         if iter == 0:
             train_dataset, test_dataset = random_split(dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
         else:

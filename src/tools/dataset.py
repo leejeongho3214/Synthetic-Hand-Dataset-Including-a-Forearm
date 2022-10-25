@@ -101,7 +101,7 @@ class CustomDataset_train_test(Dataset):
         return image,  joint_2d, joint_3d
 
 class CustomDataset_train_new(Dataset):
-    def __init__(self, degree, path):
+    def __init__(self, degree, path, rotation = False):
         self.degree = degree
         # self.num = int(args.train_data[9:-1])
         with open(f"{path}/{degree}/annotations/train/CISLAB_train_camera.json", "r") as st_json:
@@ -129,7 +129,7 @@ class CustomDataset_train_new(Dataset):
             name = j['file_name']
             ori_image = cv2.imread(f'{path}/{self.degree}/images/train/{name}')
             ori_image = ori_image[:, :, (2,1,0)]
-            degrees = random.uniform(-30, 30)
+            degrees = random.uniform(-20, 20)
             move_x = random.uniform(-30, 30)
             move_y = random.uniform(0, 50)
             image  = i_rotate(ori_image, degrees, move_x, move_y)
@@ -174,16 +174,22 @@ class CustomDataset_train_new(Dataset):
             if flag:
                 continue
 
-            j['image'] = image ## RGB image
-            j['joint_2d'] = c
-            j['joint_3d'] = joint
+            if rotation:
+                j['image'] = image ## RGB image
+                j['joint_2d'] = c
+                j['joint_3d'] = joint
 
-            self.meta['images'].append({'image': ori_image, 'joint_2d': d, 'joint_3d':joint}) 
+            else:
+                j['image'] = ori_image ## RGB image
+                j['joint_2d'] = d
+                j['joint_3d'] = joint
+            # self.meta['images'].append({'image': ori_image, 'joint_2d': d, 'joint_3d':joint}) 
  
         count = 0 
         for w in index:
             del self.meta['images'][w-count]
             count += 1
+
 
     def __len__(self):
         return len(self.meta['images'])
