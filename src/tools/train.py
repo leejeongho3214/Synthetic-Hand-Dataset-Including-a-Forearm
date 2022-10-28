@@ -47,7 +47,7 @@ def main(args):
         train_dataset = ConcatDataset([train_dataset1, train_dataset])
         test_dataset = ConcatDataset([test_dataset1, test_dataset])
 
-    mkdir(f"{args.output_dir}/frei_{args.frei}_rot_{args.rot}_color_{args.color}_bg_{args.bg}_ratio_{args.ratio}_dataset_{len(train_dataset)}")
+    mkdir(f"{args.output_dir}/frei_{args.frei}_rot_{args.rot}_color_{args.color}_bg_{args.bg}_ratio_{args.ratio_of_aug}_dataset_{len(train_dataset)}")
     trainset_loader = data.DataLoader(dataset=train_dataset, batch_size=args.batch_size, num_workers=4, shuffle=True)
     testset_loader = data.DataLoader(dataset=test_dataset, batch_size=args.batch_size, num_workers=4, shuffle=False)
     logger.info("Name: {} // loss_2d: {} // loss_3d: {} // Train_length: {} // Test_length: {} \n".format(args.name, args.loss_2d, args.loss_3d, len(train_dataset), len(test_dataset)))
