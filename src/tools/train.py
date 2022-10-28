@@ -15,12 +15,13 @@ def main(args):
     count = 0
     _model, logger, best_loss, epo = load_model(args)
 
-    train_dataloader, test_dataloader, train_dataset1, test_dataset1 = make_hand_data_loader(args, args.train_yaml,
-                                                                          args.distributed, is_train=True,
-                                                                          scale_factor=args.img_scale_factor) ## RGB image
+    # train_dataloader, test_dataloader, train_dataset1, test_dataset1 = make_hand_data_loader(args, args.train_yaml,
+    #                                                                       args.distributed, is_train=True,
+    #                                                                       scale_factor=args.img_scale_factor) ## RGB image
     path = "../../datasets/org"
     folder_num = os.listdir(path)
-
+    with open(f"../../datasets/1023/org/-35/annotations/train/rot_True_color_True_num_1.json", "r") as st_json:
+        meta = json.load(st_json)
     for iter, degree in enumerate(folder_num):
         
         dataset = CustomDataset_train_new(degree, path, rotation = True)

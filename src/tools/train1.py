@@ -15,22 +15,22 @@ def main(args):
     count = 0
     _model, logger, best_loss, epo = load_model(args)
 
-    train_dataloader, test_dataloader, train_dataset1, test_dataset1 = make_hand_data_loader(args, args.train_yaml,
-                                                                          args.distributed, is_train=True,
-                                                                          scale_factor=args.img_scale_factor) ## RGB image
-    path = "../../datasets/org"
+
+    path = "../../datasets/1023/org"
     folder_num = os.listdir(path)
 
     for iter, degree in enumerate(folder_num):
         
-        dataset = CustomDataset_train_new(degree, path, rotation = False)
+        dataset = CustomDataset_train_new(degree, path, rotation = args.rot, color = args.color, background = args.bg)
         if iter == 0:
             train_dataset, test_dataset = random_split(dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
+
         else:
             train_dataset_new, test_dataset_new = random_split(dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
             train_dataset  = ConcatDataset([train_dataset, train_dataset_new])        
             test_dataset = ConcatDataset([test_dataset, test_dataset_new])    
-        
+    
+    
     # train_dataset, test_dataset = random_split(dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
     # test_dataset = CustomDataset_test()
     ## trainset = CISLAB_HAND , train_dataset = FreiHAND
@@ -39,8 +39,14 @@ def main(args):
     # dataset = HIU_Dataset()
     # train_dataset1, test_dataset1 = random_split(dataset, [int(len(dataset)*0.9), len(dataset)-(int(len(dataset)*0.9))])
 
-    train_dataset = ConcatDataset([train_dataset1, train_dataset])
-    test_dataset = ConcatDataset([test_dataset1, test_dataset])
+    if args.frei:
+        train_dataloader, test_dataloader, train_dataset1, test_dataset1 = make_hand_data_loader(args, args.train_yaml,
+                                                                            args.distributed, is_train=True,
+                                                                            scale_factor=args.img_scale_factor) ## RGB image
+        train_dataset = ConcatDataset([train_dataset1, train_dataset])
+        test_dataset = ConcatDataset([test_dataset1, test_dataset])
+
+    mkdir(f"{args.output_dir}/frei_{args.frei}_rot_{args.rot}_color_{args.color}_bg_{args.bg}")
     trainset_loader = data.DataLoader(dataset=train_dataset, batch_size=args.batch_size, num_workers=4, shuffle=True)
     testset_loader = data.DataLoader(dataset=test_dataset, batch_size=args.batch_size, num_workers=4, shuffle=False)
     logger.info("Name: {} // loss_2d: {} // loss_3d: {} // Train_length: {} // Test_length: {} \n".format(args.name, args.loss_2d, args.loss_3d, len(train_dataset), len(test_dataset)))

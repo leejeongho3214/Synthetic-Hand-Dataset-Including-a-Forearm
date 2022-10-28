@@ -33,7 +33,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--multiscale_inference", default=False, action='store_true', )
-    parser.add_argument("--rot", default=0, type=float)
+    # parser.add_argument("--rot", default=0, type=float)
     parser.add_argument("--sc", default=1.0, type=float)
     parser.add_argument("--aml_eval", default=False, action='store_true', )
     parser.add_argument('--logging_steps', type=int, default=100,
@@ -62,6 +62,10 @@ def parse_args():
     parser.add_argument("--iter", action='store_true')
     parser.add_argument("--iter2", action='store_true')
     parser.add_argument("--resume", action='store_true')
+    parser.add_argument("--rot", action='store_true')
+    parser.add_argument("--color", action='store_true')
+    parser.add_argument("--bg", action='store_true')
+    parser.add_argument("--frei", action='store_true')
     #############################################################################################
 
     #############################################################################################
@@ -322,11 +326,11 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
         pred_2d_joints[:,:,0] = pred_2d_joints[:,:,0] * images.size(3)
         
         gt_2d_joint = gt_2d_joint * 224
-        if iteration % 80 == 1:
-            fig = plt.figure()
-            visualize_gt(images, gt_2d_joint, fig, iteration)
-            visualize_prediction(images, pred_2d_joints, fig, 'train', epoch, iteration, args,None)
-            plt.close()
+        # if iteration % 80 == 1:
+        fig = plt.figure()
+        visualize_gt(images, gt_2d_joint, fig, iteration)
+        visualize_prediction(images, pred_2d_joints, fig, 'train', epoch, iteration, args,None)
+        plt.close()
 
         if iteration == len(train_dataloader) - 1:
             logger.info(

@@ -13,7 +13,7 @@
             "console": "integratedTerminal",
             "justMyCode": true,
             "cwd": "${fileDirname}",
-            "args": ["--name", "new_synthetic_trans", "--output_path", "new_synthetic/trans", "--loss_3d", "0", "--batch_size", "16"]
+            "args": []
         }
     ]
 }
