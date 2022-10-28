@@ -210,12 +210,13 @@ class Json_transform(Dataset):
         return image, joint_2d, joint_3d
 
 class CustomDataset_train_new(Dataset):
-    def __init__(self, degree, path, rotation = False, color = False, background = False):
+    def __init__(self, degree, path, rotation = False, color = False, background = False, ratio = 0.2):
         self.rotation =rotation
         self.color = color
         self.degree = degree
         self.background = background
         self.path = path
+        self.ratio = ratio
         with open(f"{path}/{degree}/annotations/train/CISLAB_train_data_update.json", "r") as st_json:
             self.meta = json.load(st_json)
 
@@ -223,7 +224,7 @@ class CustomDataset_train_new(Dataset):
         return len(self.meta['images'])
 
     def __getitem__(self, idx):
-        
+
         name = self.meta['images'][idx]['file_name']
         move = self.meta['images'][idx]['move']
         degrees = self.meta['images'][idx]['degree']
@@ -231,61 +232,65 @@ class CustomDataset_train_new(Dataset):
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         image[image < 30] = 0 ## Get rid of noise
 
-        if self.background and self.color and self.rotation:
-            root = "../../datasets/background/bg"
-            path1 = os.listdir(root)
-            bg = cv2.imread(os.path.join(root, random.choice(path1)))
-            bg = cv2.cvtColor(bg, cv2.COLOR_BGR2RGB)
-            bg = cv2.resize(bg, (224,224))
-            image  = i_rotate(image, degrees, 0, move)
-            loc = np.all(image != [0, 0, 0], axis=-1)
-            bg[loc] = [0, 0 ,0] 
-            image = image + bg
-            color_aug = torchvision.transforms.ColorJitter(
-                brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5)
-            image = apply(Image.fromarray(np.array(image)), color_aug, num=1)[0]  ## insert background instead of black 
-            joint_2d = torch.tensor(self.meta['images'][idx]['rot_joint_2d']) 
+        if idx < len(self.meta['images']) * self.ratio: 
 
-        elif self.background and self.color:
-            root = "../../datasets/background/bg"
-            path1 = os.listdir(root)
-            bg = cv2.imread(os.path.join(root, random.choice(path1)))
-            bg = cv2.cvtColor(bg, cv2.COLOR_BGR2RGB)
-            bg = cv2.resize(bg, (224,224))
-            image = image + bg
-            loc = np.all(image != [0, 0, 0], axis=-1)
-            bg[loc] = [0, 0 ,0]
-            color_aug = torchvision.transforms.ColorJitter(
+            if self.background and self.color and self.rotation:
+                root = "../../datasets/background/bg"
+                path1 = os.listdir(root)
+                bg = cv2.imread(os.path.join(root, random.choice(path1)))
+                bg = cv2.cvtColor(bg, cv2.COLOR_BGR2RGB)
+                bg = cv2.resize(bg, (224,224))
+                image  = i_rotate(image, degrees, 0, move)
+                loc = np.all(image != [0, 0, 0], axis=-1)
+                bg[loc] = [0, 0 ,0] 
+                image = image + bg
+                color_aug = torchvision.transforms.ColorJitter(
                     brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5)
-            image = apply(Image.fromarray(np.array(image)), color_aug, num=1)[0]
-            joint_2d = torch.tensor(self.meta['images'][idx]['joint_2d'])
+                image = apply(Image.fromarray(np.array(image)), color_aug, num=1)[0]  ## insert background instead of black 
+                joint_2d = torch.tensor(self.meta['images'][idx]['rot_joint_2d']) 
 
-        elif self.color and self.rotation:
-            image  = i_rotate(image, degrees, 0, move) ## move_y2 is to augment root joint and move_y is to cover black pixel area made by rotated hand
-            color_aug = torchvision.transforms.ColorJitter(
+            elif self.background and self.color:
+                root = "../../datasets/background/bg"
+                path1 = os.listdir(root)
+                bg = cv2.imread(os.path.join(root, random.choice(path1)))
+                bg = cv2.cvtColor(bg, cv2.COLOR_BGR2RGB)
+                bg = cv2.resize(bg, (224,224))
+                image = image + bg
+                loc = np.all(image != [0, 0, 0], axis=-1)
+                bg[loc] = [0, 0 ,0]
+                color_aug = torchvision.transforms.ColorJitter(
+                        brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5)
+                image = apply(Image.fromarray(np.array(image)), color_aug, num=1)[0]
+                joint_2d = torch.tensor(self.meta['images'][idx]['joint_2d'])
+
+            elif self.color and self.rotation:
+                image  = i_rotate(image, degrees, 0, move) ## move_y2 is to augment root joint and move_y is to cover black pixel area made by rotated hand
+                color_aug = torchvision.transforms.ColorJitter(
+                        brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5)
+                image = apply(Image.fromarray(np.array(image)), color_aug, num=1)[0]  ## insert background instead of black 
+                joint_2d = torch.tensor(self.meta['images'][idx]['rot_joint_2d']) 
+
+            elif self.background and self.rotation:
+                root = "../../datasets/background/bg"
+                path1 = os.listdir(root)
+                bg = cv2.imread(os.path.join(root, random.choice(path1)))
+                bg = cv2.cvtColor(bg, cv2.COLOR_BGR2RGB)
+                bg = cv2.resize(bg, (224,224))
+                image  = i_rotate(image, degrees, 0, move)
+                loc = np.all(image != [0, 0, 0], axis=-1)
+                bg[loc] = [0, 0 ,0] 
+                image = image + bg
+                color_aug = torchvision.transforms.ColorJitter(
                     brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5)
-            image = apply(Image.fromarray(np.array(image)), color_aug, num=1)[0]  ## insert background instead of black 
-            joint_2d = torch.tensor(self.meta['images'][idx]['rot_joint_2d']) 
+                image = apply(Image.fromarray(np.array(image)), color_aug, num=1)[0]  ## insert background instead of black 
+                joint_2d = torch.tensor(self.meta['images'][idx]['rot_joint_2d']) 
 
-        elif self.background and self.rotation:
-            root = "../../datasets/background/bg"
-            path1 = os.listdir(root)
-            bg = cv2.imread(os.path.join(root, random.choice(path1)))
-            bg = cv2.cvtColor(bg, cv2.COLOR_BGR2RGB)
-            bg = cv2.resize(bg, (224,224))
-            image  = i_rotate(image, degrees, 0, move)
-            loc = np.all(image != [0, 0, 0], axis=-1)
-            bg[loc] = [0, 0 ,0] 
-            image = image + bg
-            color_aug = torchvision.transforms.ColorJitter(
-                brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5)
-            image = apply(Image.fromarray(np.array(image)), color_aug, num=1)[0]  ## insert background instead of black 
-            joint_2d = torch.tensor(self.meta['images'][idx]['rot_joint_2d']) 
-
+            else:
+                image = Image.fromarray(image)
+                joint_2d = torch.tensor(self.meta['images'][idx]['joint_2d'])
         else:
             image = Image.fromarray(image)
             joint_2d = torch.tensor(self.meta['images'][idx]['joint_2d'])
-
 
         trans = transforms.Compose([transforms.Resize((224, 224)),
                                     transforms.ToTensor(),

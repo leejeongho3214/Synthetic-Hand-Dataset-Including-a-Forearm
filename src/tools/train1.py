@@ -21,7 +21,8 @@ def main(args):
 
     for iter, degree in enumerate(folder_num):
         
-        dataset = CustomDataset_train_new(degree, path, rotation = args.rot, color = args.color, background = args.bg)
+        dataset = CustomDataset_train_new(degree, path, rotation = args.rot, color = args.color, background = args.bg, ratio = args.ratio)
+    
         if iter == 0:
             train_dataset, test_dataset = random_split(dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
 
@@ -37,7 +38,7 @@ def main(args):
     # concat_dataset = ConcatDataset([trainset, train_dataset])
 
     # dataset = HIU_Dataset()
-    # train_dataset1, test_dataset1 = random_split(dataset, [int(len(dataset)*0.9), len(dataset)-(int(len(dataset)*0.9))])
+    # train_dataset1, test_dataset1 = random_split(dataset, [int(len(datas t)*0.9), len(dataset)-(int(len(dataset)*0.9))])
 
     if args.frei:
         train_dataloader, test_dataloader, train_dataset1, test_dataset1 = make_hand_data_loader(args, args.train_yaml,
