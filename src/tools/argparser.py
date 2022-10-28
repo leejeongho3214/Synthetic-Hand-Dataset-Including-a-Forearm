@@ -58,7 +58,7 @@ def parse_args():
                         help="Total number of training epochs to perform.")
     parser.add_argument('--lr', "--learning_rate", default=1e-4, type=float,
                         help="The initial lr.")
-    parser.add_argument("--ratio_of_aug", default=0.2, type=int)
+    parser.add_argument("--ratio_of_aug", default=0.2, type=float)
     parser.add_argument("--visualize", action='store_true')
     parser.add_argument("--iter", action='store_true')
     parser.add_argument("--iter2", action='store_true')
