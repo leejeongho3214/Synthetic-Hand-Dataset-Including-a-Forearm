@@ -327,11 +327,12 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
         pred_2d_joints[:,:,0] = pred_2d_joints[:,:,0] * images.size(3)
         
         gt_2d_joint = gt_2d_joint * 224
-        # if iteration % 80 == 1:
-        fig = plt.figure()
-        visualize_gt(images, gt_2d_joint, fig, iteration)
-        visualize_prediction(images, pred_2d_joints, fig, 'train', epoch, iteration, args,None)
-        plt.close()
+
+        if iteration % 200 == 199:
+            fig = plt.figure()
+            visualize_gt(images, gt_2d_joint, fig, iteration)
+            visualize_prediction(images, pred_2d_joints, fig, 'train', epoch, iteration, args,None)
+            plt.close()
 
         if iteration == len(train_dataloader) - 1:
             logger.info(
@@ -399,7 +400,7 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
             pck_losses.update_p(correct, visible_point)
             mpjpe_losses.update(mpjpe, batch_size)
 
-            if iteration % 10 == 0:
+            if iteration % 40 == 0:
                 fig = plt.figure()
                 visualize_gt(images, gt_2d_joint, fig, iteration)
                 visualize_prediction(images, pred_2d_joints, fig, 'test', epoch, iteration,args,None)
