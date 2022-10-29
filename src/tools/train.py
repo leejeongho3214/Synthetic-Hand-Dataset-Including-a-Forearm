@@ -1,15 +1,17 @@
 import gc
+import sys
+import os
+os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"  # Arrange GPU devices starting from 0
+os.environ["CUDA_VISIBLE_DEVICES"]= "0" 
+sys.path.append("/home/jeongho/tmp/Wearable_Pose_Model")
 from torch.utils import data
 from torch.utils.data import random_split, ConcatDataset
-import sys
+
 from argparser import parse_args, load_model, train, test
 from dataset import *
 from src.datasets.build import make_hand_data_loader
 
-sys.path.append("/home/jeongho/tmp/Wearable_Pose_Model")
 # sys.path.append("C:\\Users\\jeongho\\PycharmProjects\\PoseEstimation\\HandPose\\MeshGraphormer-main")
-os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"  # Arrange GPU devices starting from 0
-os.environ["CUDA_VISIBLE_DEVICES"]= "1" 
 
 def main(args):
     count = 0
@@ -55,8 +57,8 @@ def main(args):
     for epoch in range(epo, 1000):
         Graphormer_model, optimizer = train(args, trainset_loader, _model, epoch, best_loss, len(train_dataset),logger, count)
         loss, count = test(args, testset_loader, Graphormer_model, epoch, count, best_loss,logger)
-        is_best = loss > best_loss
-        best_loss = max(loss, best_loss)
+        is_best = loss < best_loss
+        best_loss = min(loss, best_loss)
         if is_best:
             count = 0
             _model = Graphormer_model

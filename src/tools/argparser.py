@@ -164,7 +164,7 @@ def load_model_hrnet(args):
 
 def load_model(args):
     epo = 0
-    best_loss = 0
+    best_loss = np.inf
 
     # args.output_dir = op.join(args.output_dir, f'{args.train_data}_2d:{args.loss_2d}_3d:{args.loss_3d}')
     # if os.path.isdir(op.join(args.output_dir, 'checkpoint-good')) == True:
@@ -377,6 +377,8 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
             find_unused_parameters=True,
         )
 
+    criterion_2d_keypoints = torch.nn.MSELoss(reduction='none').cuda(args.device)
+    log_losses = AverageMeter()
     pck_losses = AverageMeter()
     mpjpe_losses = AverageMeter()
     with torch.no_grad():
@@ -397,8 +399,11 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
 
             correct, visible_point, threshold = PCK_2d_loss(pred_2d_joints, gt_2d_joint, images, T= 0.05, threshold='proportion')
             mpjpe = MPJPE(pred_2d_joints, gt_2d_joint)
+            loss_2d_joints = keypoint_2d_loss(criterion_2d_keypoints, pred_2d_joints, gt_2d_joint)
             pck_losses.update_p(correct, visible_point)
             mpjpe_losses.update(mpjpe, batch_size)
+            log_losses.update(loss_2d_joints, batch_size)
+
 
             if iteration % 40 == 0:
                 fig = plt.figure()
@@ -411,28 +416,29 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
                     ' '.join(
                         ['Test =>> epoch: {ep}', 'iter: {iter}', '/{maxi}']
                     ).format(ep=epoch, iter=iteration, maxi=max_iter)
-                    + ' thresold: {} ,pck: {:.2f}%, mpjpe: {:.2f}mm,  count: {} / 50, best_pck: {:.2f} %\n'.format(
+                    + ' thresold: {} ,pck: {:.2f}%, mpjpe: {:.2f}mm, loss: {:.2f}, count: {} / 50, best_loss: {:.8f} \n'.format(
                         threshold,
                         pck_losses.avg * 100,
                         mpjpe_losses.avg * 0.26,
+                        log_losses.avg,
                         int(count),
-                        best_loss*100)
+                        best_loss)
                 )
             else:
                 logger.info(
                     ' '.join(
                         ['Test =>> epoch: {ep}', 'iter: {iter}', '/{maxi}']
                     ).format(ep=epoch, iter=iteration, maxi=max_iter)
-                    + '  thresold: {} ,pck: {:.2f}%, mpjpe: {:.2f}mm, count: {} / 50, best_pck: {:.2f} %'.format(
+                    + ' thresold: {} ,pck: {:.2f}%, mpjpe: {:.2f}mm, loss: {:.2f}, count: {} / 50, best_loss: {:.8f}'.format(
                         threshold,
                         pck_losses.avg * 100,
                         mpjpe_losses.avg * 0.26,
+                        log_losses.avg,
                         int(count),
-                        best_loss*100)
+                        best_loss)
                 )
-
 
     del test_dataloader
     gc.collect()
     torch.cuda.empty_cache()
-    return pck_losses.avg, count
+    return log_losses.avg, count
