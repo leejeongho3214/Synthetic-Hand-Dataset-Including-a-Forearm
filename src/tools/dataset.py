@@ -320,7 +320,7 @@ class AverageMeter(object):
         self.count += n
         self.avg = self.sum / self.count
 
-def save_checkpoint(model, args, epoch,optimizer, best_loss,ment, num_trial=10, iteration = 0, logger=None):
+def save_checkpoint(model, args, epoch,optimizer, best_loss,count, ment, num_trial=10, iteration = 0, logger=None):
     checkpoint_dir = op.join(args.output_dir, 'checkpoint-{}'.format(
         ment))
     if not is_main_process():
@@ -335,6 +335,7 @@ def save_checkpoint(model, args, epoch,optimizer, best_loss,ment, num_trial=10, 
                 'iteration': iteration,
                 'optimizer_state_dict': optimizer,
                 'best_loss': best_loss,
+                'count': count,
                 'model_state_dict': model_to_save.state_dict()}, op.join(checkpoint_dir, 'state_dict.bin'))
             logger.info("Save checkpoint to epoch:{}_iter:{}_{}".format(epoch, iteration, checkpoint_dir))
             break

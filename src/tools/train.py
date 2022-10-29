@@ -2,7 +2,7 @@ import gc
 import sys
 import os
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"  # Arrange GPU devices starting from 0
-os.environ["CUDA_VISIBLE_DEVICES"]= "0" 
+os.environ["CUDA_VISIBLE_DEVICES"]= "1" 
 sys.path.append("/home/jeongho/tmp/Wearable_Pose_Model")
 from torch.utils import data
 from torch.utils.data import random_split, ConcatDataset
@@ -15,7 +15,7 @@ from src.datasets.build import make_hand_data_loader
 
 def main(args):
     count = 0
-    _model, logger, best_loss, epo = load_model(args)
+    _model, logger, best_loss, epo, count = load_model(args)
 
 
     path = "../../datasets/1023/org"
@@ -62,7 +62,7 @@ def main(args):
         if is_best:
             count = 0
             _model = Graphormer_model
-            save_checkpoint(Graphormer_model, args, epoch, optimizer, best_loss, 'good',logger=logger)
+            save_checkpoint(Graphormer_model, args, epoch, optimizer, best_loss, count,  'good',logger=logger)
             del Graphormer_model
 
         else:

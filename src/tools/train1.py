@@ -2,7 +2,7 @@ import gc
 import sys
 import os
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"  # Arrange GPU devices starting from 0
-os.environ["CUDA_VISIBLE_DEVICES"]= "1" 
+os.environ["CUDA_VISIBLE_DEVICES"]= "0" 
 sys.path.append("/home/jeongho/tmp/Wearable_Pose_Model")
 from torch.utils import data
 from torch.utils.data import random_split, ConcatDataset
@@ -54,16 +54,15 @@ def main(args):
     testset_loader = data.DataLoader(dataset=test_dataset, batch_size=args.batch_size, num_workers=4, shuffle=False)
     logger.info("Name: {} // loss_2d: {} // loss_3d: {} // Train_length: {} // Test_length: {} \n".format(args.name, args.loss_2d, args.loss_3d, len(train_dataset), len(test_dataset)))
 
-    
     for epoch in range(epo, 1000):
         Graphormer_model, optimizer = train(args, trainset_loader, _model, epoch, best_loss, len(train_dataset),logger, count)
         loss, count = test(args, testset_loader, Graphormer_model, epoch, count, best_loss,logger)
-        is_best = loss > best_loss
-        best_loss = max(loss, best_loss)
+        is_best = loss < best_loss
+        best_loss = min(loss, best_loss)
         if is_best:
             count = 0
             _model = Graphormer_model
-            save_checkpoint(Graphormer_model, args, epoch, optimizer, best_loss, 'good',logger=logger)
+            save_checkpoint(Graphormer_model, args, epoch, optimizer, best_loss, count,  'good',logger=logger)
             del Graphormer_model
 
         else:

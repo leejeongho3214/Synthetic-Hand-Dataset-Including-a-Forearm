@@ -58,6 +58,7 @@ def parse_args():
                         help="Total number of training epochs to perform.")
     parser.add_argument('--lr', "--learning_rate", default=1e-4, type=float,
                         help="The initial lr.")
+    parser.add_argument("--count", default=30, type=float)
     parser.add_argument("--ratio_of_aug", default=0.2, type=float)
     parser.add_argument("--visualize", action='store_true')
     parser.add_argument("--iter", action='store_true')
@@ -153,6 +154,7 @@ def load_model_hrnet(args):
         state_dict = torch.load(args.resume_checkpoint)
         best_loss = state_dict['best_loss']
         epo = state_dict['epoch']
+        count = state_dict['count']
         _model.load_state_dict(state_dict['model_state_dict'], strict=False)
         # logger.info("Resume: Loading from checkpoint {}\n".format(args.resume_checkpoint))
         del state_dict
@@ -160,7 +162,7 @@ def load_model_hrnet(args):
         torch.cuda.empty_cache()
 
     _model.to(args.device)
-    return _model, logger, best_loss, epo
+    return _model, logger, best_loss, epo, count
 
 def load_model(args):
     epo = 0
@@ -318,10 +320,10 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
 
         batch_time.update(time.time() - batch_inference_time, n=1)
         if iteration % 1000 == 999:
-            save_checkpoint(Graphormer_model, args, epoch, optimizer, best_loss, 'iter2', iteration=iteration, logger=logger)
+            save_checkpoint(Graphormer_model, args, epoch, optimizer, best_loss, count,  'iter2', iteration=iteration, logger=logger)
 
         elif iteration % 1000 == 499:
-            save_checkpoint(Graphormer_model, args, epoch, optimizer, best_loss, 'iter', iteration=iteration, logger=logger)
+            save_checkpoint(Graphormer_model, args, epoch, optimizer, best_loss, count,  'iter', iteration=iteration, logger=logger)
 
         pred_2d_joints[:,:,1] = pred_2d_joints[:,:,1] * images.size(2) ## You Have to check whether weight and height is correct dimenstion
         pred_2d_joints[:,:,0] = pred_2d_joints[:,:,0] * images.size(3)
@@ -339,11 +341,11 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
                 ' '.join(
                     ['dataset_length: {len}','epoch: {ep}', 'iter: {iter}', '/{maxi}, count: {count}/50']
                 ).format(len=data_len,ep=epoch, iter=iteration, maxi=max_iter, count= count)
-                + ' 2d_loss: {:.6f}, toatl_loss: {:.6f}, best_pck: {:.2f} %'.format(
+                + ' 2d_loss: {:.6f}, toatl_loss: {:.6f}, best_loss: {:.8f}'.format(
                     log_loss_2djoints.avg,
                     # log_loss_3djoints.avg,
                     log_losses.avg,
-                    best_loss*100)
+                    best_loss)
             )
 
         else:
@@ -351,11 +353,11 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
                 ' '.join(
                     ['dataset_length: {len}', 'epoch: {ep}', 'iter: {iter}', '/{maxi},  count: {count}/50']
                 ).format(len=data_len, ep=epoch, iter=iteration, maxi=max_iter, count= count)
-                + ' 2d_loss: {:.6f}, toatl_loss: {:.6f}, best_pck: {:.2f} %'.format(
+                + ' 2d_loss: {:.6f}, toatl_loss: {:.6f}, best_loss: {:.8f}'.format(
                     log_loss_2djoints.avg,
                     # log_loss_3djoints.avg,
                     log_losses.avg,
-                    best_loss * 100
+                    best_loss
                     )
             )
 
@@ -399,7 +401,7 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
 
             correct, visible_point, threshold = PCK_2d_loss(pred_2d_joints, gt_2d_joint, images, T= 0.05, threshold='proportion')
             mpjpe = MPJPE(pred_2d_joints, gt_2d_joint)
-            loss_2d_joints = keypoint_2d_loss(criterion_2d_keypoints, pred_2d_joints, gt_2d_joint)
+            loss_2d_joints = keypoint_2d_loss(criterion_2d_keypoints, pred_2d_joints/224, gt_2d_joint/224)
             pck_losses.update_p(correct, visible_point)
             mpjpe_losses.update(mpjpe, batch_size)
             log_losses.update(loss_2d_joints, batch_size)
