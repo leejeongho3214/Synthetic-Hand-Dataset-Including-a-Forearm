@@ -6,7 +6,7 @@ os.environ["CUDA_VISIBLE_DEVICES"]= "1"
 sys.path.append("/home/jeongho/tmp/Wearable_Pose_Model")
 from torch.utils import data
 from torch.utils.data import random_split, ConcatDataset
-
+from torch.utils.tensorboard import SummaryWriter
 from argparser import parse_args, load_model, train, test
 from dataset import *
 from src.datasets.build import make_hand_data_loader
@@ -14,10 +14,9 @@ from src.datasets.build import make_hand_data_loader
 # sys.path.append("C:\\Users\\jeongho\\PycharmProjects\\PoseEstimation\\HandPose\\MeshGraphormer-main")
 
 def main(args):
-    count = 0
     _model, logger, best_loss, epo, count = load_model(args)
 
-
+    writer = SummaryWriter(logdir = args.output_path)
     path = "../../datasets/1023/org"
     folder_num = os.listdir(path)
 
@@ -53,10 +52,11 @@ def main(args):
     trainset_loader = data.DataLoader(dataset=train_dataset, batch_size=args.batch_size, num_workers=4, shuffle=True)
     testset_loader = data.DataLoader(dataset=test_dataset, batch_size=args.batch_size, num_workers=4, shuffle=False)
     logger.info("Name: {} // loss_2d: {} // loss_3d: {} // Train_length: {} // Test_length: {} \n".format(args.name, args.loss_2d, args.loss_3d, len(train_dataset), len(test_dataset)))
-
+    pck_l = 0
     for epoch in range(epo, 1000):
-        Graphormer_model, optimizer = train(args, trainset_loader, _model, epoch, best_loss, len(train_dataset),logger, count)
-        loss, count = test(args, testset_loader, Graphormer_model, epoch, count, best_loss,logger)
+        Graphormer_model, optimizer, pck = train(args, trainset_loader, _model, epoch, best_loss, len(train_dataset),logger, count,writer, pck_l)
+        loss, count, pck = test(args, testset_loader, Graphormer_model, epoch, count, best_loss,logger,writer, pck)
+        pck_l = max(pck, pck_l)
         is_best = loss < best_loss
         best_loss = min(loss, best_loss)
         if is_best:
@@ -67,7 +67,7 @@ def main(args):
 
         else:
             count += 1
-            if count == 50:
+            if count == args.count:
                 break
 
         gc.collect()

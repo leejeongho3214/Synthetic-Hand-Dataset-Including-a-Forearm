@@ -29,6 +29,9 @@ from src.utils.metric_logger import AverageMeter
 from visualize import *
 import sys
 
+
+
+
 def parse_args():
     parser = argparse.ArgumentParser()
 
@@ -58,7 +61,7 @@ def parse_args():
                         help="Total number of training epochs to perform.")
     parser.add_argument('--lr', "--learning_rate", default=1e-4, type=float,
                         help="The initial lr.")
-    parser.add_argument("--count", default=30, type=float)
+    parser.add_argument("--count", default=5, type=float)
     parser.add_argument("--ratio_of_aug", default=0.2, type=float)
     parser.add_argument("--visualize", action='store_true')
     parser.add_argument("--iter", action='store_true')
@@ -122,6 +125,7 @@ def parse_args():
 def load_model_hrnet(args):
     epo = 0
     best_loss = 0
+    count = 0
 
     # args.output_dir = op.join(args.output_dir, f'{args.train_data}_2d:{args.loss_2d}_3d:{args.loss_3d}')
     # if os.path.isdir(op.join(args.output_dir, 'checkpoint-good')) == True:
@@ -149,7 +153,7 @@ def load_model_hrnet(args):
     hrnet_yaml = '../../models/hrnet/cls_hrnet_w40_sgd_lr5e-2_wd1e-4_bs32_x100.yaml'
     hrnet_update_config(hrnet_config, hrnet_yaml)
     _model = get_cls_net_gridfeat(hrnet_config)
-
+    
     if args.resume_checkpoint != None and args.resume_checkpoint != 'None':
         state_dict = torch.load(args.resume_checkpoint)
         best_loss = state_dict['best_loss']
@@ -167,7 +171,7 @@ def load_model_hrnet(args):
 def load_model(args):
     epo = 0
     best_loss = np.inf
-
+    count = 0
     # args.output_dir = op.join(args.output_dir, f'{args.train_data}_2d:{args.loss_2d}_3d:{args.loss_3d}')
     # if os.path.isdir(op.join(args.output_dir, 'checkpoint-good')) == True:
     #     args.resume_checkpoint = op.join(args.output_dir, 'checkpoint-good/state_dict.bin')
@@ -272,9 +276,9 @@ def load_model(args):
         torch.cuda.empty_cache()
 
     _model.to(args.device)
-    return _model, logger, best_loss, epo
+    return _model, logger, best_loss, epo, count
 
-def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,logger, count):
+def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,logger, count, writer, pck):
     gc.collect()
     torch.cuda.empty_cache()
     max_iter = len(train_dataloader)
@@ -341,24 +345,21 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
                 ' '.join(
                     ['dataset_length: {len}','epoch: {ep}', 'iter: {iter}', '/{maxi}, count: {count}/50']
                 ).format(len=data_len,ep=epoch, iter=iteration, maxi=max_iter, count= count)
-                + ' 2d_loss: {:.6f}, toatl_loss: {:.6f}, best_loss: {:.8f}'.format(
+                + ' 2d_loss: {:.8f}, pck: {:.2f}%, best_loss: {:.8f}\n'.format(
                     log_loss_2djoints.avg,
-                    # log_loss_3djoints.avg,
-                    log_losses.avg,
+                    pck, 
                     best_loss)
             )
-
+            writer.add_scalar("Loss/train", log_losses.avg, epoch)
         else:
             logger.info(
                 ' '.join(
                     ['dataset_length: {len}', 'epoch: {ep}', 'iter: {iter}', '/{maxi},  count: {count}/50']
                 ).format(len=data_len, ep=epoch, iter=iteration, maxi=max_iter, count= count)
-                + ' 2d_loss: {:.6f}, toatl_loss: {:.6f}, best_loss: {:.8f}'.format(
+                + ' 2d_loss: {:.8f}, pck: {:.2f}%, best_loss: {:.8f}'.format(
                     log_loss_2djoints.avg,
-                    # log_loss_3djoints.avg,
-                    log_losses.avg,
-                    best_loss
-                    )
+                    pck, 
+                    best_loss)
             )
 
         if iteration % 5000 == 4900:
@@ -368,7 +369,7 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
 
     return Graphormer_model, optimizer
 
-def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logger):
+def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logger, writer):
 
     max_iter = len(test_dataloader)
 
@@ -426,6 +427,9 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
                         int(count),
                         best_loss)
                 )
+           
+                writer.add_scalar("Loss/valid", log_losses.avg, epoch)
+                writer.flush()
             else:
                 logger.info(
                     ' '.join(
