@@ -102,7 +102,9 @@ def visualize_prediction(images, pred_2d_joint, fig, method = None, epoch = 0, i
     ax1.imshow(image)
     ax1.set_title('pred_image')
     ax1.axis("off")
+
     if method == 'evaluation':
+        os.remove(f"{args.output_dir}/eval_image")
         if os.path.isdir(f"eval_image") == False:
             mkdir("eval_image")
         if os.path.isdir(f'eval_image/{args.name[7:-31]}') == False:
@@ -112,6 +114,7 @@ def visualize_prediction(images, pred_2d_joint, fig, method = None, epoch = 0, i
         plt.savefig(f"eval_image/{args.name[7:-31]}/{dataset_name}/{iteration}.jpg")
 
     elif method == 'mediapipe':
+        os.remove(f"{args.output_dir}/eval_image")
         if os.path.isdir("eval_image") == False:
             mkdir("eval_image")
         if os.path.isdir('eval_image/mediapipe') == False:
@@ -119,12 +122,14 @@ def visualize_prediction(images, pred_2d_joint, fig, method = None, epoch = 0, i
         plt.savefig(f"eval_image/mediapipe/{iteration}.jpg")
 
     elif method == 'train':
+        os.remove(f"{args.output_dir}/train_image")
         if os.path.isdir(f"{args.output_dir}/train_image") == False:
             mkdir(f"{args.output_dir}/train_image")
         if os.path.isdir(f'{args.output_dir}/train_image/{epoch}_epoch') == False:
             mkdir(f'{args.output_dir}/train_image/{epoch}_epoch')
         plt.savefig(f"{args.output_dir}/train_image/{epoch}_epoch/{iteration}_iter.jpg")
     else:
+        os.remove(f"{args.output_dir}/test_image")
         if os.path.isdir(f"{args.output_dir}/test_image") == False:
             mkdir(f"{args.output_dir}/test_image")
         if os.path.isdir(f'{args.output_dir}/test_image/{epoch}_epoch') == False:

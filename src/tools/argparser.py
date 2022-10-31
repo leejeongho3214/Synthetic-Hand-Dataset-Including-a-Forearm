@@ -143,7 +143,9 @@ def load_model_hrnet(args):
         args.resume_checkpoint = 'None'
     if os.path.isdir(args.output_dir) == False:
         mkdir(args.output_dir)
-
+    
+    if os.listdir(f'{args.output_dir}/log.txt'):
+        os.remove(f'{args.output_dir}/log.txt')
     logger = setup_logger(args.name, args.output_dir, get_rank())
     args.num_gpus = int(os.environ['WORLD_SIZE']) if 'WORLD_SIZE' in os.environ else 1
     os.environ['OMP_NUM_THREADS'] = str(args.num_workers)
@@ -323,10 +325,10 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
         optimizer.step()
 
         batch_time.update(time.time() - batch_inference_time, n=1)
-        if iteration % 1000 == 999:
-            save_checkpoint(Graphormer_model, args, epoch, optimizer, best_loss, count,  'iter2', iteration=iteration, logger=logger)
+        # if iteration % 1000 == 999:
+        #     save_checkpoint(Graphormer_model, args, epoch, optimizer, best_loss, count,  'iter2', iteration=iteration, logger=logger)
 
-        elif iteration % 1000 == 499:
+        if iteration % 2000 == 1999:
             save_checkpoint(Graphormer_model, args, epoch, optimizer, best_loss, count,  'iter', iteration=iteration, logger=logger)
 
         pred_2d_joints[:,:,1] = pred_2d_joints[:,:,1] * images.size(2) ## You Have to check whether weight and height is correct dimenstion
@@ -334,11 +336,12 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
         
         gt_2d_joint = gt_2d_joint * 224
 
-        if iteration % 200 == 199:
-            fig = plt.figure()
-            visualize_gt(images, gt_2d_joint, fig, iteration)
-            visualize_prediction(images, pred_2d_joints, fig, 'train', epoch, iteration, args,None)
-            plt.close()
+        # if iteration % 200 == 199:
+
+        fig = plt.figure()
+        visualize_gt(images, gt_2d_joint, fig, iteration)
+        visualize_prediction(images, pred_2d_joints, fig, 'train', epoch, iteration, args,None)
+        plt.close()
 
         if iteration == len(train_dataloader) - 1:
             logger.info(
