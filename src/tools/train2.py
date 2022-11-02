@@ -16,7 +16,7 @@ from src.datasets.build import make_hand_data_loader
 def main(args):
     _model, logger, best_loss, epo, count = load_model(args)
 
-    writer = SummaryWriter(logdir = args.output_path)
+    writer = SummaryWriter(log_dir = args.output_path)
     path = "../../datasets/1023/org"
     folder_num = os.listdir(path)
 
@@ -31,15 +31,6 @@ def main(args):
             train_dataset_new, test_dataset_new = random_split(dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
             train_dataset  = ConcatDataset([train_dataset, train_dataset_new])        
             test_dataset = ConcatDataset([test_dataset, test_dataset_new])    
-    
-    
-    # train_dataset, test_dataset = random_split(dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
-    # test_dataset = CustomDataset_test()
-    ## trainset = CISLAB_HAND , train_dataset = FreiHAND
-    # concat_dataset = ConcatDataset([trainset, train_dataset])
-
-    # dataset = HIU_Dataset()
-    # train_dataset1, test_dataset1 = random_split(dataset, [int(len(datas t)*0.9), len(dataset)-(int(len(dataset)*0.9))])
 
     if args.frei:
         train_dataloader, test_dataloader, train_dataset1, test_dataset1 = make_hand_data_loader(args, args.train_yaml,

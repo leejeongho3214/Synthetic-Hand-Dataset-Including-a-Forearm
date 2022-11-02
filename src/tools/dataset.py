@@ -285,6 +285,20 @@ class CustomDataset_train_new(Dataset):
                 image = apply(Image.fromarray(np.array(image)), color_aug, num=1)[0]  ## insert background instead of black 
                 joint_2d = torch.tensor(self.meta['images'][idx]['rot_joint_2d']) 
 
+            elif self.rotation:
+                image  = i_rotate(image, degrees, 0, move)
+                image = Image.fromarray(image)
+                joint_2d = torch.tensor(self.meta['images'][idx]['rot_joint_2d']) 
+
+            elif self.color:
+                color_aug = torchvision.transforms.ColorJitter(
+                        brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5)
+                image = apply(Image.fromarray(np.array(image)), color_aug, num=1)[0]  ## insert background instead of black 
+                joint_2d = torch.tensor(self.meta['images'][idx]['joint_2d'])
+
+            # elif self.background:
+
+
             else:
                 image = Image.fromarray(image)
                 joint_2d = torch.tensor(self.meta['images'][idx]['joint_2d'])

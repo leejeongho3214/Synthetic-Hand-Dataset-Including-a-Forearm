@@ -1,5 +1,6 @@
 
 import os
+import shutil
 import cv2
 import numpy as np
 import torch
@@ -104,7 +105,8 @@ def visualize_prediction(images, pred_2d_joint, fig, method = None, epoch = 0, i
     ax1.axis("off")
 
     if method == 'evaluation':
-        os.remove(f"{args.output_dir}/eval_image")
+        if iteration == 0 and epoch == 0:
+            shutil.rmtree("eval_image")
         if os.path.isdir(f"eval_image") == False:
             mkdir("eval_image")
         if os.path.isdir(f'eval_image/{args.name[7:-31]}') == False:
@@ -114,27 +116,40 @@ def visualize_prediction(images, pred_2d_joint, fig, method = None, epoch = 0, i
         plt.savefig(f"eval_image/{args.name[7:-31]}/{dataset_name}/{iteration}.jpg")
 
     elif method == 'mediapipe':
-        os.remove(f"{args.output_dir}/eval_image")
+        if iteration == 0 and epoch == 0:
+            shutil.rmtree(f"eval_image")
         if os.path.isdir("eval_image") == False:
             mkdir("eval_image")
         if os.path.isdir('eval_image/mediapipe') == False:
             mkdir('eval_image/mediapipe')
         plt.savefig(f"eval_image/mediapipe/{iteration}.jpg")
 
+    # elif method == 'test':
+    #     if iteration == 0 and epoch == 0:
+    #         shutil.rmtree('test')
+    #     mkdir('test')
+    #     plt.savefig(f"test/{iteration}_iter.jpg")
+
     elif method == 'train':
-        os.remove(f"{args.output_dir}/train_image")
+        if iteration == 0 and epoch == 0:
+            shutil.rmtree(f"{args.output_dir}/train_image")
         if os.path.isdir(f"{args.output_dir}/train_image") == False:
             mkdir(f"{args.output_dir}/train_image")
         if os.path.isdir(f'{args.output_dir}/train_image/{epoch}_epoch') == False:
             mkdir(f'{args.output_dir}/train_image/{epoch}_epoch')
         plt.savefig(f"{args.output_dir}/train_image/{epoch}_epoch/{iteration}_iter.jpg")
-    else:
-        os.remove(f"{args.output_dir}/test_image")
+
+    elif method == 'test':
+        if iteration == 0 and epoch == 0:
+            shutil.rmtree(f"{args.output_dir}/test_image")
         if os.path.isdir(f"{args.output_dir}/test_image") == False:
             mkdir(f"{args.output_dir}/test_image")
         if os.path.isdir(f'{args.output_dir}/test_image/{epoch}_epoch') == False:
             mkdir(f'{args.output_dir}/test_image/{epoch}_epoch')
         plt.savefig(f"{args.output_dir}/test_image/{epoch}_epoch/{iteration}_iter.jpg")
+
+    else:
+        assert False, "method is the wrong name"
 
 
 def visualize_gt(images, gt_2d_joint, fig, num):

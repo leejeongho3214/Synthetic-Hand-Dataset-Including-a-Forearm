@@ -10,13 +10,15 @@ from torch.utils.tensorboard import SummaryWriter
 from argparser import parse_args, load_model, train, test
 from dataset import *
 from src.datasets.build import make_hand_data_loader
-
+from datetime import datetime
 # sys.path.append("C:\\Users\\jeongho\\PycharmProjects\\PoseEstimation\\HandPose\\MeshGraphormer-main")
 
 def main(args):
+
+    
     _model, logger, best_loss, epo, count = load_model(args)
 
-    writer = SummaryWriter(logdir = args.output_path)
+    writer = SummaryWriter(log_dir = f'tensorboard/{args.output_path}')
     path = "../../datasets/1023/org"
     folder_num = os.listdir(path)
 
@@ -41,6 +43,7 @@ def main(args):
     # dataset = HIU_Dataset()
     # train_dataset1, test_dataset1 = random_split(dataset, [int(len(datas t)*0.9), len(dataset)-(int(len(dataset)*0.9))])
 
+
     if args.frei:
         train_dataloader, test_dataloader, train_dataset1, test_dataset1 = make_hand_data_loader(args, args.train_yaml,
                                                                             args.distributed, is_train=True,
@@ -53,12 +56,15 @@ def main(args):
     testset_loader = data.DataLoader(dataset=test_dataset, batch_size=args.batch_size, num_workers=4, shuffle=False)
     logger.info("Name: {} // loss_2d: {} // loss_3d: {} // Train_length: {} // Test_length: {} \n".format(args.name, args.loss_2d, args.loss_3d, len(train_dataset), len(test_dataset)))
     pck_l = 0
+    batch_time = AverageMeter()
     for epoch in range(epo, 1000):
-        Graphormer_model, optimizer, pck = train(args, trainset_loader, _model, epoch, best_loss, len(train_dataset),logger, count,writer, pck_l)
-        loss, count, pck = test(args, testset_loader, Graphormer_model, epoch, count, best_loss,logger,writer, pck)
+        Graphormer_model, optimizer, batch_time = train(args, trainset_loader, _model, epoch, best_loss, len(train_dataset),logger, count, writer, pck_l, len(trainset_loader)+len(testset_loader), batch_time)
+        loss, count, pck, batch_time = test(args, testset_loader, Graphormer_model, epoch, count, best_loss, logger, writer, batch_time)
+
         pck_l = max(pck, pck_l)
         is_best = loss < best_loss
         best_loss = min(loss, best_loss)
+        
         if is_best:
             count = 0
             _model = Graphormer_model

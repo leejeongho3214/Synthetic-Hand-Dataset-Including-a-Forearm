@@ -12,8 +12,10 @@ from src.utils.comm import get_rank
 from src.utils.logger import setup_logger
 from src.utils.miscellaneous import mkdir
 import torch
+from src.datasets.build import make_hand_data_loader
 import os
 import gc
+import datetime
 import json
 import os
 from src.datasets.build import make_hand_data_loader
@@ -28,7 +30,7 @@ from src.utils.geometric_layers import *
 from src.utils.metric_logger import AverageMeter
 from visualize import *
 import sys
-
+from time import ctime
 
 
 
@@ -143,9 +145,7 @@ def load_model_hrnet(args):
         args.resume_checkpoint = 'None'
     if os.path.isdir(args.output_dir) == False:
         mkdir(args.output_dir)
-    
-    if os.listdir(f'{args.output_dir}/log.txt'):
-        os.remove(f'{args.output_dir}/log.txt')
+
     logger = setup_logger(args.name, args.output_dir, get_rank())
     args.num_gpus = int(os.environ['WORLD_SIZE']) if 'WORLD_SIZE' in os.environ else 1
     os.environ['OMP_NUM_THREADS'] = str(args.num_workers)
@@ -280,10 +280,10 @@ def load_model(args):
     _model.to(args.device)
     return _model, logger, best_loss, epo, count
 
-def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,logger, count, writer, pck):
+def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,logger, count, writer, pck, len_total, batch_time):
     gc.collect()
     torch.cuda.empty_cache()
-    max_iter = len(train_dataloader)
+
     optimizer = torch.optim.Adam(params=list(Graphormer_model.parameters()),
                                  lr=args.lr,
                                  betas=(0.9, 0.999),
@@ -292,15 +292,11 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
     # define loss function (criterion) and optimizer
     criterion_2d_keypoints = torch.nn.MSELoss(reduction='none').cuda(args.device)
     # criterion_3d_keypoints = torch.nn.MSELoss(reduction='none').cuda(args.device)
-
+    end = time.time()
     Graphormer_model.train()
     log_losses = AverageMeter()
-    log_loss_2djoints = AverageMeter()
-    # log_loss_3djoints = AverageMeter()
 
     for iteration, (images, gt_2d_joints, gt_3d_joints) in enumerate(train_dataloader):
-        batch_time = AverageMeter()
-        batch_inference_time = time.time()
 
         batch_size = images.size(0)
         adjust_learning_rate(optimizer, epoch, args)
@@ -310,13 +306,8 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
         gt_3d_joints = gt_3d_joints.cuda()
         images = images.cuda()
         pred_2d_joints= Graphormer_model(images)
-   
-        # loss_3d_joints = keypoint_3d_loss(criterion_3d_keypoints, pred_3d_joints, gt_3d_joints)
-        loss_2d_joints = keypoint_2d_loss(criterion_2d_keypoints, pred_2d_joints, gt_2d_joint)
-        # loss = args.loss_2d * loss_2d_joints + args.loss_3d * loss_3d_joints
-        loss = args.loss_2d * loss_2d_joints
-        log_loss_2djoints.update(loss_2d_joints, batch_size)
-        # log_loss_3djoints.update(loss_3d_joints, batch_size)
+
+        loss= keypoint_2d_loss(criterion_2d_keypoints, pred_2d_joints, gt_2d_joint)
         log_losses.update(loss.item(), batch_size)
 
        # back prop
@@ -324,11 +315,10 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
         loss.backward()
         optimizer.step()
 
-        batch_time.update(time.time() - batch_inference_time, n=1)
-        # if iteration % 1000 == 999:
-        #     save_checkpoint(Graphormer_model, args, epoch, optimizer, best_loss, count,  'iter2', iteration=iteration, logger=logger)
+        if iteration % 1000 == 999:
+            save_checkpoint(Graphormer_model, args, epoch, optimizer, best_loss, count,  'iter2', iteration=iteration, logger=logger)
 
-        if iteration % 2000 == 1999:
+        elif iteration % 1000 == 499:
             save_checkpoint(Graphormer_model, args, epoch, optimizer, best_loss, count,  'iter', iteration=iteration, logger=logger)
 
         pred_2d_joints[:,:,1] = pred_2d_joints[:,:,1] * images.size(2) ## You Have to check whether weight and height is correct dimenstion
@@ -342,50 +332,45 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
             visualize_prediction(images, pred_2d_joints, fig, 'train', epoch, iteration, args,None)
             plt.close()
 
+        batch_time.update(time.time() - end)
+        end = time.time()
+        eta_seconds = batch_time.avg * ((len_total - iteration) + (29 - epoch) * len_total)  
+
         if iteration == len(train_dataloader) - 1:
             logger.info(
                 ' '.join(
-                    ['dataset_length: {len}','epoch: {ep}', 'iter: {iter}', '/{maxi}, count: {count}/50']
-                ).format(len=data_len,ep=epoch, iter=iteration, maxi=max_iter, count= count)
-                + ' 2d_loss: {:.8f}, pck: {:.2f}%, best_loss: {:.8f}\n'.format(
-                    log_loss_2djoints.avg,
+                    ['dataset_length: {len}','epoch: {ep}', 'iter: {iter}', '/{maxi}, count: {count}/5']
+                ).format(len=data_len,ep=epoch, iter=iteration, maxi=len(train_dataloader), count= count)
+                + ' 2d_loss: {:.8f}, pck: {:.2f}%, best_loss: {:.8f}, expected_date: {}\n'.format(
+                    log_losses.avg,
                     pck, 
-                    best_loss)
+                    best_loss,
+                    ctime(eta_seconds + end))
             )
             writer.add_scalar("Loss/train", log_losses.avg, epoch)
+
         else:
             logger.info(
                 ' '.join(
-                    ['dataset_length: {len}', 'epoch: {ep}', 'iter: {iter}', '/{maxi},  count: {count}/50']
-                ).format(len=data_len, ep=epoch, iter=iteration, maxi=max_iter, count= count)
-                + ' 2d_loss: {:.8f}, pck: {:.2f}%, best_loss: {:.8f}'.format(
-                    log_loss_2djoints.avg,
+                    ['dataset_length: {len}', 'epoch: {ep}', 'iter: {iter}', '/{maxi},  count: {count}/5']
+                ).format(len=data_len, ep=epoch, iter=iteration, maxi=len(train_dataloader), count= count)
+                + ' 2d_loss: {:.8f}, pck: {:.2f}%, best_loss: {:.8f}\n, expected_date: {}'.format(
+                    log_losses.avg,
                     pck, 
-                    best_loss)
+                    best_loss,
+                    ctime(eta_seconds + end))
             )
 
-        if iteration % 5000 == 4900:
-            gc.collect()
-            torch.cuda.empty_cache()
+    return Graphormer_model, optimizer, batch_time
 
+def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logger, writer, batch_time):
 
-    return Graphormer_model, optimizer
-
-def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logger, writer):
-
-    max_iter = len(test_dataloader)
-
-    if args.distributed:
-        Graphormer_model = torch.nn.parallel.DistributedDataParallel(
-            Graphormer_model, device_ids=[args.local_rank],
-            output_device=args.local_rank,
-            find_unused_parameters=True,
-        )
-
+    end = time.time()
     criterion_2d_keypoints = torch.nn.MSELoss(reduction='none').cuda(args.device)
     log_losses = AverageMeter()
     pck_losses = AverageMeter()
     mpjpe_losses = AverageMeter()
+
     with torch.no_grad():
         for iteration, (images, gt_2d_joints, _) in enumerate(test_dataloader):
 
@@ -409,44 +394,45 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
             mpjpe_losses.update(mpjpe, batch_size)
             log_losses.update(loss_2d_joints, batch_size)
 
-
             if iteration % 40 == 0:
                 fig = plt.figure()
                 visualize_gt(images, gt_2d_joint, fig, iteration)
                 visualize_prediction(images, pred_2d_joints, fig, 'test', epoch, iteration,args,None)
                 plt.close()
 
+            batch_time.update(time.time() - end)
+            end = time.time()
+            eta_seconds = batch_time.avg * ((len(test_dataloader) - iteration) + (29 - epoch) * len(test_dataloader))
+
             if iteration == len(test_dataloader) - 1:
                 logger.info(
                     ' '.join(
                         ['Test =>> epoch: {ep}', 'iter: {iter}', '/{maxi}']
-                    ).format(ep=epoch, iter=iteration, maxi=max_iter)
-                    + ' thresold: {} ,pck: {:.2f}%, mpjpe: {:.2f}mm, loss: {:.2f}, count: {} / 50, best_loss: {:.8f} \n'.format(
+                    ).format(ep=epoch, iter=iteration, maxi=len(test_dataloader))
+                    + ' thresold: {} ,pck: {:.2f}%, mpjpe: {:.2f}mm, loss: {:.2f}, count: {} / 50, best_loss: {:.8f}, expected_date: {} \n'.format(
                         threshold,
                         pck_losses.avg * 100,
                         mpjpe_losses.avg * 0.26,
                         log_losses.avg,
                         int(count),
-                        best_loss)
+                        best_loss,
+                        ctime(eta_seconds + end))
                 )
-           
                 writer.add_scalar("Loss/valid", log_losses.avg, epoch)
                 writer.flush()
             else:
                 logger.info(
                     ' '.join(
                         ['Test =>> epoch: {ep}', 'iter: {iter}', '/{maxi}']
-                    ).format(ep=epoch, iter=iteration, maxi=max_iter)
-                    + ' thresold: {} ,pck: {:.2f}%, mpjpe: {:.2f}mm, loss: {:.2f}, count: {} / 50, best_loss: {:.8f}'.format(
+                    ).format(ep=epoch, iter=iteration, maxi=len(test_dataloader))
+                    + ' thresold: {} ,pck: {:.2f}%, mpjpe: {:.2f}mm, loss: {:.2f}, count: {} / 50, best_loss: {:.8f}, expected_date: {}'.format(
                         threshold,
                         pck_losses.avg * 100,
                         mpjpe_losses.avg * 0.26,
                         log_losses.avg,
                         int(count),
-                        best_loss)
+                        best_loss,
+                        ctime(eta_seconds + end))
                 )
 
-    del test_dataloader
-    gc.collect()
-    torch.cuda.empty_cache()
-    return log_losses.avg, count
+    return log_losses.avg, count, pck_losses.avg * 100, batch_time
