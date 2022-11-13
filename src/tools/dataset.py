@@ -30,17 +30,16 @@ def i_rotate(img, degree, move_x, move_y):
     new_h, new_w = h, w
     translation = np.float32([[1,0,move_x], [0,1,move_y]])
     rotatefigure = cv2.getRotationMatrix2D(centerRotatePT, degree, 1)
-    result = cv2.warpAffine(img, rotatefigure, (new_w, new_h))
-    result = cv2.warpAffine(result, translation, (new_w, new_h))
+    result = cv2.warpAffine(img, rotatefigure, (new_w, new_h), flags = cv2.INTER_LINEAR, borderMode = cv2.INTER_LINEAR)
+    result = cv2.warpAffine(result, translation, (new_w, new_h), flags = cv2.INTER_LINEAR, borderMode = cv2.INTER_LINEAR)
     
     return result
 
 class Json_transform(Dataset):
-    def __init__(self, degree, path, rotation = False, color = False, background = False):
+    def __init__(self, degree, path, rotation = False, color = False):
         self.degree = degree
         self.rotation = rotation
         self.color = color
-        self.background = background
         self.path = path
         self.degree = degree
         # self.num = int(args.train_data[9:-1])
@@ -84,6 +83,7 @@ class Json_transform(Dataset):
             left_pixel, right_pixel = [79-112, -112], [174-112, -112]
             left_rot = math.cos(rad) * left_pixel[1] - math.sin(rad) * left_pixel[0] + 112
             right_rot = math.cos(rad) * right_pixel[1] - math.sin(rad) * right_pixel[0] + 112
+
             if left_rot > 0:
                 move_y = left_rot
 
@@ -93,11 +93,6 @@ class Json_transform(Dataset):
             else:
                 move_y = 0
             move_y2 = random.uniform(0, 40)
-            # image  = i_rotate(ori_image, degrees, 0, move_y + move_y2) ## move_y2 is to augment root joint and move_y is to cover black pixel area made by rotated hand
-            # loc = np.all(image != [0, 0, 0], axis=-1)
-            # bg[loc] = [0, 0 ,0]
-            # image = image + bg  ## insert background instead of black 
-            
 
             for i in range(21):
                 a = np.dot(np.array(rot, dtype='float32'),
@@ -147,45 +142,6 @@ class Json_transform(Dataset):
         for w in index:
             del self.meta['images'][w-count]
             count += 1
-                
-            # color_aug = torchvision.transforms.ColorJitter(
-            # brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5)
-
-            # if rotation and color:
-            #     for i in range(color_num):
-            #         image = Image.fromarray(image)
-            #         image = apply(image, color_aug, num=1)[i]
-            #         if i == 0:
-            #             j['image'] = np.array(image).tolist() ## RGB image
-            #             j['joint_2d'] = joint_2d.tolist()
-            #             j['joint_3d'] = joint.tolist()
-            #         else:
-            #             self.meta['images'].append({'image': image, 'joint_2d': joint_2d.tolist(), 'joint_3d':joint.tolist()}) 
-
-            # elif rotation:
-            #     j['image'] = image.tolist() ## RGB image
-            #     j['joint_2d'] = joint_2d.tolist()
-            #     j['joint_3d'] = joint.tolist()
-
-            # elif color:
-            #     for i in range(color_num):
-            #         image = Image.fromarray(image)
-            #         image = apply(ori_image, color_aug, num=1)[i]
-            #         if i == 0:
-            #             j['image'] = np.array(image).tolist() ## RGB image
-            #             j['joint_2d'] = d.tolist()
-            #             j['joint_3d'] = joint.tolist()
-            #         else:
-            #             self.meta['images'].append({'image': np.array(image).tolist(), 'joint_2d': joint_2d.tolist(), 'joint_3d':joint.tolist()}) 
-            # else:
-            #     j['image'] = ori_image.tolist() ## RGB image
-            #     j['joint_2d'] = d.tolist()
-            #     j['joint_3d'] = joint.tolist()
-
-                
-            # self.meta['images'].append({'image': ori_image, 'joint_2d': d, 'joint_3d':joint}) 
- 
-
 
         with open(f"{path}/{degree}/annotations/train/CISLAB_train_data_update.json", 'w') as f:
             json.dump(self.meta, f)
@@ -210,18 +166,20 @@ class Json_transform(Dataset):
         return image, joint_2d, joint_3d
 
 class CustomDataset_train_new(Dataset):
-    def __init__(self, degree, path, rotation = False, color = False, background = False, ratio = 0.2):
+    def __init__(self, degree, path, rotation = False, color = False, blur = False, erase = False, ratio = 0.2):
         self.rotation =rotation
         self.color = color
         self.degree = degree
-        self.background = background
         self.path = path
         self.ratio = ratio
+        self.blur = blur
+        self.erase = erase
         with open(f"{path}/{degree}/annotations/train/CISLAB_train_data_update.json", "r") as st_json:
             self.meta = json.load(st_json)
 
     def __len__(self):
         return len(self.meta['images'])
+    
 
     def __getitem__(self, idx):
 
@@ -230,74 +188,13 @@ class CustomDataset_train_new(Dataset):
         degrees = self.meta['images'][idx]['degree']
         image = cv2.imread(f'{self.path}/{self.degree}/images/train/{name}') ## PIL image
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        image[image < 30] = 0 ## Get rid of noise
 
         if idx < len(self.meta['images']) * self.ratio: 
 
-            if self.background and self.color and self.rotation:
-                root = "../../datasets/background/bg"
-                path1 = os.listdir(root)
-                bg = cv2.imread(os.path.join(root, random.choice(path1)))
-                bg = cv2.cvtColor(bg, cv2.COLOR_BGR2RGB)
-                bg = cv2.resize(bg, (224,224))
-                image  = i_rotate(image, degrees, 0, move)
-                loc = np.all(image != [0, 0, 0], axis=-1)
-                bg[loc] = [0, 0 ,0] 
-                image = image + bg
-                color_aug = torchvision.transforms.ColorJitter(
-                    brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5)
-                image = apply(Image.fromarray(np.array(image)), color_aug, num=1)[0]  ## insert background instead of black 
-                joint_2d = torch.tensor(self.meta['images'][idx]['rot_joint_2d']) 
-
-            elif self.background and self.color:
-                root = "../../datasets/background/bg"
-                path1 = os.listdir(root)
-                bg = cv2.imread(os.path.join(root, random.choice(path1)))
-                bg = cv2.cvtColor(bg, cv2.COLOR_BGR2RGB)
-                bg = cv2.resize(bg, (224,224))
-                image = image + bg
-                loc = np.all(image != [0, 0, 0], axis=-1)
-                bg[loc] = [0, 0 ,0]
-                color_aug = torchvision.transforms.ColorJitter(
-                        brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5)
-                image = apply(Image.fromarray(np.array(image)), color_aug, num=1)[0]
-                joint_2d = torch.tensor(self.meta['images'][idx]['joint_2d'])
-
-            elif self.color and self.rotation:
-                image  = i_rotate(image, degrees, 0, move) ## move_y2 is to augment root joint and move_y is to cover black pixel area made by rotated hand
-                color_aug = torchvision.transforms.ColorJitter(
-                        brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5)
-                image = apply(Image.fromarray(np.array(image)), color_aug, num=1)[0]  ## insert background instead of black 
-                joint_2d = torch.tensor(self.meta['images'][idx]['rot_joint_2d']) 
-
-            elif self.background and self.rotation:
-                root = "../../datasets/background/bg"
-                path1 = os.listdir(root)
-                bg = cv2.imread(os.path.join(root, random.choice(path1)))
-                bg = cv2.cvtColor(bg, cv2.COLOR_BGR2RGB)
-                bg = cv2.resize(bg, (224,224))
-                image  = i_rotate(image, degrees, 0, move)
-                loc = np.all(image != [0, 0, 0], axis=-1)
-                bg[loc] = [0, 0 ,0] 
-                image = image + bg
-                color_aug = torchvision.transforms.ColorJitter(
-                    brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5)
-                image = apply(Image.fromarray(np.array(image)), color_aug, num=1)[0]  ## insert background instead of black 
-                joint_2d = torch.tensor(self.meta['images'][idx]['rot_joint_2d']) 
-
-            elif self.rotation:
+            if self.rotation:
                 image  = i_rotate(image, degrees, 0, move)
                 image = Image.fromarray(image)
                 joint_2d = torch.tensor(self.meta['images'][idx]['rot_joint_2d']) 
-
-            elif self.color:
-                color_aug = torchvision.transforms.ColorJitter(
-                        brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5)
-                image = apply(Image.fromarray(np.array(image)), color_aug, num=1)[0]  ## insert background instead of black 
-                joint_2d = torch.tensor(self.meta['images'][idx]['joint_2d'])
-
-            # elif self.background:
-
 
             else:
                 image = Image.fromarray(image)
@@ -306,9 +203,20 @@ class CustomDataset_train_new(Dataset):
             image = Image.fromarray(image)
             joint_2d = torch.tensor(self.meta['images'][idx]['joint_2d'])
 
-        trans = transforms.Compose([transforms.Resize((224, 224)),
-                                    transforms.ToTensor(),
-                                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])                              
+        trans_option = {
+                        'resize':transforms.Resize((224, 224)),
+                        'to_tensor':transforms.ToTensor(),
+                        'color':transforms.ColorJitter(brightness= 0.5, contrast= 0.5, saturation= 0.5, hue= 0.5),
+                        'blur':transforms.GaussianBlur(kernel_size= (5, 5), sigma=(0.1, 1)),
+                        'erase':transforms.RandomErasing(p=1.0, scale=(0.02, 0.04), ratio = (0.3, 3.3)),
+                        'norm':transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+                        }
+
+        if not self.blur: del trans_option['blur']
+        if not self.color: del trans_option['color']
+        if not self.erase: del trans_option['erase']
+
+        trans = transforms.Compose([trans_option[i] for i in trans_option])                      
         image = trans(image)
 
         joint_3d = torch.tensor(self.meta['images'][idx]['joint_3d'])

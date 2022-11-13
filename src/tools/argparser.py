@@ -36,22 +36,9 @@ from time import ctime
 
 def parse_args():
     parser = argparse.ArgumentParser()
-
-    parser.add_argument("--multiscale_inference", default=False, action='store_true', )
-    # parser.add_argument("--rot", default=0, type=float)
-    parser.add_argument("--sc", default=1.0, type=float)
-    parser.add_argument("--aml_eval", default=False, action='store_true', )
-    parser.add_argument('--logging_steps', type=int, default=100,
-                        help="Log every X steps.")
-    parser.add_argument("--resume_path", default='HIU', type=str)
-    #############################################################################################
-            ## Set hyper parameter ##
-    #############################################################################################
-    parser.add_argument("--loss_2d", default=1, type=float,)
-    parser.add_argument("--loss_3d", default=1, type=float,
-                        help = "it is weight of 3d regression and '0' mean only 2d joint regression")
-    parser.add_argument("--train", default='train', type=str, choices=['pre-train, train, fine-tuning'],
-                        help = "3 type train method")
+    ######################################################################################
+    ## Set Hyper-parameter ##
+    ######################################################################################
     parser.add_argument("--name", default='HIU_DMTL_full',
                         help = '20k means CISLAB 20,000 images',type=str)
     parser.add_argument("--root_path", default=f'output', type=str, required=False,
@@ -61,21 +48,30 @@ def parse_args():
     parser.add_argument("--batch_size", default=32, type=int)
     parser.add_argument("--num_train_epochs", default=50, type=int,
                         help="Total number of training epochs to perform.")
-    parser.add_argument('--lr', "--learning_rate", default=1e-4, type=float,
-                        help="The initial lr.")
     parser.add_argument("--count", default=5, type=float)
     parser.add_argument("--ratio_of_aug", default=0.2, type=float)
+    parser.add_argument("--epoch", default=30, type=int)
     parser.add_argument("--visualize", action='store_true')
     parser.add_argument("--iter", action='store_true')
     parser.add_argument("--iter2", action='store_true')
     parser.add_argument("--resume", action='store_true')
     parser.add_argument("--rot", action='store_true')
     parser.add_argument("--color", action='store_true')
-    parser.add_argument("--bg", action='store_true')
+    parser.add_argument("--blur", action='store_true')
+    parser.add_argument("--erase", action='store_true')
     parser.add_argument("--frei", action='store_true')
-    #############################################################################################
+    ######################################################################################
+    ##                      ##
+    ######################################################################################
 
-    #############################################################################################
+    parser.add_argument("--multiscale_inference", default=False, action='store_true', )
+    parser.add_argument("--sc", default=1.0, type=float)
+    parser.add_argument("--aml_eval", default=False, action='store_true', )
+    parser.add_argument('--logging_steps', type=int, default=100,
+                        help="Log every X steps.")
+    parser.add_argument("--resume_path", default='HIU', type=str)
+    parser.add_argument('--lr', "--learning_rate", default=1e-4, type=float,
+                        help="The initial lr.")
     parser.add_argument("--vertices_loss_weight", default=1.0, type=float)
     parser.add_argument("--joints_loss_weight", default=1.0, type=float)
     parser.add_argument("--vloss_w_full", default=0.5, type=float)
@@ -106,7 +102,7 @@ def parse_args():
                         help="Update model config if given")
     parser.add_argument("--num_attention_heads", default=4, type=int, required=False,
                         help="Update model config if given. Note that the division of "
-                             "hidden_size / num_attention_heads should be in integer.")
+                                "hidden_size / num_attention_heads should be in integer.")
     parser.add_argument("--intermediate_size", default=-1, type=int, required=False,
                         help="Update model config if given.")
     parser.add_argument("--input_feat_dim", default='2048,512,128', type=str,
@@ -281,17 +277,13 @@ def load_model(args):
     return _model, logger, best_loss, epo, count
 
 def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,logger, count, writer, pck, len_total, batch_time):
-    gc.collect()
-    torch.cuda.empty_cache()
 
     optimizer = torch.optim.Adam(params=list(Graphormer_model.parameters()),
                                  lr=args.lr,
                                  betas=(0.9, 0.999),
                                  weight_decay=0)
 
-    # define loss function (criterion) and optimizer
     criterion_2d_keypoints = torch.nn.MSELoss(reduction='none').cuda(args.device)
-    # criterion_3d_keypoints = torch.nn.MSELoss(reduction='none').cuda(args.device)
     end = time.time()
     Graphormer_model.train()
     log_losses = AverageMeter()
@@ -310,31 +302,25 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
         loss= keypoint_2d_loss(criterion_2d_keypoints, pred_2d_joints, gt_2d_joint)
         log_losses.update(loss.item(), batch_size)
 
-       # back prop
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-
-        if iteration % 1000 == 999:
-            save_checkpoint(Graphormer_model, args, epoch, optimizer, best_loss, count,  'iter2', iteration=iteration, logger=logger)
-
-        elif iteration % 1000 == 499:
-            save_checkpoint(Graphormer_model, args, epoch, optimizer, best_loss, count,  'iter', iteration=iteration, logger=logger)
 
         pred_2d_joints[:,:,1] = pred_2d_joints[:,:,1] * images.size(2) ## You Have to check whether weight and height is correct dimenstion
         pred_2d_joints[:,:,0] = pred_2d_joints[:,:,0] * images.size(3)
         
         gt_2d_joint = gt_2d_joint * 224
-
-        if iteration % 200 == 199:
+        
+        if iteration == 0 or iteration == int(len(train_dataloader)/2) or iteration == len(train_dataloader) - 1:
             fig = plt.figure()
             visualize_gt(images, gt_2d_joint, fig, iteration)
             visualize_prediction(images, pred_2d_joints, fig, 'train', epoch, iteration, args,None)
             plt.close()
 
+
         batch_time.update(time.time() - end)
         end = time.time()
-        eta_seconds = batch_time.avg * ((len_total - iteration) + (29 - epoch) * len_total)  
+        eta_seconds = batch_time.avg * ((len_total - iteration) + (args.epoch - epoch -1) * len_total)  
 
         if iteration == len(train_dataloader) - 1:
             logger.info(
@@ -363,13 +349,13 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
 
     return Graphormer_model, optimizer, batch_time
 
-def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logger, writer, batch_time):
+def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logger, writer, batch_time, len_total):
 
     end = time.time()
     criterion_2d_keypoints = torch.nn.MSELoss(reduction='none').cuda(args.device)
     log_losses = AverageMeter()
     pck_losses = AverageMeter()
-    mpjpe_losses = AverageMeter()
+    epe_losses = AverageMeter()
 
     with torch.no_grad():
         for iteration, (images, gt_2d_joints, _) in enumerate(test_dataloader):
@@ -388,10 +374,11 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
             pred_2d_joints[:,:,0] = pred_2d_joints[:,:,0] * images.size(3)
 
             correct, visible_point, threshold = PCK_2d_loss(pred_2d_joints, gt_2d_joint, images, T= 0.05, threshold='proportion')
-            mpjpe = MPJPE(pred_2d_joints, gt_2d_joint)
+            # epe_loss, epe_per = EPE(pred_2d_joints, gt_2d_joint)
+            epe_loss, epe_per = EPE_train(pred_2d_joints, gt_2d_joint)
             loss_2d_joints = keypoint_2d_loss(criterion_2d_keypoints, pred_2d_joints/224, gt_2d_joint/224)
             pck_losses.update_p(correct, visible_point)
-            mpjpe_losses.update(mpjpe, batch_size)
+            epe_losses.update_p(epe_loss[0], epe_loss[1])
             log_losses.update(loss_2d_joints, batch_size)
 
             if iteration % 40 == 0:
@@ -402,17 +389,17 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
 
             batch_time.update(time.time() - end)
             end = time.time()
-            eta_seconds = batch_time.avg * ((len(test_dataloader) - iteration) + (29 - epoch) * len(test_dataloader))
+            eta_seconds = batch_time.avg * ((len(test_dataloader) - iteration) + (args.epoch - epoch -1) *len_total)
 
             if iteration == len(test_dataloader) - 1:
                 logger.info(
                     ' '.join(
                         ['Test =>> epoch: {ep}', 'iter: {iter}', '/{maxi}']
                     ).format(ep=epoch, iter=iteration, maxi=len(test_dataloader))
-                    + ' thresold: {} ,pck: {:.2f}%, mpjpe: {:.2f}mm, loss: {:.2f}, count: {} / 50, best_loss: {:.8f}, expected_date: {} \n'.format(
+                    + ' thresold: {} ,pck: {:.2f}%, epe: {:.2f}mm, loss: {:.2f}, count: {} / 50, best_loss: {:.8f}, expected_date: {} \n'.format(
                         threshold,
                         pck_losses.avg * 100,
-                        mpjpe_losses.avg * 0.26,
+                        epe_losses.avg * 0.26,
                         log_losses.avg,
                         int(count),
                         best_loss,
@@ -425,10 +412,10 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
                     ' '.join(
                         ['Test =>> epoch: {ep}', 'iter: {iter}', '/{maxi}']
                     ).format(ep=epoch, iter=iteration, maxi=len(test_dataloader))
-                    + ' thresold: {} ,pck: {:.2f}%, mpjpe: {:.2f}mm, loss: {:.2f}, count: {} / 50, best_loss: {:.8f}, expected_date: {}'.format(
+                    + ' thresold: {} ,pck: {:.2f}%, epe: {:.2f}mm, loss: {:.2f}, count: {} / 50, best_loss: {:.8f}, expected_date: {}'.format(
                         threshold,
                         pck_losses.avg * 100,
-                        mpjpe_losses.avg * 0.26,
+                        epe_losses.avg * 0.26,
                         log_losses.avg,
                         int(count),
                         best_loss,

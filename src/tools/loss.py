@@ -24,22 +24,45 @@ def MPJPE_visible(pred_2d_joints, gt_2d_joint):
     return mpjpe
     
 
-def MPJPE(pred_2d_joints, gt_2d_joint):
+def EPE(pred_2d_joints, gt_2d_joint):
     batch_size = pred_2d_joints.size(0)
-    distance = 0
-    for j in range(batch_size):
-        for i in range(pred_2d_joints.size(1)):
-            align_pred_x = int(pred_2d_joints[j][i][0]) - int(pred_2d_joints[j][0][0])
-            align_pred_y = int(pred_2d_joints[j][i][1]) - int(pred_2d_joints[j][0][1])
-            align_gt_x = gt_2d_joint[j][i][0] - gt_2d_joint[j][0][0]
-            align_gt_y = gt_2d_joint[j][i][1] - gt_2d_joint[j][0][1]
-            pred = np.array((align_pred_x, align_pred_y))
-            gt = np.array((align_gt_x.detach().cpu(), align_gt_y.detach().cpu()))
-            pixel = np.sqrt(np.sum((pred - gt)**2))
-            distance += np.sqrt(pixel)
-    mpjpe = distance/(batch_size*pred_2d_joints.size(1))
+    distance = {}
+    pred_2d_joints, gt_2d_joint = pred_2d_joints.detach().cpu(), gt_2d_joint.detach().cpu()
+    for i in range(1, pred_2d_joints.size(1)):
+        error = []
+        for j in range(batch_size):
+            if gt_2d_joint[j, i, 2] == 0: ## invisible joint = 0
+                continue    
+            pred = pred_2d_joints[j, i]
+            gt = gt_2d_joint[j, i, :2]
+            error.append(torch.sqrt(torch.sum((pred - gt)**2))) 
 
-    return mpjpe
+        distance[f'{i}'] = [np.mean(np.array(error)) if not np.isnan(np.mean(np.array(error))) else 0, len(error)]
+
+    # epe = [distance[f'{i}'][0] for i in range(len(distance))]
+    epe = [[distance[f'{i}'][0] * distance[f'{i}'][1], distance[f'{i}'][1]]  for i in range(1, len(distance))]
+    # epe_loss = np.sum(np.array(epe)[:,0])/np.sum(np.array(epe)[:,1]) ## mean every joint
+
+    return (np.sum(np.array(epe)[:,0]), np.sum(np.array(epe)[:,1])), distance
+
+def EPE_train(pred_2d_joints, gt_2d_joint):
+    batch_size = pred_2d_joints.size(0)
+    distance = {}
+    pred_2d_joints, gt_2d_joint = pred_2d_joints.detach().cpu(), gt_2d_joint.detach().cpu()
+    for i in range(1, pred_2d_joints.size(1)):
+        error = []
+        for j in range(batch_size):
+            pred = pred_2d_joints[j, i]
+            gt = gt_2d_joint[j, i, :2]
+            error.append(torch.sqrt(torch.sum((pred - gt)**2))) 
+
+        distance[f'{i}'] = [np.mean(np.array(error)) if not np.isnan(np.mean(np.array(error))) else 0, len(error)]
+
+    # epe = [distance[f'{i}'][0] for i in range(len(distance))]
+    epe = [[distance[f'{i}'][0] * distance[f'{i}'][1], distance[f'{i}'][1]]  for i in range(1, len(distance))]
+    # epe_loss = np.sum(np.array(epe)[:,0])/np.sum(np.array(epe)[:,1]) ## mean every joint
+
+    return (np.sum(np.array(epe)[:,0]), np.sum(np.array(epe)[:,1])), distance
 
 def keypoint_2d_loss(criterion_keypoints, pred_keypoints_2d, gt_keypoints_2d):
     """
@@ -79,7 +102,7 @@ def PCK_2d_loss_visible(pred_2d, gt_2d, images, T = 0.1, threshold = 'proportion
                         correct += 1
                 elif threshold == 'pixel':
                     distance = np.sqrt((x ** 2 + y ** 2))
-                    if distance * 0.26< T * 20:
+                    if distance * 0.26 < T * 20:
                         correct += 1
                 else:
                     assert False, "Please check variable threshold is right"
@@ -104,7 +127,8 @@ def PCK_2d_loss(pred_2d, gt_2d, images, T = 0.1, threshold = 'proportion'):
     correct = 0
     visible_joint = 0
     for box_num, box_size in enumerate(bbox_size):
-        for joint_num in range(21):
+        for joint_num in range(1, 21):
+        # for joint_num in range(21):
             visible_joint += 1
             x = gt_2d[box_num][joint_num][0] - pred_2d[box_num][joint_num][0]
             y = gt_2d[box_num][joint_num][1] - pred_2d[box_num][joint_num][1]
@@ -114,7 +138,7 @@ def PCK_2d_loss(pred_2d, gt_2d, images, T = 0.1, threshold = 'proportion'):
                     correct += 1
             elif threshold == 'pixel':
                 distance = np.sqrt((x ** 2 + y ** 2))
-                if distance * 0.26< T * 20:
+                if distance * 0.26 < T * 20:
                     correct += 1
             else:
                 assert False, "Please check variable threshold is right"
