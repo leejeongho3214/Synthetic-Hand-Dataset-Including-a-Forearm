@@ -60,6 +60,7 @@ def parse_args():
     parser.add_argument("--blur", action='store_true')
     parser.add_argument("--erase", action='store_true')
     parser.add_argument("--frei", action='store_true')
+    parser.add_argument("--general", action='store_true')
     ######################################################################################
     ##                      ##
     ######################################################################################
@@ -325,8 +326,8 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
         if iteration == len(train_dataloader) - 1:
             logger.info(
                 ' '.join(
-                    ['dataset_length: {len}','epoch: {ep}', 'iter: {iter}', '/{maxi}, count: {count}/5']
-                ).format(len=data_len,ep=epoch, iter=iteration, maxi=len(train_dataloader), count= count)
+                    ['dataset_length: {len}','epoch: {ep}', 'iter: {iter}', '/{maxi}, count: {count}/{total_count}']
+                ).format(len=data_len,ep=epoch, iter=iteration, maxi=len(train_dataloader), count= count, total_count = args.count)
                 + ' 2d_loss: {:.8f}, pck: {:.2f}%, best_loss: {:.8f}, expected_date: {}\n'.format(
                     log_losses.avg,
                     pck, 
@@ -338,8 +339,8 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
         else:
             logger.info(
                 ' '.join(
-                    ['dataset_length: {len}', 'epoch: {ep}', 'iter: {iter}', '/{maxi},  count: {count}/5']
-                ).format(len=data_len, ep=epoch, iter=iteration, maxi=len(train_dataloader), count= count)
+                    ['dataset_length: {len}', 'epoch: {ep}', 'iter: {iter}', '/{maxi},  count: {count}/{total_count}']
+                ).format(len=data_len, ep=epoch, iter=iteration, maxi=len(train_dataloader), count= count, total_count = args.count)
                 + ' 2d_loss: {:.8f}, pck: {:.2f}%, best_loss: {:.8f}\n, expected_date: {}'.format(
                     log_losses.avg,
                     pck, 
@@ -381,7 +382,7 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
             epe_losses.update_p(epe_loss[0], epe_loss[1])
             log_losses.update(loss_2d_joints, batch_size)
 
-            if iteration % 40 == 0:
+            if iteration == 0 or iteration == int(len(test_dataloader)/2) or iteration == len(test_dataloader) - 1:
                 fig = plt.figure()
                 visualize_gt(images, gt_2d_joint, fig, iteration)
                 visualize_prediction(images, pred_2d_joints, fig, 'test', epoch, iteration,args,None)
@@ -396,12 +397,13 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
                     ' '.join(
                         ['Test =>> epoch: {ep}', 'iter: {iter}', '/{maxi}']
                     ).format(ep=epoch, iter=iteration, maxi=len(test_dataloader))
-                    + ' thresold: {} ,pck: {:.2f}%, epe: {:.2f}mm, loss: {:.2f}, count: {} / 50, best_loss: {:.8f}, expected_date: {} \n'.format(
+                    + ' thresold: {} ,pck: {:.2f}%, epe: {:.2f}mm, loss: {:.2f}, count: {} / {}, best_loss: {:.8f}, expected_date: {} \n'.format(
                         threshold,
                         pck_losses.avg * 100,
                         epe_losses.avg * 0.26,
                         log_losses.avg,
                         int(count),
+                        args.count,
                         best_loss,
                         ctime(eta_seconds + end))
                 )
@@ -412,12 +414,13 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
                     ' '.join(
                         ['Test =>> epoch: {ep}', 'iter: {iter}', '/{maxi}']
                     ).format(ep=epoch, iter=iteration, maxi=len(test_dataloader))
-                    + ' thresold: {} ,pck: {:.2f}%, epe: {:.2f}mm, loss: {:.2f}, count: {} / 50, best_loss: {:.8f}, expected_date: {}'.format(
+                    + ' thresold: {} ,pck: {:.2f}%, epe: {:.2f}mm, loss: {:.2f}, count: {} / {}, best_loss: {:.8f}, expected_date: {}'.format(
                         threshold,
                         pck_losses.avg * 100,
                         epe_losses.avg * 0.26,
                         log_losses.avg,
                         int(count),
+                        args.count,
                         best_loss,
                         ctime(eta_seconds + end))
                 )

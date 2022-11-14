@@ -518,7 +518,7 @@ class HighResolutionNet(nn.Module):
             self.load_state_dict(model_dict)
         # code.interact(local=locals())
 
-def get_cls_net_gridfeat(config, pretrained, **kwargs):
+def get_cls_net_gridfeat(config,  **kwargs):
     model = HighResolutionNet(config, **kwargs)
-    model.init_weights(pretrained=pretrained)
+    model.init_weights()
     return model

@@ -166,7 +166,7 @@ class Json_transform(Dataset):
         return image, joint_2d, joint_3d
 
 class CustomDataset_train_new(Dataset):
-    def __init__(self, degree, path, rotation = False, color = False, blur = False, erase = False, ratio = 0.2):
+    def __init__(self, degree, path, rotation = False, color = False, blur = False, erase = False, ratio = 0.2, ratio2 = 1):
         self.rotation =rotation
         self.color = color
         self.degree = degree
@@ -174,11 +174,12 @@ class CustomDataset_train_new(Dataset):
         self.ratio = ratio
         self.blur = blur
         self.erase = erase
+        self.ratio2 = ratio2
         with open(f"{path}/{degree}/annotations/train/CISLAB_train_data_update.json", "r") as st_json:
             self.meta = json.load(st_json)
 
     def __len__(self):
-        return len(self.meta['images'])
+        return int(len(self.meta['images']) * self.ratio2)
     
 
     def __getitem__(self, idx):
@@ -418,7 +419,7 @@ class Our_testset(Dataset):
                         joint[f"{int(j['label'])}"] = j['coordinates']
 
             if len(joint) < 21:
-                assert f"This {idx}.json is not correct"
+                assert f"This {idx}.json in {self.image_path} is not correct"
 
             for h in range(0, 21):
                 joint_2d.append([joint[f'{h}']['x'], joint[f'{h}']['y'], joint[f'{h}']['z']])
