@@ -1,114 +1,126 @@
-
+import argparse
+import gc
+import json
 import os
-import random
-from re import L
-import torchvision
+import time
+import os.path as op
 import cv2
-import random
-import math
-from PIL import Image
-from cv2 import illuminationChange
-from d2l import torch as d2l
 import numpy as np
-aa = '/home/jeongho/tmp/Wearable_Pose_Model/datasets/org/0/images/train/Capture0/0'
-bb = os.listdir(aa)
+from matplotlib import pyplot as plt
+from torch.utils.data import ConcatDataset, Dataset
+import torch
+import torchvision.models as models
+from torch.utils import data
+from argparser import load_model, parse_args
+import sys
+os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"  # Arrange GPU devices starting from 0
+os.environ["CUDA_VISIBLE_DEVICES"]= "0"  #
+sys.path.append("/home/jeongho/tmp/Wearable_Pose_Model")
+# sys.path.append("C:\\Users\\jeongho\\PycharmProjects\\PoseEstimation\\HandPose\\MeshGraphormer-main")
+from dataset import *
 
-def apply(img, aug, num_rows=2, num_cols=4, scale=1.5):
-    Y = [aug(img) for _ in range(num_rows * num_cols)]
-    return Y
+from loss import *
+from src.datasets.build import make_hand_data_loader
+from src.modeling.bert import BertConfig, Graphormer
+from src.modeling.bert import Graphormer_Hand_Network as Graphormer_Network
+from src.modeling.hrnet.hrnet_cls_net_gridfeat import get_cls_net_gridfeat
+from src.modeling.hrnet.config import config as hrnet_config
+from src.modeling.hrnet.config import update_config as hrnet_update_config
+from src.utils.comm import get_rank
+from src.utils.geometric_layers import *
+from src.utils.logger import setup_logger
+from src.utils.metric_logger import AverageMeter
+from src.utils.miscellaneous import mkdir
+from visualize import *
+        
+def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss, T, dataset_name):
+    pck_losses = AverageMeter()
+    globals()['epe_p_21_losses'] = AverageMeter()
+    for i in range(21): 
+        globals()[f'epe_p_{i}_losses'] = AverageMeter()
+    bbox_list = []
+    with torch.no_grad():
+        for iteration, (images, gt_2d_joints) in enumerate(test_dataloader):
 
-def i_rotate(img, degree, move_x, move_y):
-    h, w = img.shape[:-1]
+            Graphormer_model.eval()
+            batch_size = images.size(0)
+            images = images.cuda()
+            gt_2d_joints = gt_2d_joints
+            gt_2d_joint = gt_2d_joints.clone().detach()
+            gt_2d_joint = gt_2d_joint.cuda()
 
-    crossLine = int(((w * h + h * w) ** 0.5))
-    centerRotatePT = int(w / 2), int(h / 2)
-    new_h, new_w = h, w
-    translation = np.float32([[1,0,move_x], [0,1,move_y]])
-    rotatefigure = cv2.getRotationMatrix2D(centerRotatePT, degree, 1)
-    result = cv2.warpAffine(img, rotatefigure, (new_w, new_h))
-    result = cv2.warpAffine(result, translation, (new_w, new_h))
-    
-    return result
+            pred_2d_joints = Graphormer_model(images)
+            # pred_2d_joints = pred_3d_joints[:, :, :-1]
 
-for idx, i in enumerate(bb):
-    image = cv2.imread(os.path.join(aa, i))
-    root = "../../datasets/background/bg"
-    path = os.listdir(root)
-    bg = cv2.imread(os.path.join(root, random.choice(path)))
-    bg = cv2.resize(bg, (224,224))
-    
+            pred_2d_joints[:,:,1] = pred_2d_joints[:,:,1] * images.size(2) ## You Have to check whether weight and height is correct dimenstion
+            pred_2d_joints[:,:,0] = pred_2d_joints[:,:,0] * images.size(3)
 
+            correct, visible_point, thresh = PCK_2d_loss_visible(pred_2d_joints, gt_2d_joint, images, T, threshold='proportion') ## now, wrsit joint is excluded so if you want, change 1 to 0 into ran
+            # correct, visible_point, thresh, bbox = PCK_2d_loss(pred_2d_joints, gt_2d_joint, images, T, threshold='proportion')
+            epe_loss, epe_per = EPE(pred_2d_joints, gt_2d_joint)
+            for i in range(1, 21): ## this excluded the wrist joint
+                if epe_per[f'{i}'][1] == 0:
+                    continue
+                globals()['epe_p_{}_losses'.format(i)].update_p(epe_per[f'{i}'][0] * epe_per[f'{i}'][1], epe_per[f'{i}'][1])
+            pck_losses.update_p(correct, visible_point)
+            globals()['epe_p_21_losses'].update_p(epe_loss[0], epe_loss[1])
+            # bbox_list.append(int(bbox[0]))
 
+            if T == 0.05:
+                fig = plt.figure()
+                visualize_gt(images, gt_2d_joint, fig, iteration)
+                visualize_prediction(images, pred_2d_joints, fig, 'evaluation', epoch, iteration, args, dataset_name)
+                plt.close()
 
-    image[image < 30] = 0 ## Remove the noise, not hand pixel
+    # plt.hist(bbox_list,  color = "lightblue", ec="red" )
+    # plt.savefig(f'{dataset_name}_distibution.jpg')
+    # for i in range(21):
+    #     print("{0}st epe error => {1:.2f}".format(i, globals()['epe_p_{}_losses'.format(i)].avg))
 
-
-    # # for idx1, i in enumerate(loc):
-    # #     for idx2, j in enumerate(i):
-    # #         if 20 < idx1 < 200 and 20 < idx2 <200 and j == True:
-    # #             if image[idx1, idx2+1][0] == 0 or image[idx1, idx2-1][0] ==0 or image[idx1+1, idx2][0] ==0  or image[idx1-1, idx2][0] ==0 or image[idx1-1, idx2-1][0] ==0 or image[idx1-1, idx2+1][0] ==0 or image[idx1+1, idx2-1][0] ==0 or image[idx1+1, idx2+1][0] ==0:
-    # #                 loc[idx1, idx2] = False
-    # #             if image[idx1, idx2+1][1] == 0 or image[idx1, idx2-1][1] ==0 or image[idx1+1, idx2][1] ==0  or image[idx1-1, idx2][1] ==0 or image[idx1-1, idx2-1][1] ==0 or image[idx1-1, idx2+1][1] ==0 or image[idx1+1, idx2-1][1] ==0 or image[idx1+1, idx2+1][1] ==0:
-    # #                 loc[idx1, idx2] = False
-    # #             if image[idx1, idx2+1][2] == 0 or image[idx1, idx2-1][2] ==0 or image[idx1+1, idx2][2] ==0  or image[idx1-1, idx2][2] ==0 or image[idx1-1, idx2-1][2] ==0 or image[idx1-1, idx2+1][2] ==0 or image[idx1+1, idx2-1][2] ==0 or image[idx1+1, idx2+1][2] ==0:
-    #                 # loc[idx1, idx2] = False
-
-
-
-
-    # src_hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    # mask = cv2.inRange(src_hsv, (0, 0, 0), (180, 100,0.1))
-
-
-    degree = random.uniform(-20, 20)
-    rad = math.radians(degree)
-    left_pixel, right_pixel = [79-112, -112], [174-112, -112]
-    left_rot = math.cos(rad) * left_pixel[1] - math.sin(rad) * left_pixel[0] + 112
-    right_rot = math.cos(rad) * right_pixel[1] - math.sin(rad) * right_pixel[0] + 112
-
-    if left_rot > 0:
-        move_y = left_rot
-
-    elif right_rot > 0:
-        move_y = right_rot
-
-    else:
-        move_y = 0
-    color_aug = torchvision.transforms.ColorJitter(
-    brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5)
-    move_x = random.uniform(-30, 30)
-    y = random.uniform(0, 40)
-    images  = i_rotate(image, degree, 0 , 0)
-    imagess = i_rotate(image, degree, 0 , move_y + y)
-    
-    loc = np.all(imagess != [0, 0, 0], axis=-1)
-    bg[loc] = [0, 0 ,0]
-    imagessss = imagess + bg
-    imag = apply(Image.fromarray(np.array(image)),color_aug,1,1)[0]
-    iim = apply(Image.fromarray(np.array(imagess)),color_aug,1,1)[0]
-    cv2.imwrite(f'ori/ori_{idx}.jpg', image)
-    cv2.imwrite(f'rot/rot_{idx}.jpg', imagess)
-    cv2.imwrite(f'color/color_{idx}.jpg', np.array(imag))
-    cv2.imwrite(f'all/all_{idx}.jpg', np.array(iim))
-    # cv2.imwrite(f'bg/bg_{idx}.jpg', imagessss)
-    if idx == 20:
-        break
+    # print( [round(globals()['epe_p_{}_losses'.format(i)].avg * 0.26, 2) for i in range(1, 22)])
+    del test_dataloader
+    gc.collect()
 
 
+    return pck_losses.avg, globals()['epe_p_21_losses'].avg, thresh
 
+def main(args, T):
+    args.name = "output/general/rot_color/checkpoint-good/state_dict.bin"
 
-    # cv2.imshow('ori_image',image)
-    # cv2.moveWindow('ori_image',426,350)
+    _model, logger, best_loss, epo, count = load_model(args)
+    state_dict = torch.load(args.name)
+    _model.load_state_dict(state_dict['model_state_dict'], strict=False)
+    _model.to(args.device)
+
     
 
-    # cv2.imshow('rot',images)
-    # cv2.moveWindow('rot',650,350)
+    
 
-    # cv2.imshow('rot_trans',imagess)
-    # cv2.moveWindow('rot_trans',874,350)
+    trans = transforms.Compose([transforms.Resize((224,224)),
+                                transforms.ToTensor(),
+                                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+                                
+    path = "../../datasets/0001_neutral_rigid"
+    image_path = os.listdir(path)
+    count = 0 
+    for a in image_path:
+        b = os.listdir(os.path.join(path, a))
+        for index, name in enumerate(b):
+            image = Image.open(os.path.join(path, os.path.join(a, name)))
+            trans_image = trans(image)
+            trans_image = trans_image[None,:,:,:].cuda()
+            pred_2d_joints = _model(trans_image)
+            pred_2d_joints[:,:,1] = pred_2d_joints[:,:,1] * 224 ## You Have to check whether weight and height is correct dimenstion
+            pred_2d_joints[:,:,0] = pred_2d_joints[:,:,0] * 224
+            fig = plt.figure()
+            visualize_prediction(trans_image, pred_2d_joints, fig, 'evaluation', 0, count, args, None)
+            count += 1
+            plt.close()
+        
 
-    # cv2.imshow('rot_trans_bg',imagessss)
-    # cv2.moveWindow('rot_trans_bg',1098,350)
 
-    # cv2.waitKey(0) 
-    # cv2.destroyAllWindows() 
+if __name__ == "__main__":
+    args = parse_args()
+    main(args, T=0.05)
+
+

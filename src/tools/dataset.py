@@ -17,6 +17,37 @@ from src.utils.comm import is_main_process
 from src.utils.miscellaneous import mkdir
 import torchvision
 
+class GenerateHeatmap():
+    def __init__(self, output_res, num_parts):
+        self.output_res = output_res
+        self.num_parts = num_parts
+        sigma = self.output_res/64
+        self.sigma = sigma
+        size = 6*sigma + 3
+        x = np.arange(0, size, 1, float)
+        y = x[:, np.newaxis]
+        x0, y0 = 3*sigma + 1, 3*sigma + 1
+        self.g = np.exp(- ((x - x0) ** 2 + (y - y0) ** 2) / (2 * sigma ** 2))
+
+    def __call__(self, p):
+        hms = np.zeros(shape = (self.num_parts, self.output_res, self.output_res), dtype = np.float32)
+        sigma = self.sigma
+        for idx, pt in enumerate(p):
+            if pt[0] > 0: 
+                x, y = int(pt[0]), int(pt[1])
+                if x<0 or y<0 or x>=self.output_res or y>=self.output_res:
+                    continue
+                ul = int(x - 3*sigma - 1), int(y - 3*sigma - 1)
+                br = int(x + 3*sigma + 2), int(y + 3*sigma + 2)
+
+                c,d = max(0, -ul[0]), min(br[0], self.output_res) - ul[0]
+                a,b = max(0, -ul[1]), min(br[1], self.output_res) - ul[1]
+
+                cc,dd = max(0, ul[0]), min(br[0], self.output_res)
+                aa,bb = max(0, ul[1]), min(br[1], self.output_res)
+                hms[idx, aa:bb,cc:dd] = np.maximum(hms[idx, aa:bb,cc:dd], self.g[a:b,c:d])
+        return hms
+
 def apply(img, aug, num=1, scale=1.5):
     Y = [aug(img) for _ in range(num)]
     return Y
@@ -165,21 +196,22 @@ class Json_transform(Dataset):
 
         return image, joint_2d, joint_3d
 
-class CustomDataset_train_new(Dataset):
-    def __init__(self, degree, path, rotation = False, color = False, blur = False, erase = False, ratio = 0.2, ratio2 = 1):
+class CustomDataset(Dataset):
+    def __init__(self, args, degree, path, rotation = False, color = False, blur = False, erase = False, ratio_of_aug = 0.2, ratio_of_dataset = 1):
+        self.args = args
         self.rotation =rotation
         self.color = color
         self.degree = degree
         self.path = path
-        self.ratio = ratio
+        self.ratio_of_aug = ratio_of_aug
         self.blur = blur
         self.erase = erase
-        self.ratio2 = ratio2
+        self.ratio_of_dataset = ratio_of_dataset
         with open(f"{path}/{degree}/annotations/train/CISLAB_train_data_update.json", "r") as st_json:
             self.meta = json.load(st_json)
 
     def __len__(self):
-        return int(len(self.meta['images']) * self.ratio2)
+        return int(len(self.meta['images']) * self.ratio_of_dataset)
     
 
     def __getitem__(self, idx):
@@ -190,7 +222,7 @@ class CustomDataset_train_new(Dataset):
         image = cv2.imread(f'{self.path}/{self.degree}/images/train/{name}') ## PIL image
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-        if idx < len(self.meta['images']) * self.ratio: 
+        if idx < len(self.meta['images']) * self.ratio_of_aug: 
 
             if self.rotation:
                 image  = i_rotate(image, degrees, 0, move)
@@ -204,8 +236,11 @@ class CustomDataset_train_new(Dataset):
             image = Image.fromarray(image)
             joint_2d = torch.tensor(self.meta['images'][idx]['joint_2d'])
 
+        if not self.args.model == "ours": image_size = 256
+        else: image_size = 224
+        
         trans_option = {
-                        'resize':transforms.Resize((224, 224)),
+                        'resize':transforms.Resize((image_size, image_size)),
                         'to_tensor':transforms.ToTensor(),
                         'color':transforms.ColorJitter(brightness= 0.5, contrast= 0.5, saturation= 0.5, hue= 0.5),
                         'blur':transforms.GaussianBlur(kernel_size= (5, 5), sigma=(0.1, 1)),
@@ -221,9 +256,11 @@ class CustomDataset_train_new(Dataset):
         image = trans(image)
 
         joint_3d = torch.tensor(self.meta['images'][idx]['joint_3d'])
+        if self.args.model == "hrnet": heatmap = GenerateHeatmap(128, 21)(joint_2d/4)
+        else: heatmap = GenerateHeatmap(64, 21)(joint_2d/4)
+            
 
-
-        return image, joint_2d, joint_3d
+        return image, joint_2d, joint_3d, heatmap
 
 
 class AverageMeter(object):
@@ -419,7 +456,7 @@ class Our_testset(Dataset):
                         joint[f"{int(j['label'])}"] = j['coordinates']
 
             if len(joint) < 21:
-                assert f"This {idx}.json in {self.image_path} is not correct"
+                assert f"This {idx}.json is not correct"
 
             for h in range(0, 21):
                 joint_2d.append([joint[f'{h}']['x'], joint[f'{h}']['y'], joint[f'{h}']['z']])
@@ -434,3 +471,47 @@ class Our_testset(Dataset):
         joint_2d[:, 1] = joint_2d[:, 1] * scale_y
 
         return trans_image, joint_2d
+    
+class Our_testset_media(Dataset):
+    def __init__(self, path, folder_name):
+       
+        self.image_path = f'{path}/{folder_name}/rgb'
+        self.anno_path = f'{path}/{folder_name}/annotations'
+        self.list = os.listdir(self.image_path)
+
+    def __len__(self):
+        return len(os.listdir(self.image_path))
+
+    def __getitem__(self, idx):
+        image = cv2.imread(os.path.join(self.image_path, self.list[idx]))
+        with open(os.path.join(self.anno_path, self.list[idx])[:-3]+"json", "r") as st_json:
+            json_data = json.load(st_json)
+            joint_total = json_data['annotations']
+            joint = {}
+            joint_2d = []
+
+            for j in joint_total:
+                if j['label'] != 'Pose':
+                    if len(j['metadata']['system']['attributes']) > 0:
+                        # Change 'z' to 'indicator function'
+                        # Ex. 0 means visible joint, 1 means invisible joint
+                        j['coordinates']['z'] = 0
+                        joint[f"{int(j['label'])}"] = j['coordinates']
+                    else:
+                        j['coordinates']['z'] = 1
+                        joint[f"{int(j['label'])}"] = j['coordinates']
+
+            if len(joint) < 21:
+                assert f"This {idx}.json is not correct"
+
+            for h in range(0, 21):
+                joint_2d.append([joint[f'{h}']['x'], joint[f'{h}']['y'], joint[f'{h}']['z']])
+
+
+        joint_2d = torch.tensor(joint_2d)
+        joint_2d[:,0] = joint_2d[:,0]
+        joint_2d[:, 1] = joint_2d[:, 1]
+
+        return image, joint_2d
+    
+    
