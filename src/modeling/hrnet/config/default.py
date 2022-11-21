@@ -152,7 +152,6 @@ _C.DEBUG.SAVE_HEATMAPS_GT = True
 _C.DEBUG.SAVE_HEATMAPS_PRED = True
 _C.DEBUG.SAVE_TAGMAPS_PRED = True
 
-
 def update_config(cfg, args):
     cfg.defrost()
     args.cfg = '../modeling/hrnet/config/w32_512_adam_lr1e-3.yaml' ## change it for me

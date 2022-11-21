@@ -4,18 +4,15 @@ import os
 import os.path as op
 import random
 import cv2
-from matplotlib import pyplot as plt
 import numpy as np
 from torch.utils.data import Dataset
 from PIL import Image
 from torchvision import transforms
 import torch
-from d2l import torch as d2l
 import sys
 sys.path.append("/home/jeongho/tmp/Wearable_Pose_Model")
 from src.utils.comm import is_main_process
 from src.utils.miscellaneous import mkdir
-import torchvision
 
 class GenerateHeatmap():
     def __init__(self, output_res, num_parts):
@@ -425,19 +422,23 @@ class HIU_Dataset_align(Dataset):
 
 
 class Our_testset(Dataset):
-    def __init__(self, path, folder_name):
+    def __init__(self, path, folder_name, model):
        
         self.image_path = f'{path}/{folder_name}/rgb'
         self.anno_path = f'{path}/{folder_name}/annotations'
         self.list = os.listdir(self.image_path)
+        self.model = model
 
     def __len__(self):
         return len(os.listdir(self.image_path))
 
     def __getitem__(self, idx):
+        if not self.model == "ours": size = 256
+        else: size = 224
         image = Image.open(os.path.join(self.image_path, self.list[idx]))
-        scale_x = 224 / image.width
-        scale_y = 224 / image.height
+        scale_x = size / image.width
+        scale_y = size / image.height
+        
         with open(os.path.join(self.anno_path, self.list[idx])[:-3]+"json", "r") as st_json:
             json_data = json.load(st_json)
             joint_total = json_data['annotations']
@@ -461,7 +462,7 @@ class Our_testset(Dataset):
             for h in range(0, 21):
                 joint_2d.append([joint[f'{h}']['x'], joint[f'{h}']['y'], joint[f'{h}']['z']])
 
-        trans = transforms.Compose([transforms.Resize((224, 224)),
+        trans = transforms.Compose([transforms.Resize((size, size)),
                                     transforms.ToTensor(),
                                     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
                                     

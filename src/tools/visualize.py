@@ -3,16 +3,9 @@ import os
 import shutil
 import cv2
 import numpy as np
-import torch
 from matplotlib import pyplot as plt
-import json
 from src.utils.miscellaneous import mkdir
-from PIL import Image
 from torchvision.transforms import transforms
-
-trans = transforms.Compose([transforms.Resize((224, 224)),
-                            transforms.ToTensor(),
-                            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
 def visualize_prediction(images, pred_2d_joint, fig, method = None, epoch = 0, iteration = 0,args =None, dataset_name = 'p'):
     num = iteration % images.size(0)
@@ -133,11 +126,11 @@ def visualize_prediction_media(images, pred_2d_joint, fig, epoch,iteration,args 
     if epoch == 'evaluation':
         if os.path.isdir("eval_image") == False:
             mkdir("eval_image")
-        if os.path.isdir(f'eval_image/{args.name[7:-31]}') == False:
-            mkdir(f'eval_image/{args.name[7:-31]}')
-        if os.path.isdir(f'eval_image/{args.name[7:-31]}/{dataset_name}') == False:
-            mkdir(f'eval_image/{args.name[7:-31]}/{dataset_name}')
-        plt.savefig(f"eval_image/{args.name[7:-31]}/{dataset_name}/{iteration}.jpg")
+        if os.path.isdir(f'eval_image/{args.name[6:-31]}') == False:
+            mkdir(f'eval_image/{args.name[6:-31]}')
+        if os.path.isdir(f'eval_image/{args.name[6:-31]}/{dataset_name}') == False:
+            mkdir(f'eval_image/{args.name[6:-31]}/{dataset_name}')
+        plt.savefig(f"eval_image/{args.name[6:-31]}/{dataset_name}/{iteration}.jpg")
 
     elif epoch == 'mediapipe':
         if os.path.isdir("eval_image") == False:

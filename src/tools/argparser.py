@@ -7,8 +7,9 @@ from src.modeling.hrnet.config.default import _C as cfg
 from src.modeling.bert import BertConfig, Graphormer
 from src.modeling.bert import Graphormer_Hand_Network as Graphormer_Network
 from src.modeling.hrnet.hrnet_cls_net_gridfeat import get_pose_net as get_cls_net_gridfeat
-from src.modeling.hrnet.config import config as hrnet_config
-from src.modeling.hrnet.config import update_config as hrnet_update_config
+from src.modeling.our_hrnet import config as hrnet_config
+from src.modeling.our_hrnet.hrnet_cls_net_gridfeat import get_cls_net_gridfeat as get_cls_net_gridfeat_our
+from src.modeling.our_hrnet import update_config_our as hrnet_update_config
 from src.tools.dataset import save_checkpoint
 from src.utils.comm import get_rank
 from src.utils.logger import setup_logger
@@ -19,21 +20,15 @@ import torch
 from src.datasets.build import make_hand_data_loader
 import os
 import gc
-import datetime
-import json
-import os
 from src.datasets.build import make_hand_data_loader
 import time
-import os.path as op
 import numpy as np
 from matplotlib import pyplot as plt
-from torch.utils.data import ConcatDataset
 import torch
 from loss import *
 from src.utils.geometric_layers import *
 from src.utils.metric_logger import AverageMeter
 from visualize import *
-import sys
 from time import ctime
 from src.modeling.hourglass.posenet import PoseNet
 
@@ -225,13 +220,13 @@ def load_model(args):
             hrnet_yaml = '../../models/hrnet/cls_hrnet_w40_sgd_lr5e-2_wd1e-4_bs32_x100.yaml'
             hrnet_checkpoint = '../../models/hrnet/hrnetv2_w40_imagenet_pretrained.pth'
             hrnet_update_config(hrnet_config, hrnet_yaml)
-            backbone = get_cls_net_gridfeat(hrnet_config, pretrained=hrnet_checkpoint)
+            backbone = get_cls_net_gridfeat_our(hrnet_config, pretrained=hrnet_checkpoint)
             # logger.info('=> loading hrnet-v2-w40 model')
         elif args.arch == 'hrnet-w64':
             hrnet_yaml = '../../models/hrnet/cls_hrnet_w64_sgd_lr5e-2_wd1e-4_bs32_x100.yaml'
             hrnet_checkpoint = '../../models/hrnet/hrnetv2_w64_imagenet_pretrained.pth'
             hrnet_update_config(hrnet_config, hrnet_yaml)
-            backbone = get_cls_net_gridfeat(hrnet_config, pretrained=hrnet_checkpoint)
+            backbone = get_cls_net_gridfeat_our(hrnet_config, pretrained=hrnet_checkpoint)
             # logger.info('=> loading hrnet-v2-w64 model')
         else:
             print("=> using pre-trained model '{}'".format(args.arch))
