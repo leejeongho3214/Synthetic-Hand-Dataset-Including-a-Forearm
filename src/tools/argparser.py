@@ -10,14 +10,12 @@ from src.modeling.hrnet.hrnet_cls_net_gridfeat import get_pose_net as get_cls_ne
 from src.modeling.our_hrnet import config as hrnet_config
 from src.modeling.our_hrnet.hrnet_cls_net_gridfeat import get_cls_net_gridfeat as get_cls_net_gridfeat_our
 from src.modeling.our_hrnet import update_config_our as hrnet_update_config
-from src.tools.dataset import save_checkpoint
 from src.utils.comm import get_rank
 from src.utils.logger import setup_logger
 from src.utils.miscellaneous import mkdir
 from src.modeling.simplebaseline.config import config as config_simple
 from src.modeling.simplebaseline.pose_resnet import get_pose_net
 import torch
-from src.datasets.build import make_hand_data_loader
 import os
 import gc
 from src.datasets.build import make_hand_data_loader
@@ -32,8 +30,6 @@ from visualize import *
 from time import ctime
 from src.modeling.hourglass.posenet import PoseNet
 
-
-
 def parse_args():
     parser = argparse.ArgumentParser()
     ######################################################################################
@@ -47,6 +43,8 @@ def parse_args():
                         help="The output directory to save checkpoint and test results.")
     parser.add_argument("--model", default='ours', type=str, required=False,
                         help="you can choose model like hrnet, simplebaseline, hourglass, ours")
+    parser.add_argument("--dataset", default='ours', type=str, required=False,
+                        help="you can choose dataset like ours, coco, interhand, rhd")
     parser.add_argument("--batch_size", default=32, type=int)
     parser.add_argument("--num_train_epochs", default=50, type=int,
                         help="Total number of training epochs to perform.")
@@ -119,6 +117,7 @@ def parse_args():
                         help="cuda or cpu")
     parser.add_argument('--seed', type=int, default=88,
                         help="random seed for initialization.")
+    
     args = parser.parse_args()
     return args
 
@@ -263,14 +262,13 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
     log_losses = AverageMeter()
 
     if args.model == "ours":
-        for iteration, (images, gt_2d_joints, gt_3d_joints, _) in enumerate(train_dataloader):
-
+        for iteration, (images, gt_2d_joints, _) in enumerate(train_dataloader):
             batch_size = images.size(0)
             adjust_learning_rate(optimizer, epoch, args)
-            gt_2d_joints = gt_2d_joints/224  ## 2d joint value rearrange from 0 to 1
+            gt_2d_joints[:,:,1] = gt_2d_joints[:,:,1] / images.size(2) ## You Have to check whether weight and height is correct dimenstion
+            gt_2d_joints[:,:,0] = gt_2d_joints[:,:,0] / images.size(3)  ## 2d joint value rearrange from 0 to 1
             gt_2d_joint = gt_2d_joints.clone().detach()
             gt_2d_joint = gt_2d_joint.cuda()
-            gt_3d_joints = gt_3d_joints.cuda()
             images = images.cuda()
             pred_2d_joints= Graphormer_model(images)
 
@@ -283,8 +281,8 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
 
             pred_2d_joints[:,:,1] = pred_2d_joints[:,:,1] * images.size(2) ## You Have to check whether weight and height is correct dimenstion
             pred_2d_joints[:,:,0] = pred_2d_joints[:,:,0] * images.size(3)
-            
-            gt_2d_joint = gt_2d_joint * 224
+            gt_2d_joint[:,:,1] = gt_2d_joint[:,:,1] * images.size(2) ## You Have to check whether weight and height is correct dimenstion
+            gt_2d_joint[:,:,0] = gt_2d_joint[:,:,0] * images.size(3) 
             
             if iteration == 0 or iteration == int(len(train_dataloader)/2) or iteration == len(train_dataloader) - 1:
                 fig = plt.figure()
@@ -326,7 +324,7 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
     else:
         heatmap_size, multiply = 64, 4
         if args.model == "hrnet": heatmap_size, multiply = 128, 2
-        for iteration, (images, gt_2d_joints, gt_3d_joints, gt_heatmaps) in enumerate(train_dataloader):
+        for iteration, (images, gt_2d_joints, gt_heatmaps) in enumerate(train_dataloader):
             batch_time = AverageMeter()
             batch_size = images.size(0)
             adjust_learning_rate(optimizer, epoch, args)
@@ -408,7 +406,7 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
 
     if args.model == "ours":
         with torch.no_grad():
-            for iteration, (images, gt_2d_joints, _, _) in enumerate(test_dataloader):
+            for iteration, (images, gt_2d_joints, _) in enumerate(test_dataloader):
                 Graphormer_model.eval()
                 batch_size = images.size(0)
                 
@@ -422,7 +420,7 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
                 pred_2d_joints[:,:,1] = pred_2d_joints[:,:,1] * images.size(2) ## You Have to check whether weight and height is correct dimenstion
                 pred_2d_joints[:,:,0] = pred_2d_joints[:,:,0] * images.size(3)
 
-                correct, visible_point, threshold = PCK_2d_loss(pred_2d_joints, gt_2d_joint, images, T= 0.05, threshold='proportion')
+                correct, visible_point, threshold = PCK_2d_loss(pred_2d_joints, gt_2d_joint, T= 0.05, threshold='proportion')
                 # epe_loss, epe_per = EPE(pred_2d_joints, gt_2d_joint)      ## don't consider inivisible joint
                 epe_loss, epe_per = EPE_train(pred_2d_joints, gt_2d_joint)  ## consider invisible joint
                 loss_2d_joints = keypoint_2d_loss(criterion_2d_keypoints, pred_2d_joints/224, gt_2d_joint/224)
@@ -502,7 +500,7 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
             pred_joint = torch.tensor(pred_joint)
             pred_2d_joints = pred_joint * multiply ## heatmap resolution was 64 x 64 so multiply 4 to make it 256 x 256
             
-            correct, visible_point, threshold = PCK_2d_loss(pred_2d_joints, gt_2d_joint, images, T= 0.05, threshold='proportion')
+            correct, visible_point, threshold = PCK_2d_loss(pred_2d_joints, gt_2d_joint, T= 0.05, threshold='proportion')
             epe_loss, epe_per = EPE_train(pred_2d_joints, gt_2d_joint)  ## consider invisible joint
             pck_losses.update_p(correct, visible_point)
             epe_losses.update_p(epe_loss[0], epe_loss[1])

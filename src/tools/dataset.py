@@ -4,15 +4,98 @@ import os
 import os.path as op
 import random
 import cv2
+from matplotlib import pyplot as plt
 import numpy as np
 from torch.utils.data import Dataset
-from PIL import Image
+from PIL import Image, ImageFile
 from torchvision import transforms
+from torch.utils.data import random_split, ConcatDataset
 import torch
 import sys
+from pycocotools.coco import COCO
 sys.path.append("/home/jeongho/tmp/Wearable_Pose_Model")
+from src.utils.config import cfg
+from src.utils.preprocessing import load_skeleton,process_bbox
+from src.utils.transforms import world2cam, cam2pixel
+from src.datasets.build import make_hand_data_loader
 from src.utils.comm import is_main_process
 from src.utils.miscellaneous import mkdir
+
+def build_dataset(args):
+    
+    if args.dataset == "interhand":
+
+        dataset = Dataset_interhand(transforms.ToTensor(), "train", args)
+        trainset_dataset, testset_dataset = random_split(dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
+
+        return trainset_dataset, testset_dataset
+    
+    if args.dataset == "hiu":
+        
+        dataset = HIU_Dataset(args)
+        trainset_dataset, testset_dataset = random_split(dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
+        
+        return trainset_dataset, testset_dataset
+    
+    if args.dataset == "panoptic":
+        
+        dataset = Panoptic(args)
+        trainset_dataset, testset_dataset = random_split(dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
+        
+        return trainset_dataset, testset_dataset
+    
+    if args.dataset == "coco":
+        
+        dataset = Coco(args)
+        trainset_dataset, testset_dataset = random_split(dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
+        
+        return trainset_dataset, testset_dataset
+    
+    
+    else:
+        path = "../../datasets/1102"            ## wrist-view image path (about 37K)
+        general_path = "../../datasets/1108"    ## general-view image path (about 80K)
+        folder_num = os.listdir(path)
+
+        for iter, degree in enumerate(folder_num):
+            
+            dataset = CustomDataset(args, degree, path, rotation = args.rot, color = args.color, blur = args.blur, erase = args.erase, ratio_of_aug = args.ratio_of_aug, ratio_of_dataset = 1)
+        
+            if iter == 0:
+                train_dataset, test_dataset = random_split(dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
+
+            else:
+                train_dataset_other, test_dataset_other = random_split(dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
+                train_dataset  = ConcatDataset([train_dataset, train_dataset_other])        
+                test_dataset = ConcatDataset([test_dataset, test_dataset_other])    
+                
+        if args.frei:
+            _, _ , train_dataset_frei, test_dataset_frei = make_hand_data_loader(args, args.train_yaml,
+                                                                                args.distributed, is_train=True,
+                                                                                scale_factor=args.img_scale_factor) ## RGB image
+            train_dataset = ConcatDataset([train_dataset_frei, train_dataset])
+            test_dataset = ConcatDataset([test_dataset_frei, test_dataset])
+            
+        if args.general:
+
+            folder_num = os.listdir(general_path)
+            for iter, degree in enumerate(folder_num):
+                
+                dataset = CustomDataset(args, general_path, rotation = args.rot, color = args.color, blur = args.blur, erase = args.erase, ratio_of_aug = args.ratio_of_aug, ratio_of_dataset = 0.137)
+            
+                if iter == 0:
+                    train_dataset_general, test_dataset_general = random_split(dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
+
+                else:
+                    train_dataset_other, test_dataset_other= random_split(dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
+                    train_dataset_general  = ConcatDataset([train_dataset_general, train_dataset_other])        
+                    test_dataset_general = ConcatDataset([test_dataset_general, test_dataset_other])    
+                    
+            train_dataset = ConcatDataset([train_dataset_general, train_dataset])
+            test_dataset = ConcatDataset([test_dataset_general, test_dataset])
+            
+    return train_dataset, test_dataset
+        
 
 class GenerateHeatmap():
     def __init__(self, output_res, num_parts):
@@ -252,12 +335,11 @@ class CustomDataset(Dataset):
         trans = transforms.Compose([trans_option[i] for i in trans_option])                      
         image = trans(image)
 
-        joint_3d = torch.tensor(self.meta['images'][idx]['joint_3d'])
-        if self.args.model == "hrnet": heatmap = GenerateHeatmap(128, 21)(joint_2d/4)
+        # joint_3d = torch.tensor(self.meta['images'][idx]['joint_3d'])
+        if self.args.model == "hrnet": heatmap = GenerateHeatmap(128, 21)(joint_2d/2)
         else: heatmap = GenerateHeatmap(64, 21)(joint_2d/4)
             
-
-        return image, joint_2d, joint_3d, heatmap
+        return image, joint_2d, heatmap
 
 
 class AverageMeter(object):
@@ -302,123 +384,51 @@ def save_checkpoint(model, args, epoch,optimizer, best_loss,count, ment, num_tri
         logger.info("Failed to save checkpoint after {} trails.".format(num_trial))
     return model_to_save, checkpoint_dir
 
+
 class HIU_Dataset(Dataset):
-    def __init__(self):
+    def __init__(self,args):
         image_list = []
-        for (root, directories, files) in os.walk("../../datasets/HIU_DMTL"):
+        for (root, _, files) in os.walk("../../datasets/HIU_DMTL_Full"):
             for file in files:
-                if not '.json' in file:
-                    if not '.DS_Store' in file:
-                        file_path = os.path.join(root, file)
-                        anno_name = file_path[:-4] + '.json'
+                if not file.endswith('.json') and not file.endswith('_mask.png') and not file.endswith('_mask.jpg'):
+                    file_path = os.path.join(root, file)
+                    anno_name = file_path[:-4] + '.json'
+                    if os.path.isfile(os.path.join(root, anno_name)):
                         image_list.append((file_path, anno_name))
         self.image = image_list
-
-    def __len__(self):
-        return len(self.image)
-
-    def __getitem__(self, idx):
-        image = Image.open(self.image[idx][0])
-        scale_x = 224 / image.width
-        scale_y = 224 / image.height
-        with open(self.image[idx][1], "r") as st_json:
-            annotation = json.load(st_json)
-        if annotation['hand_type'][0] == 0:
-            joint = annotation['pts2d_2hand'][21:]
-        else:
-            joint = annotation['pts2d_2hand'][:21]
-        trans = transforms.Compose([transforms.Resize((224, 224)),
-                                    transforms.ToTensor(),
-                                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
-
-        trans_image = trans(image)
-        joint_2d = torch.tensor(joint)
-        joint_2d[:, 0] = joint_2d[:, 0] * scale_x
-        joint_2d[:, 1] = joint_2d[:, 1] * scale_y
-
-        return trans_image, joint_2d, joint_2d
-
-
-
-class HIU_Dataset_align(Dataset):
-    def __init__(self):
-        image_list = []
-        for (root, directories, files) in os.walk("../../datasets/HIU_DMTL"):
-            for file in files:
-                if not '.json' in file:
-                    if not '.DS_Store' in file:
-                        file_path = os.path.join(root, file)
-                        anno_name = file_path[:-4] + '.json'
-                        image_list.append((file_path, anno_name))
-        self.image = image_list
-
-    def __len__(self):
-        return len(self.image)
-
-    def __getitem__(self, idx):
-        def im_rotate(img, degree):
-            h, w = img.shape[:-1]
-
-            crossLine = int(((w * h + h * w) ** 0.5))
-            centerRotatePT = 112, 112
-            new_h, new_w = 224, 224
-
-            rotatefigure = cv2.getRotationMatrix2D(centerRotatePT, degree, 1)
-            result = cv2.warpAffine(img, rotatefigure, (new_w, new_h))
-            
-            return result , rotatefigure
-
-
-        from PIL import Image
-        image = Image.open(self.image[idx][0])
-        scale_x = 224 / image.width
-        scale_y = 224 / image.height
-        with open(self.image[idx][1], "r") as st_json:
-            annotation = json.load(st_json)
-        if annotation['hand_type'][0] == 0:
-            joint = annotation['pts2d_2hand'][21:]
-        else:
-            joint = annotation['pts2d_2hand'][:21]
-        from torchvision.transforms import transforms
-        trans = transforms.Compose([transforms.Resize((224, 224)),
-                                    transforms.ToTensor(),
-                                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
-
-        trans_image = trans(image)
-        joint_2d = torch.tensor(joint)
-        joint_2d[:, 0] = joint_2d[:, 0] * scale_x
-        joint_2d[:, 1] = joint_2d[:, 1] * scale_y
+        self.args = args
         
-        import math
-        def cal_rad(arr):
-            rad = math.atan2(arr[3]-arr[1],arr[2]-arr[0])
+    def __len__(self):
+        return len(self.image)
 
-            return rad
+    def __getitem__(self, idx):
+        
+        if self.args.model == "ours": size = 224
+        else: size = 256
+        image = Image.open(self.image[idx][0])
+        scale_x = size / image.width
+        scale_y = size / image.height
+        
+        with open(self.image[idx][1], "r") as st_json:
+            annotation = json.load(st_json)
+            
+        if annotation['hand_type'][0] == 0:
+            joint = annotation['pts2d_2hand'][21:]
+        else:
+            joint = annotation['pts2d_2hand'][:21]
+        trans = transforms.Compose([transforms.Resize((size, size)),
+                                    transforms.ToTensor(),
+                                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
+        trans_image = trans(image)
+        joint_2d = torch.tensor(joint)
+        joint_2d[:, 0] = joint_2d[:, 0] * scale_x
+        joint_2d[:, 1] = joint_2d[:, 1] * scale_y
 
-        point = [0,0, joint_2d[0,0]-112, joint_2d[0,1]-112]
-        rad = cal_rad(point)
-        import cv2
-        degree = math.degrees(rad) + 270 
-
-        iimage = cv2.imread(self.image[idx][0])
-        iimage = cv2.resize(iimage, (224,224))
-        result, matrix = im_rotate(iimage, degree)
-
-        x = joint_2d[:,0] - 112
-        y = joint_2d[:,1] - 112
-        rad = math.radians(degree)
-        joint_2d[:,0] =  math.cos(rad) * x + math.sin(rad) * y + 112
-        joint_2d[:,1] = math.cos(rad) * y - math.sin(rad) * x + 112
-
-        # visualize(result, joint_2d)
-        pil_img = Image.fromarray(result)
-        trans_image = trans(pil_img)
-        joint_2d = torch.tensor(joint_2d).detach().clone()
-        z = torch.zeros(21,1)
-        joint_3d = torch.concat([joint_2d, z], 1)
-
-        return trans_image, joint_2d, joint_2d
+        if self.args.model == "hrnet" or self.args.model == "ours": heatmap = GenerateHeatmap(128, 21)(joint_2d / 2)
+        else: heatmap = GenerateHeatmap(64, 21)(joint_2d / 4)
+        
+        return trans_image, joint_2d, heatmap
 
 
 class Our_testset(Dataset):
@@ -507,12 +517,246 @@ class Our_testset_media(Dataset):
 
             for h in range(0, 21):
                 joint_2d.append([joint[f'{h}']['x'], joint[f'{h}']['y'], joint[f'{h}']['z']])
-
-
         joint_2d = torch.tensor(joint_2d)
-        joint_2d[:,0] = joint_2d[:,0]
-        joint_2d[:, 1] = joint_2d[:, 1]
+
 
         return image, joint_2d
+    
+class Coco(Dataset):
+    def __init__(self, args):
+        self.args = args
+        self.img_path = "../../datasets/coco/train2017"
+        self.datalist = {'img':[], 'kpt': [], 'bbox': []}
+        db = COCO("../../datasets/coco/annotations/coco_wholebody_train_v1.0.json")
+        for aid in db.anns.keys():
+            ann = db.anns[aid]
+            if ann["righthand_valid"]:
+                bbox = ann['righthand_box']
+                kpt = ann["righthand_kpts"]
+                aid = str(ann['image_id'])
+                aid = aid.zfill(12)
+                img = Image.open(os.path.join(self.img_path, f'{aid}.jpg'))
+                if np.array(img).ndim == 3:
+                    self.datalist['img'].append(img); self.datalist['kpt'].append(kpt); self.datalist['bbox'].append(bbox)
+                
+        
+    def __len__(self):
+        return len(self.datalist['img'])
+        
+    def __getitem__(self, idx):
+        ori_img = self.datalist['img'][idx]
+        
+        img = np.array(ori_img)
+        joint = np.array(self.datalist['kpt'][idx]).reshape(21, 3)[:, :-1]
+        bbox = list(map(int, self.datalist['bbox'][idx]))
+    
+        if bbox[1] < 0: bbox[1] = 0
+        if bbox[0] < 0: bbox[0] = 0
+        img = img[bbox[1]: bbox[1] + bbox[3] , bbox[0]: bbox[0]+ bbox[2]]
+        joint[:, 0] = joint[:, 0] - bbox[0]; joint[:, 1] = joint[:, 1] - bbox[1]
+        
+        if self.args.model == "ours": size = 224
+        else: size = 256
+        
+        trans = transforms.Compose([transforms.Resize((size, size)),
+                            transforms.ToTensor(),
+                            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+    
+        joint[:, 0] = joint[:, 0] * (size / bbox[2]); joint[:, 1] = joint[:,1] * (size /  bbox[3])
+        joint = torch.tensor(joint)
+        
+        if self.args.model == "hrnet" or self.args.model == "ours": heatmap = GenerateHeatmap(128, 21)(joint/2)
+        else: heatmap = GenerateHeatmap(64, 21)(joint/4)
+
+        img = Image.fromarray(img)
+        img = trans(img)
+
+        return img, joint.float(), heatmap
+    
+    
+class Panoptic(Dataset):
+    def __init__(self, args):
+        self.args = args
+        self.img_path = "../../datasets/panoptic/hand143_panopticdb"
+        with open("../../datasets/panoptic/hand143_panopticdb/hands_v143_14817.json", "r") as st_json:
+            self.anno = json.load(st_json)
+        
+    def __len__(self):
+        return len(self.anno['root'])
+        
+    def __getitem__(self, idx):
+        ori_img = Image.open(os.path.join(self.img_path, self.anno['root'][idx]['img_paths']))
+        joint = np.array(self.anno['root'][idx]['joint_self'])
+        img = np.array(ori_img)
+        hand_center_point = [int(min(joint[:,0])) + round((max(joint[:,0]) - min(joint[:,0]))/2), int(min(joint[:,1])) + round((max(joint[:,1]) -min(joint[:,1]))/2)]
+        
+        """ 
+            ori_img: 1080 x 1920 size
+            so crop the area of hand like 224 x 224
+            below code is that it prevents onut of boundary by cropping hand 
+        """
+        if hand_center_point[0] + 112 > ori_img.width:  diff_l, hand_center_point[0] = ori_img.width - hand_center_point[0], ori_img.width - 112
+        elif hand_center_point[0] - 112 < 0: diff_l, hand_center_point[0]  = hand_center_point[0] , 112 
+        else: diff_l = 112
+        
+ 
+        if hand_center_point[1] + 112 > ori_img.height:  diff_d, hand_center_point[1] = ori_img.height - hand_center_point[1], ori_img.height - 112
+        elif hand_center_point[1] - 112 < 0: diff_d, hand_center_point[1]  = hand_center_point[1] , 112 
+        else: diff_d = 112
+        
+        img = img[hand_center_point[1] - 112: hand_center_point[1] + 112, hand_center_point[0] - 112 : hand_center_point[0] + 112]
+        
+        joint[:, 0] = joint[:, 0] - (hand_center_point[0] - diff_l);  joint[:, 1] = joint[:, 1] - (hand_center_point[1] - diff_d)
+        
+        if self.args.model == "ours": size = 224
+        else: size = 256
+        
+        trans = transforms.Compose([transforms.Resize((size, size)),
+                            transforms.ToTensor(),
+                            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+    
+        joint[:, 0] = joint[:, 0] * (size / 224); joint[:, 1] = joint[:,1] * (size / 224)
+        joint = torch.tensor(joint)
+        
+        if self.args.model == "hrnet" or self.args.model == "ours": heatmap = GenerateHeatmap(128, 21)(joint/2)
+        else: heatmap = GenerateHeatmap(64, 21)(joint/4)
+        img = Image.fromarray(img)
+        img = trans(img)
+        
+        return img, joint[:, :2].float(), heatmap
+    
+    
+class Dataset_interhand(torch.utils.data.Dataset):
+    def __init__(self, transform, mode, args):
+        self.args = args
+        self.mode = mode # train, test, val
+        self.img_path = '../../datasets/InterHand2.6M/images'
+        self.annot_path = '../../datasets/InterHand2.6M/annotations'
+        if self.mode == 'val':
+            self.rootnet_output_path = '../../datasets/InterHand2.6M/rootnet_output/rootnet_interhand2.6m_output_val.json'
+        else:
+            self.rootnet_output_path = '../../datasets/InterHand2.6M/rootnet_output/rootnet_interhand2.6m_output_test.json'
+        self.transform = transform
+        self.joint_num = 21 # single hand
+        self.root_joint_idx = {'right': 20, 'left': 41}
+        self.joint_type = {'right': np.arange(0,self.joint_num), 'left': np.arange(self.joint_num,self.joint_num*2)}
+        self.skeleton = load_skeleton(op.join(self.annot_path, 'skeleton.txt'), self.joint_num*2)
+        
+        self.datalist = []
+        self.datalist_sh = []
+        self.datalist_ih = []
+        self.sequence_names = []
+        
+        # load annotation
+        print("Load annotation from  " + op.join(self.annot_path, self.mode))
+        db = COCO(op.join(self.annot_path, self.mode, 'InterHand2.6M_' + self.mode + '_data.json'))
+        with open(op.join(self.annot_path, self.mode, 'InterHand2.6M_' + self.mode + '_camera.json')) as f:
+            cameras = json.load(f)
+        with open(op.join(self.annot_path, self.mode, 'InterHand2.6M_' + self.mode + '_joint_3d.json')) as f:
+            joints = json.load(f)
+
+        # if (self.mode == 'val' or self.mode == 'test') and cfg.trans_test == 'rootnet':
+        if (self.mode == 'val' or self.mode == 'test'):
+            print("Get bbox and root depth from " + self.rootnet_output_path)
+            rootnet_result = {}
+            with open(self.rootnet_output_path) as f:
+                annot = json.load(f)
+            for i in range(len(annot)):
+                rootnet_result[str(annot[i]['annot_id'])] = annot[i]
+        else:
+            print("Get bbox and root depth from groundtruth annotation")
+        
+        for aid in db.anns.keys():
+            ann = db.anns[aid]
+            image_id = ann['image_id']
+            img = db.loadImgs(image_id)[0]
+
+            capture_id = img['capture']
+            seq_name = img['seq_name']
+            cam = img['camera']
+            frame_idx = img['frame_idx']
+            img_path = op.join(self.img_path, self.mode, img['file_name'])
+            
+            campos, camrot = np.array(cameras[str(capture_id)]['campos'][str(cam)], dtype=np.float32), np.array(cameras[str(capture_id)]['camrot'][str(cam)], dtype=np.float32)
+            focal, princpt = np.array(cameras[str(capture_id)]['focal'][str(cam)], dtype=np.float32), np.array(cameras[str(capture_id)]['princpt'][str(cam)], dtype=np.float32)
+            joint_world = np.array(joints[str(capture_id)][str(frame_idx)]['world_coord'], dtype=np.float32)
+            joint_cam = world2cam(joint_world.transpose(1,0), camrot, campos.reshape(3,1)).transpose(1,0)
+            joint_img = cam2pixel(joint_cam, focal, princpt)[:,:2]
+
+            joint_valid = np.array(ann['joint_valid'],dtype=np.float32).reshape(self.joint_num*2)
+            # if root is not valid -> root-relative 3D pose is also not valid. Therefore, mark all joints as invalid
+            joint_valid[self.joint_type['right']] *= joint_valid[self.root_joint_idx['right']]
+            joint_valid[self.joint_type['left']] *= joint_valid[self.root_joint_idx['left']]
+            hand_type = ann['hand_type']
+            hand_type_valid = np.array((ann['hand_type_valid']), dtype=np.float32)
+            
+            # if (self.mode == 'val' or self.mode == 'test') and cfg.trans_test == 'rootnet':
+            if (self.mode == 'val' or self.mode == 'test'):
+                bbox = np.array(rootnet_result[str(aid)]['bbox'],dtype=np.float32)
+                abs_depth = {'right': rootnet_result[str(aid)]['abs_depth'][0], 'left': rootnet_result[str(aid)]['abs_depth'][1]}
+            else:
+                img_width, img_height = img['width'], img['height']
+                bbox = np.array(ann['bbox'],dtype=np.float32) # x,y,w,h
+                bbox = process_bbox(bbox, (img_height, img_width))
+                abs_depth = {'right': joint_cam[self.root_joint_idx['right'],2], 'left': joint_cam[self.root_joint_idx['left'],2]}
+
+            cam_param = {'focal': focal, 'princpt': princpt}
+            joint = {'cam_coord': joint_cam, 'img_coord': joint_img, 'valid': joint_valid}
+            data = {'img_path': img_path, 'seq_name': seq_name, 'cam_param': cam_param, 'bbox': bbox, 'joint': joint, 'hand_type': hand_type, 'hand_type_valid': hand_type_valid, 'abs_depth': abs_depth, 'file_name': img['file_name'], 'capture': capture_id, 'cam': cam, 'frame': frame_idx}
+            # if hand_type == 'right' or hand_type == 'left':
+            if hand_type == 'right':
+                if np.array(Image.open(img_path)).ndim != 3:
+                    continue
+                self.datalist_sh.append(data)
+            else:
+                self.datalist_ih.append(data)
+            if seq_name not in self.sequence_names:
+                self.sequence_names.append(seq_name)
+
+        # self.datalist = self.datalist_sh + self.datalist_ih
+        self.datalist = self.datalist_sh 
+        print('Number of annotations in single hand sequences: ' + str(len(self.datalist_sh)))
+        print('Number of annotations in interacting hand sequences: ' + str(len(self.datalist_ih)))
+
+    def handtype_str2array(self, hand_type):
+        if hand_type == 'right':
+            return np.array([1,0], dtype=np.float32)
+        elif hand_type == 'left':
+            return np.array([0,1], dtype=np.float32)
+        elif hand_type == 'interacting':
+            return np.array([1,1], dtype=np.float32)
+        else:
+            assert 0, print('Not supported hand type: ' + hand_type)
+    
+    def __len__(self):
+        return len(self.datalist)
+    
+    def __getitem__(self, idx):
+        
+        data = self.datalist[idx]
+        img_path, bbox, joint, hand_type, hand_type_valid = data['img_path'], data['bbox'], data['joint'], data['hand_type'], data['hand_type_valid']
+        joint_cam = joint['cam_coord'].copy(); joint_img = joint['img_coord'].copy(); joint_valid = joint['valid'].copy()
+        hand_type = self.handtype_str2array(hand_type)
+        joint_coord = np.concatenate((joint_img, joint_cam[:,2,None]),1)        ## 3rd dimension means depth-relative value
+        
+        if self.args.model == "ours": size = 224
+        else: size = 256
+
+        trans = transforms.Compose([transforms.Resize((size, size)),
+                            transforms.ToTensor(),
+                            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+
+        ori_img = Image.open(img_path)
+        img = trans(ori_img)
+        
+        joint_coord = joint_coord[(20, 3, 2, 1, 0, 7, 6, 5, 4, 11, 10, 9, 8, 15, 14, 13, 12, 19, 18, 17, 16),:] ## reorganize interhand order to ours
+        joint_coord[:,0] = joint_coord[:,0] * (size / ori_img.width)
+        joint_coord[:,1] = joint_coord[:,1] * (size / ori_img.height)
+        targets= torch.tensor(joint_coord[:21, :-1])
+        
+        if self.args.model == "hrnet" or self.args.model == "ours": heatmap = GenerateHeatmap(128, 21)(targets/2)
+        else: heatmap = GenerateHeatmap(64, 21)(targets/4)
+        
+        return img, targets, heatmap
     
     

@@ -15,10 +15,11 @@ from loss import *
 from src.utils.geometric_layers import *
 from src.utils.metric_logger import AverageMeter
 from visualize import *
+
     
 def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss, T, dataset_name):
     pck_losses = AverageMeter()
-    mpjpe_losses = AverageMeter()
+    epe_losses = AverageMeter()
     bbox_list = []
 
     if args.model == "ours":
@@ -36,11 +37,10 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss, T, da
                 pred_2d_joints[:,:,1] = pred_2d_joints[:,:,1] * images.size(2) ## You Have to check whether weight and height is correct dimenstion
                 pred_2d_joints[:,:,0] = pred_2d_joints[:,:,0] * images.size(3)
 
-                correct, visible_point, thresh = PCK_2d_loss_visible(pred_2d_joints, gt_2d_joint, images, T, threshold = 'proportion')
-                # correct, visible_point, thresh, bbox = PCK_2d_loss(pred_2d_joints, gt_2d_joint, images, T, threshold='proportion')
-                mpjpe_loss = MPJPE_visible(pred_2d_joints, gt_2d_joint)
+                correct, visible_point, thresh = PCK_2d_loss_visible(pred_2d_joints, gt_2d_joint, T, threshold = 'proportion')
+                epe_loss, epe_per = EPE(pred_2d_joints, gt_2d_joint)
                 pck_losses.update_p(correct, visible_point)
-                mpjpe_losses.update(mpjpe_loss, args.batch_size)
+                epe_losses.update_p(epe_loss[0], epe_loss[1])
                 # bbox_list.append(int(bbox[0]))
 
                 if T == 0.05:
@@ -49,7 +49,7 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss, T, da
                     visualize_prediction(images, pred_2d_joints, fig, 'evaluation', epoch, iteration, args, dataset_name)
                     plt.close()
 
-        return pck_losses.avg, mpjpe_losses.avg, thresh
+        return pck_losses.avg, epe_loss.avg, thresh
     
     else:
         heatmap_size, multiply = 64, 4
@@ -75,13 +75,10 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss, T, da
             pred_joint = torch.tensor(pred_joint)
             pred_2d_joints = pred_joint * multiply ## heatmap resolution was 64 x 64 so multiply 4 to make it 256 x 256
             
-            
-            correct, visible_point, thresh = PCK_2d_loss_visible(pred_2d_joints, gt_2d_joint, images, T, threshold='proportion')
-            # correct, visible_point, thresh, bbox = PCK_2d_loss(pred_2d_joints, gt_2d_joint, images, T, threshold='proportion')
-            mpjpe_loss = MPJPE_visible(pred_2d_joints, gt_2d_joint)
+            correct, visible_point, thresh = PCK_2d_loss_visible(pred_2d_joints, gt_2d_joint, T, threshold = 'proportion')
+            epe_loss, epe_per = EPE(pred_2d_joints, gt_2d_joint)
             pck_losses.update_p(correct, visible_point)
-            mpjpe_losses.update(mpjpe_loss, args.batch_size)
-            # bbox_list.append(int(bbox[0]))
+            epe_losses.update_p(epe_loss[0], epe_loss[1])
 
             if T == 0.05:
                 if args.model == "hourglass": images = images.permute(0,1,3,2)
@@ -90,7 +87,7 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss, T, da
                 visualize_prediction(images, pred_2d_joints, fig, 'evaluation', epoch, iteration, args, dataset_name)
                 plt.close()
 
-    return pck_losses.avg, mpjpe_losses.avg, thresh
+    return pck_losses.avg, epe_losses.avg, thresh
     
 
 
@@ -103,9 +100,10 @@ def main(args, T):
     _model.load_state_dict(state_dict['model_state_dict'], strict=False)
     _model.cuda()
 
+
     path = "../../datasets/our_testset"
     folder_path = os.listdir(path)
-
+    
     categories = ['general', 'p', 't', 't+p']
     for name in categories:
         count = 0
@@ -127,14 +125,13 @@ def main(args, T):
         pck, mpjpe ,thresh= test(args, data_loader, _model, 0, 0, best_loss, T, set_name)
         
         if thresh == 'pixel':
-            print("Model_Name = {}  // {} //Threshold = {} mm // pck===> {:.2f}% // mpjpe===> {:.2f}mm // {} // {}".format(args.name[13:-31],thresh, T * 20, pck * 100, mpjpe * 0.26, len(globals()[f'dataset_{set_name}']), set_name))
+            print("Model_Name = {}  // {} //Threshold = {} mm // pck===> {:.2f}% // epe===> {:.2f}mm // {} // {}".format(args.name[13:-31],thresh, T * 20, pck * 100, mpjpe * 0.26, len(globals()[f'dataset_{set_name}']), set_name))
         else:
-            print("Model_Name = {}  // Threshold = {} // pck===> {:.2f}% // mpjpe===> {:.2f}mm // {} // {}".format(args.name[13:-31], T, pck * 100, mpjpe * 0.26, len(globals()[f'dataset_{set_name}']), set_name))
+            print("Model_Name = {}  // Threshold = {} // pck===> {:.2f}% // epe===> {:.2f}mm // {} // {}".format(args.name[13:-31], T, pck * 100, mpjpe * 0.26, len(globals()[f'dataset_{set_name}']), set_name))
         loss.append([set_name, pck * 100, mpjpe * 0.26])
 
     print("==" * 80)
     return loss
-
 
 if __name__ == "__main__":
     args = parse_args()
@@ -142,11 +139,5 @@ if __name__ == "__main__":
     loss1 = main(args, T=0.1)
     loss2 = main(args, T=0.15)
     loss3 = main(args, T=0.2)
-    loss4 = main(args, T=0.25)
-    loss5 = main(args, T=0.3)
-    loss6 = main(args, T=0.35)
-    loss7 = main(args, T=0.4)
-    loss8 = main(args, T=0.45)
-    loss9 = main(args, T=0.5)
     for idx,i in enumerate(loss):
-        print("dataset = {} ,{:.2f}, {:.2f}, {:.2f}, {:.2f}, {:.2f}, {:.2f}, {:.2f}, {:.2f}, {:.2f}, {:.2f}, {:.2f}".format(i[0],loss[idx][1], loss1[idx][1], loss2[idx][1], loss3[idx][1], loss4[idx][1], loss5[idx][1], loss6[idx][1], loss7[idx][1], loss8[idx][1], loss9[idx][1], loss[idx][2]))
+        print("dataset = {} ,{:.2f}, {:.2f}, {:.2f}, {:.2f}, {:.2f}".format(i[0],loss[idx][1], loss1[idx][1], loss2[idx][1], loss3[idx][1], loss[idx][2]))

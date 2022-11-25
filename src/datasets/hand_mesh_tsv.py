@@ -21,6 +21,37 @@ from src.utils.image_ops import img_from_base64, crop, flip_img, flip_pose, flip
 import torch
 import torchvision.transforms as transforms
 
+class GenerateHeatmap():
+    def __init__(self, output_res, num_parts):
+        self.output_res = output_res
+        self.num_parts = num_parts
+        sigma = self.output_res/64
+        self.sigma = sigma
+        size = 6*sigma + 3
+        x = np.arange(0, size, 1, float)
+        y = x[:, np.newaxis]
+        x0, y0 = 3*sigma + 1, 3*sigma + 1
+        self.g = np.exp(- ((x - x0) ** 2 + (y - y0) ** 2) / (2 * sigma ** 2))
+
+    def __call__(self, p):
+        hms = np.zeros(shape = (self.num_parts, self.output_res, self.output_res), dtype = np.float32)
+        sigma = self.sigma
+        for idx, pt in enumerate(p):
+            if pt[0] > 0: 
+                x, y = int(pt[0]), int(pt[1])
+                if x<0 or y<0 or x>=self.output_res or y>=self.output_res:
+                    continue
+                ul = int(x - 3*sigma - 1), int(y - 3*sigma - 1)
+                br = int(x + 3*sigma + 2), int(y + 3*sigma + 2)
+
+                c,d = max(0, -ul[0]), min(br[0], self.output_res) - ul[0]
+                a,b = max(0, -ul[1]), min(br[1], self.output_res) - ul[1]
+
+                cc,dd = max(0, ul[0]), min(br[0], self.output_res)
+                aa,bb = max(0, ul[1]), min(br[1], self.output_res)
+                hms[idx, aa:bb,cc:dd] = np.maximum(hms[idx, aa:bb,cc:dd], self.g[a:b,c:d])
+        return hms
+
 
 class HandMeshTSVDataset(object):
     def __init__(self, args, img_file, label_file=None, hw_file=None,
@@ -305,11 +336,13 @@ class HandMeshTSVDataset(object):
 
         meta_data['scale'] = float(sc * scale)
         meta_data['center'] = np.asarray(center).astype(np.float32)
-        heatmap = vector_to_heatmaps(torch.from_numpy(joints_2d_transformed).float() * 100 + 112)
-
-        # return img_key, transfromed_img, meta_data, heatmap, torch.from_numpy(joints_2d_transformed).float(), torch.from_numpy(joints_3d_transformed).float()
-        return transfromed_img[(2,1,0),:,:], meta_data['joints_2d'][:,:-1] * 100 + 112, meta_data['joints_3d'][:,:-1]
-
+        if self.args.model == "hrnet": heatmap, size = GenerateHeatmap(128, 21)(joint_2d/2), 256
+        else: heatmap, size= GenerateHeatmap(64, 21)(joint_2d/4), 224
+        joint_2d = (meta_data['joints_2d'][:,:-1] * 100 + 112) * (size/224)
+        heatmap = GenerateHeatmap(128, 21)(joint_2d / 2)
+        
+        return transfromed_img[(2,1,0),:,:], joint_2d, meta_data['joints_3d'][:,:-1], heatmap
+    
 def blur_heatmaps(heatmaps):
     """Blurs heatmaps using GaussinaBlur of defined size"""
     heatmaps_blurred = heatmaps.copy()

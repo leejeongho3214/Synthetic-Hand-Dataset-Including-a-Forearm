@@ -73,7 +73,7 @@ def keypoint_2d_loss(criterion_keypoints, pred_keypoints_2d, gt_keypoints_2d):
     loss = (conf * criterion_keypoints(pred_keypoints_2d, gt_keypoints_2d)).mean()
     return loss
 
-def PCK_2d_loss_visible(pred_2d, gt_2d, images, T = 0.1, threshold = 'proportion'):
+def PCK_2d_loss_visible(pred_2d, gt_2d, T = 0.1, threshold = 'proportion'):
     bbox_size = []
     point = []
     pred_2d = pred_2d.detach().cpu()
@@ -85,14 +85,11 @@ def PCK_2d_loss_visible(pred_2d, gt_2d, images, T = 0.1, threshold = 'proportion
         bbox_size.append(max(width, height))
         point.append(((min(j[:,0]),min(j[:,1])),(max(j[:,0]),max(j[:,1]))))
 
-    # If you want to show joint with bbox, it can do
-    # for k, l, point in zip(images, gt_2d, point):
-    #     visualize_with_bbox(k, l, point[0], point[1])
     correct = 0
     visible_joint = 0
     for box_num, box_size in enumerate(bbox_size):
-        for joint_num in range(21):
-            if gt_2d[box_num][joint_num][2] == 1:
+        for joint_num in range(1, 21):          ## Excluded the wrist joint by starting 1
+            if gt_2d[box_num][joint_num][2] == 1: ## Check whether visible or invisible joint
                 visible_joint += 1
                 x = gt_2d[box_num][joint_num][0] - pred_2d[box_num][joint_num][0]
                 y = gt_2d[box_num][joint_num][1] - pred_2d[box_num][joint_num][1]
@@ -109,7 +106,7 @@ def PCK_2d_loss_visible(pred_2d, gt_2d, images, T = 0.1, threshold = 'proportion
 
     return correct, visible_joint, threshold
 
-def PCK_2d_loss(pred_2d, gt_2d, images, T = 0.1, threshold = 'proportion'):
+def PCK_2d_loss(pred_2d, gt_2d, T = 0.1, threshold = 'proportion'):
     bbox_size = []
     point = []
     pred_2d = pred_2d.detach().cpu()
@@ -121,14 +118,10 @@ def PCK_2d_loss(pred_2d, gt_2d, images, T = 0.1, threshold = 'proportion'):
         bbox_size.append(max(width, height))
         point.append(((min(j[:,0]),min(j[:,1])),(max(j[:,0]),max(j[:,1]))))
 
-    # If you want to show joint with bbox, it can do
-    # for k, l, point in zip(images, gt_2d, point):
-    #     visualize_with_bbox(k, l, point[0], point[1])
     correct = 0
     visible_joint = 0
     for box_num, box_size in enumerate(bbox_size):
-        for joint_num in range(1, 21):
-        # for joint_num in range(21):
+        for joint_num in range(1, 21):      ## Excluded the wrist joint by starting 1
             visible_joint += 1
             x = gt_2d[box_num][joint_num][0] - pred_2d[box_num][joint_num][0]
             y = gt_2d[box_num][joint_num][1] - pred_2d[box_num][joint_num][1]
