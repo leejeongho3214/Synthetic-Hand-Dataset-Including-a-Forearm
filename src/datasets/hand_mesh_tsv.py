@@ -336,12 +336,14 @@ class HandMeshTSVDataset(object):
 
         meta_data['scale'] = float(sc * scale)
         meta_data['center'] = np.asarray(center).astype(np.float32)
-        if self.args.model == "hrnet": heatmap, size = GenerateHeatmap(128, 21)(joint_2d/2), 256
-        else: heatmap, size= GenerateHeatmap(64, 21)(joint_2d/4), 224
+        # transfromed_img = transforms.Resize((224, 224))(transfromed_img)
+        if self.args.model == "ours": size =  224
+        else:  size= 256
         joint_2d = (meta_data['joints_2d'][:,:-1] * 100 + 112) * (size/224)
-        heatmap = GenerateHeatmap(128, 21)(joint_2d / 2)
+        if self.args.model == "hrnet": heatmap = GenerateHeatmap(128, 21)(joint_2d/2)
+        else: heatmap= GenerateHeatmap(64, 21)(joint_2d/4)
         
-        return transfromed_img[(2,1,0),:,:], joint_2d, meta_data['joints_3d'][:,:-1], heatmap
+        return transfromed_img[(2,1,0),:,:], joint_2d, heatmap
     
 def blur_heatmaps(heatmaps):
     """Blurs heatmaps using GaussinaBlur of defined size"""

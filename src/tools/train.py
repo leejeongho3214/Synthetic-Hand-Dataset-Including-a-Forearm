@@ -19,14 +19,19 @@ def main(args):
 
     param = f"model_{args.model}_general_{args.general}_frei_{args.frei}_rot_{args.rot}_color_{args.color}_blur_{args.blur}_erase_{args.erase}_ratio_{args.ratio_of_aug}_dataset_{len(train_dataset)}"
     for name in os.listdir(os.path.join(args.root_path, args.output_path)): 
-        if not name in ["checkpoint-good", "train_image", "test_image", "log.txt"]: os.rmdir(os.path.join(f"output/{args.output_path}", name)) ## easy to check hyper-parameter by making empty folder
-    logger.info('%s', args)
+        if not name in ["checkpoint-good", "train_image", "test_image", "log.txt"]: os.rmdir(os.path.join(f"output/{args.output_path}", name))## easy to check hyper-parameter by making empty folder
+    mkdir(os.path.join(os.path.join(args.root_path, args.output_path),param))
+    logger.info('\n \n========================================================================================================\n' 
+                + 'model = %s, ratio of aug = %.1f, rot= %s, color = %s, output_path = %s, epoch = %i, \ncount = %i, dataset = %s, Use frei = %s, Use general = %s, Train images = %i' 
+                + '\n========================================================================================================',
+                args.model, args.ratio_of_aug, args.rot, args.color,  args.output_path, args.epoch, args.count, args.dataset, args.frei, args.general, len(train_dataset))
 
     trainset_loader = data.DataLoader(dataset=train_dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True)
     testset_loader = data.DataLoader(dataset=test_dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=False)
     
     log_dir = f'tensorboard/{args.output_dir}'
-    if os.listdir(log_dir): shutil.rmtree(log_dir); mkdir(log_dir); mkdir(os.path.join(log_dir, param))
+    if os.path.isdir(log_dir): shutil.rmtree(log_dir); mkdir(log_dir); mkdir(os.path.join(log_dir, param))
+    else: mkdir(log_dir); mkdir(os.path.join(log_dir, param))
     writer = SummaryWriter(log_dir = os.path.join(log_dir, param)); pck_l = 0; batch_time = AverageMeter()
 
     

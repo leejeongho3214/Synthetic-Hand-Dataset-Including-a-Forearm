@@ -116,12 +116,12 @@ def build_hand_dataset(yaml_file, args, is_train=True, scale_factor=1):
     return HandMeshTSVYamlDataset(args, yaml_file, is_train, False, scale_factor)
 
 
-def make_hand_data_loader(args, yaml_file, is_distributed=True,
+def make_hand_data_loader(args, yaml_file, is_distributed=False,
         is_train=True, start_iter=0, scale_factor=1):
 
     dataset = build_hand_dataset(yaml_file, args, is_train=is_train, scale_factor=scale_factor)
 
-    train_dataset, test_dataset = random_split(dataset, [120240, 10000])
+    train_dataset, test_dataset = random_split(dataset, [int(len(dataset) * 0.9), int(len(dataset) * 0.1)])
     train_data_loader = torch.utils.data.DataLoader(
         train_dataset, num_workers=args.num_workers, batch_size=32,
         pin_memory=True,

@@ -13,11 +13,11 @@
             "console": "integratedTerminal",
             "justMyCode": true,
             "cwd": "${fileDirname}",
+            // "args": ["--name" ,"MediaPipe", "--batch_size", "1"]
             // "args": [ "--name", "panoptic/ours", "--output_path", "panoptic/ours", "--model", "ours", "--dataset", "panoptic"]
             // "args": [ "--name", "hiu/ours", "--output_path", "hiu/ours", "--model", "ours", "--dataset", "hiu"]
-            "args": ["--name", "coco/ours", "--output_path", "coco/ours", "--model", "ours", "--dataset", "coco"]
+            // "args": ["--name", "coco/ours", "--output_path", "coco/ours", "--model", "ours", "--dataset", "coco"]
             // "args": ["--name", "interhand/ours", "--output_path", "interhand/ours", "--model", "ours", ]
-
         }
     ]
 }

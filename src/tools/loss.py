@@ -28,7 +28,7 @@ def EPE(pred_2d_joints, gt_2d_joint):
     batch_size = pred_2d_joints.size(0)
     distance = {}
     pred_2d_joints, gt_2d_joint = pred_2d_joints.detach().cpu(), gt_2d_joint.detach().cpu()
-    for i in range(1, pred_2d_joints.size(1)):
+    for i in range(1, pred_2d_joints.size(1)):  ## skip the wrist joint
         error = []
         for j in range(batch_size):
             if gt_2d_joint[j, i, 2] == 0: ## invisible joint = 0
@@ -44,6 +44,7 @@ def EPE(pred_2d_joints, gt_2d_joint):
     # epe_loss = np.sum(np.array(epe)[:,0])/np.sum(np.array(epe)[:,1]) ## mean every joint
 
     return (np.sum(np.array(epe)[:,0]), np.sum(np.array(epe)[:,1])), distance
+
 
 def EPE_train(pred_2d_joints, gt_2d_joint):
     batch_size = pred_2d_joints.size(0)
@@ -154,7 +155,7 @@ def PCK_2d_loss_No_batch(pred_2d, gt_2d, images,T=0.1, threshold = 'proportion')
     correct = 0
     visible_joint = 0
 
-    for joint_num in range(21):
+    for joint_num in range(1, 21):
         if gt_2d[joint_num][2] == 1:
             visible_joint += 1
             x = gt_2d[joint_num][0] - pred_2d[joint_num][0]
@@ -169,12 +170,8 @@ def PCK_2d_loss_No_batch(pred_2d, gt_2d, images,T=0.1, threshold = 'proportion')
                     correct += 1
             else:
                 assert False, "Please check variable threshold is right"
-    # if (correct/visible_joint) < 0.6:
-    #     # visualize_with_bbox(images, pred_2d, point[0][0], point[0][1], file)
-    #     from matplotlib import pyplot as plt
-    #     fig = plt.figure()
-    #     visualize_media(images, pred_2d, gt_2d,file, fig)
-    return correct/visible_joint , threshold
+
+    return correct, visible_joint , threshold
 
 
 def adjust_learning_rate(optimizer, epoch, args):

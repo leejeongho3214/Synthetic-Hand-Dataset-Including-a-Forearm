@@ -51,6 +51,11 @@ def build_dataset(args):
         
         return trainset_dataset, testset_dataset
     
+    if args.dataset == "frei":
+        
+        _, _ , trainset_dataset, testset_dataset = make_hand_data_loader(args, args.train_yaml, False, is_train=True, scale_factor=args.img_scale_factor) ## RGB image
+    
+        return trainset_dataset, testset_dataset
     
     else:
         path = "../../datasets/1102"            ## wrist-view image path (about 37K)
@@ -71,7 +76,7 @@ def build_dataset(args):
                 
         if args.frei:
             _, _ , train_dataset_frei, test_dataset_frei = make_hand_data_loader(args, args.train_yaml,
-                                                                                args.distributed, is_train=True,
+                                                                                False, is_train=True,
                                                                                 scale_factor=args.img_scale_factor) ## RGB image
             train_dataset = ConcatDataset([train_dataset_frei, train_dataset])
             test_dataset = ConcatDataset([test_dataset_frei, test_dataset])
@@ -335,7 +340,6 @@ class CustomDataset(Dataset):
         trans = transforms.Compose([trans_option[i] for i in trans_option])                      
         image = trans(image)
 
-        # joint_3d = torch.tensor(self.meta['images'][idx]['joint_3d'])
         if self.args.model == "hrnet": heatmap = GenerateHeatmap(128, 21)(joint_2d/2)
         else: heatmap = GenerateHeatmap(64, 21)(joint_2d/4)
             
@@ -518,7 +522,6 @@ class Our_testset_media(Dataset):
             for h in range(0, 21):
                 joint_2d.append([joint[f'{h}']['x'], joint[f'{h}']['y'], joint[f'{h}']['z']])
         joint_2d = torch.tensor(joint_2d)
-
 
         return image, joint_2d
     
