@@ -149,9 +149,7 @@ def load_model(args):
     epo = 0
     best_loss = np.inf
     count = 0
-    
     args.output_dir = os.path.join(args.root_path, args.output_path)
-
     if not args.resume: args.resume_checkpoint = 'None'
     else: args.resume_checkpoint = os.path.join(os.path.join(args.root_path, args.output_path),'checkpoint-good/state_dict.bin')
     if not os.path.isdir(args.output_dir): mkdir(args.output_dir)
@@ -285,11 +283,11 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
             gt_2d_joint[:,:,1] = gt_2d_joint[:,:,1] * images.size(2) ## You Have to check whether weight and height is correct dimenstion
             gt_2d_joint[:,:,0] = gt_2d_joint[:,:,0] * images.size(3) 
             
-            if iteration == 0 or iteration == int(len(train_dataloader)/2) or iteration == len(train_dataloader) - 1:
-                fig = plt.figure()
-                visualize_gt(images, gt_2d_joint, fig, iteration)
-                visualize_prediction(images, pred_2d_joints, fig, 'train', epoch, iteration, args,None)
-                plt.close()
+            # if iteration == 0 or iteration == int(len(train_dataloader)/2) or iteration == len(train_dataloader) - 1:
+            fig = plt.figure()
+            visualize_gt(images, gt_2d_joint, fig, iteration)
+            visualize_prediction(images, pred_2d_joints, fig, 'train', epoch, iteration, args,None)
+            plt.close()
 
             batch_time.update(time.time() - end)
             end = time.time()

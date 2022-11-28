@@ -15,6 +15,7 @@ from loss import *
 from src.utils.geometric_layers import *
 from src.utils.metric_logger import AverageMeter
 from visualize import *
+from tqdm import tqdm
 
     
 def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss, T, dataset_name):
@@ -100,20 +101,27 @@ def main(args, T_list):
                 name_list.append(os.path.join(os.path.join(root_path, models_name), dataset_name))
             continue
         if models_name == "ours":
-            current_loc = os.path.join(root_path, "ours/wrist")
-            for kind in os.listdir(current_loc):
-                for aug in os.listdir(os.path.join(current_loc, kind)): name_list.append(os.path.join(os.path.join(current_loc, kind), aug))
+            for ours_category in os.listdir(os.path.join(root_path, "ours")):
+                if ours_category == "wrist":
+                    current_loc = os.path.join(root_path,os.path.join(models_name, ours_category))
+                    for kind in os.listdir(current_loc):
+                        for aug in os.listdir(os.path.join(current_loc, kind)): name_list.append(os.path.join(os.path.join(current_loc, kind), aug))
+                else: 
+                    current_loc = os.path.join(os.path.join(os.path.join(root_path, "ours")), ours_category)
+                    for general_category in os.listdir(current_loc):
+                        name_list.append(os.path.join(current_loc, general_category))
+                        
         else: name_list.append(os.path.join(os.path.join(root_path, models_name), "rot_color_frei")); continue
         
-    name_list = ["final_models/other_dataset/frei_6k"]    
-        
+    name_list = ["final_models/ours/wrist/only_synthetic/rot_color_6k"]    
+    
+    pbar = tqdm(total = len(name_list) * 16) 
     for name_p in name_list:
         sub_loss = []
         for T in T_list:         
             args.name = os.path.join(name_p, "checkpoint-good/state_dict.bin")
             args.model = args.name.split('/')[1]
-            if args.model == "hourglass": args.batch_size = 16
-            elif args.model == "other_dataset": args.model = "ours"
+            if args.model == "other_dataset": args.model = "ours"
             _model, _, best_loss, _, count = load_model(args)
             state_dict = torch.load(args.name)
             _model.load_state_dict(state_dict['model_state_dict'], strict=False)
@@ -142,17 +150,12 @@ def main(args, T_list):
 
             for set_name in categories: 
                 data_loader = data.DataLoader(dataset=globals()[f'dataset_{set_name}'], batch_size=args.batch_size, num_workers=0, shuffle=False)
-                pck, epe ,thresh= test(args, data_loader, _model, 0, 0, best_loss, T, set_name)
-                
-                if thresh == 'pixel':
-                    print("Model_Name = {}  // {} //Threshold = {} mm // pck===> {:.2f}% // epe===> {:.2f}mm // {} // {}".format(args.name[13:-31],thresh, T * 20, pck * 100, epe * 0.26, len(globals()[f'dataset_{set_name}']), set_name))
-                else:
-                    print("Model_Name = {}  // Threshold = {} // pck===> {:.2f}% // epe===> {:.2f}mm // {} // {}".format(args.name[13:-31], T, pck * 100, epe * 0.26, len(globals()[f'dataset_{set_name}']), set_name))
-                    
+                pck, epe ,thresh= test(args, data_loader, _model, 0, 0, best_loss, T, set_name)    
                 category_loss.append([set_name, pck * 100, epe * 0.26, args.name[13:-31]])    
+                pbar.update(1)
             sub_loss.append(category_loss)
-            print("==" * 60)
         loss.append(sub_loss)
+    pbar.close()
     return loss
 
 if __name__ == "__main__":
@@ -160,4 +163,4 @@ if __name__ == "__main__":
     losses = main(args, T_list=[0.05, 0.1, 0.15, 0.2])
     for idx,loss in enumerate(losses):
         for i in range(4):
-            print("Category = {} ,{:.2f}, {:.2f}, {:.2f}, {:.2f}, {:.2f} // Model_Name = {}".format(loss[0][i][0],loss[0][i][1], loss[1][i][1], loss[2][i][1], loss[3][i][1], loss[0][i][2], loss[0][i][3]))
+            print("{};{}; {:.2f}, {:.2f}, {:.2f}, {:.2f}, {:.2f} ".format(loss[0][i][0],loss[0][i][3] ,loss[0][i][1], loss[1][i][1], loss[2][i][1], loss[3][i][1], loss[0][i][2]))
