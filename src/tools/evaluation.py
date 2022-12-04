@@ -113,7 +113,7 @@ def main(args, T_list):
                         
         else: name_list.append(os.path.join(os.path.join(root_path, models_name), "rot_color_frei")); continue
         
-    name_list = ["final_models/ours/wrist/only_synthetic/rot_color_6k"]    
+    name_list = ["final_models/ours/wrist/only_synthetic/rot_color_1.0"]    
     
     pbar = tqdm(total = len(name_list) * 16) 
     for name_p in name_list:

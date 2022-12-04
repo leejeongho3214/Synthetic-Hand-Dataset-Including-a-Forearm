@@ -1,3 +1,4 @@
+from src.tools.visualize import visualize_gt
 from src.utils.preprocessing import load_skeleton, process_bbox
 from src.utils.miscellaneous import mkdir
 from src.utils.comm import is_main_process
@@ -22,6 +23,25 @@ import sys
 from pycocotools.coco import COCO
 sys.path.append("/home/jeongho/tmp/Wearable_Pose_Model")
 
+def visualize_gt2(images, gt_2d_joint, fig, num):
+    num = 0
+    # image = Image.fromarray(images)
+    images = np.array(images)
+    images = images.transpose(1,2,0)
+    image = images.copy()
+    gt_2d_joint = gt_2d_joint[None, :, :]
+    parents = np.array([-1, 0, 1, 2, 3, 0, 5, 6, 7, 0, 9, 10, 11, 0, 13, 14, 15, 0, 17, 18, 19,])
+    for i in range(21):
+        cv2.circle(image, (int(gt_2d_joint[num][i][0]), int(gt_2d_joint[num][i][1])), 2, [0, 1, 0],
+                thickness=-1)
+        if i != 0:
+            cv2.line(image, (int(gt_2d_joint[num][i][0]), int(gt_2d_joint[num][i][1])),
+                    (int(gt_2d_joint[num][parents[i]][0]), int(gt_2d_joint[num][parents[i]][1])),
+                    [0, 0, 1], 1)
+
+    ax1 = fig.add_subplot(1, 2, 1)
+    ax1.imshow(image)
+    plt.savefig('aa.jpg')
 
 def build_dataset(args):
 
@@ -59,8 +79,9 @@ def build_dataset(args):
 
     if args.dataset == "frei":
 
-        _, _, trainset_dataset, testset_dataset = make_hand_data_loader(
+        trainset_dataset = make_hand_data_loader(
             args, args.train_yaml, False, is_train=True, scale_factor=args.img_scale_factor)  # RGB image
+        testset_dataset = Frei(args)
 
         return trainset_dataset, testset_dataset
 
@@ -72,42 +93,43 @@ def build_dataset(args):
         return trainset_dataset, testset_dataset
 
     else:
-        path = "../../datasets/1102"  # wrist-view image path (about 37K)
-        # general-view image path (about 80K)
-        general_path = "../../datasets/1108"
+        path = "../../datasets/synthetic_wrist"  # wrist-view image path (about 37K)
+        general_path = "../../datasets/synthetic_general" # general-view image path (about 80K)
         folder_num = os.listdir(path)
+        print(args.general)
+        assert args.wrist or args.frei or args.general, "you check option to wrist, frei, and general "
+        
+        if args.wrist:
+            for iter, degree in enumerate(folder_num):
 
-        for iter, degree in enumerate(folder_num):
+                dataset = CustomDataset(args, degree, path, rotation=args.rot, color=args.color,
+                                        blur=args.blur, erase=args.erase, ratio_of_aug=args.ratio_of_aug, ratio_of_dataset=1)
 
-            dataset = CustomDataset(args, degree, path, rotation=args.rot, color=args.color,
-                                    blur=args.blur, erase=args.erase, ratio_of_aug=args.ratio_of_aug, ratio_of_dataset=0.45)
+                if iter == 0:
+                    train_dataset, test_dataset = random_split(
+                        dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
 
-            if iter == 0:
-                train_dataset, test_dataset = random_split(
-                    dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
-
-            else:
-                train_dataset_other, test_dataset_other = random_split(
-                    dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
-                train_dataset = ConcatDataset(
-                    [train_dataset, train_dataset_other])
-                test_dataset = ConcatDataset(
-                    [test_dataset, test_dataset_other])
+                else:
+                    train_dataset_other, test_dataset_other = random_split(
+                        dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
+                    train_dataset = ConcatDataset(
+                        [train_dataset, train_dataset_other])
+                    test_dataset = ConcatDataset(
+                        [test_dataset, test_dataset_other])
 
         if args.frei:
-            _, _, train_dataset_frei, test_dataset_frei = make_hand_data_loader(args, args.train_yaml,
-                                                                                False, is_train=True,
+            train_dataset = make_hand_data_loader(args, args.train_yaml, False, is_train=True,
                                                                                 scale_factor=args.img_scale_factor)  # RGB image
-            train_dataset = ConcatDataset([train_dataset_frei, train_dataset])
-            test_dataset = ConcatDataset([test_dataset_frei, test_dataset])
+            # train_dataset = ConcatDataset([train_dataset_frei, train_dataset])
+            # test_dataset = ConcatDataset([test_dataset_frei, test_dataset])
 
         if args.general:
 
             folder_num = os.listdir(general_path)
             for iter, degree in enumerate(folder_num):
 
-                dataset = CustomDataset(args, general_path, rotation=args.rot, color=args.color, blur=args.blur,
-                                        erase=args.erase, ratio_of_aug=args.ratio_of_aug, ratio_of_dataset=0.137)
+                dataset = CustomDataset(args, degree,general_path, rotation=args.rot, color=args.color, blur=args.blur,
+                                        erase=args.erase, ratio_of_aug=args.ratio_of_aug, ratio_of_dataset = 1)
 
                 if iter == 0:
                     train_dataset_general, test_dataset_general = random_split(
@@ -121,9 +143,9 @@ def build_dataset(args):
                     test_dataset_general = ConcatDataset(
                         [test_dataset_general, test_dataset_other])
 
-            train_dataset = ConcatDataset(
-                [train_dataset_general, train_dataset])
-            test_dataset = ConcatDataset([test_dataset_general, test_dataset])
+            train_dataset = train_dataset_general
+            test_dataset = Frei(args)
+            # test_dataset = ConcatDataset([test_dataset_general, test_dataset])
 
     return train_dataset, test_dataset
 
@@ -386,8 +408,10 @@ class CustomDataset(Dataset):
             heatmap = GenerateHeatmap(128, 21)(joint_2d/2)
         else:
             heatmap = GenerateHeatmap(64, 21)(joint_2d/4)
+            
+        joint_3d = torch.tensor(self.meta['images'][idx]['joint_3d'])
 
-        return image, joint_2d, heatmap
+        return image, joint_2d, heatmap, joint_3d
 
 
 class AverageMeter(object):
@@ -918,11 +942,7 @@ class Dataset_interhand(torch.utils.data.Dataset):
         if bbox[1] < 0:
             bbox[1] = 0
         if bbox[0] < 0:
-            bbox[0] = 0
-            
-
-        
-                    
+            bbox[0] = 0        
         if bbox[2] % 2 == 1: bbox[2] - 1
         if bbox[3] % 2 == 1: bbox[3] - 1
         space_l = int(224 - bbox[3]) / 2; space_r = int(224 - bbox[2]) / 2
@@ -953,3 +973,48 @@ class Dataset_interhand(torch.utils.data.Dataset):
             heatmap = GenerateHeatmap(64, 21)(targets/4)
 
         return img, targets, heatmap
+    
+class Frei(torch.utils.data.Dataset):
+    def __init__(self, args):
+        self.args = args
+        self.img_path = "../../datasets/frei_test/evaluation/rgb"
+        with open("../../datasets/frei_test/evaluation_K.json", "r") as st_json:
+            self.anno_K = json.load(st_json)
+        with open("../../datasets/frei_test/evaluation_xyz.json", "r") as st_json:
+            self.anno_xyz = json.load(st_json)
+            
+    def __len__(self):
+        return len(self.anno_K)
+    
+
+    
+    def __getitem__(self, idx):
+        anno_K = torch.tensor(self.anno_K[idx])
+        anno_xyz = torch.tensor(self.anno_xyz[idx])
+        
+        joint_2d = torch.matmul(anno_K, anno_xyz.T).T
+        joint_2d = (joint_2d[:, :2].T / joint_2d[:, -1]).T
+        
+        if self.args.model == "ours":
+            size = 224
+        else:
+            size = 256
+        
+        image = Image.open(os.path.join(self.img_path, f"{str(idx).zfill(8)}.jpg"))
+        scale_x = size / image.width
+        scale_y = size / image.height
+
+        trans = transforms.Compose([transforms.Resize((size, size)),
+                                    transforms.ToTensor(),
+                                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+
+        trans_image = trans(image)
+        joint_2d[:, 0] = joint_2d[:, 0] * scale_x
+        joint_2d[:, 1] = joint_2d[:, 1] * scale_y
+
+        if self.args.model == "hrnet" or self.args.model == "ours":
+            heatmap = GenerateHeatmap(128, 21)(joint_2d/2)
+        else:
+            heatmap = GenerateHeatmap(64, 21)(joint_2d/4)
+
+        return trans_image, joint_2d, heatmap, anno_xyz

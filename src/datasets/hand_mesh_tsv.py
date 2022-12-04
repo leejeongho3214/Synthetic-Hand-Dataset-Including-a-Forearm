@@ -343,7 +343,7 @@ class HandMeshTSVDataset(object):
         if self.args.model == "hrnet": heatmap = GenerateHeatmap(128, 21)(joint_2d/2)
         else: heatmap= GenerateHeatmap(64, 21)(joint_2d/4)
         
-        return transfromed_img[(2,1,0),:,:], joint_2d, heatmap
+        return transfromed_img[(2,1,0),:,:], joint_2d, heatmap, meta_data['joints_3d'][:, :3]
     
 def blur_heatmaps(heatmaps):
     """Blurs heatmaps using GaussinaBlur of defined size"""

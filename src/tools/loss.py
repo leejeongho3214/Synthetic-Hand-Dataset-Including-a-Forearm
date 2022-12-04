@@ -197,7 +197,6 @@ def keypoint_3d_loss(criterion_keypoints, pred_keypoints_3d, gt_keypoints_3d):
         gt_keypoints_3d = gt_keypoints_3d - gt_root[:, None, :]
         pred_root = pred_keypoints_3d[:, 0, :]
         pred_keypoints_3d = pred_keypoints_3d - pred_root[:, None, :]
-        # return (criterion_keypoints(pred_keypoints_3d, gt_keypoints_3d)).mean()
         return (criterion_keypoints(pred_keypoints_3d, gt_keypoints_3d)).mean()
     else:
-        return torch.FloatTensor(1).fill_(0.).cuda()
+        assert False, "gt_3d_keypoint No"

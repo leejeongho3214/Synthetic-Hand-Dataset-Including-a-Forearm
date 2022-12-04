@@ -17,14 +17,14 @@ def main(args):
     _model, logger, best_loss, epo, count = load_model(args)
     train_dataset, test_dataset = build_dataset(args)
 
-    param = f"model_{args.model}_general_{args.general}_frei_{args.frei}_rot_{args.rot}_color_{args.color}_blur_{args.blur}_erase_{args.erase}_ratio_{args.ratio_of_aug}_dataset_{len(train_dataset)}"
-    for name in os.listdir(os.path.join(args.root_path, args.output_path)): 
-        if not name in ["checkpoint-good", "train_image", "test_image", "log.txt"]: os.rmdir(os.path.join(f"output/{args.output_path}", name))## easy to check hyper-parameter by making empty folder
-    mkdir(os.path.join(os.path.join(args.root_path, args.output_path),param))
+    param = f"model_{args.model}_general_{args.general}_frei_{args.frei}_2d_{args.loss_2d}_3d_{args.loss_3d}_rot_{args.rot}_color_{args.color}_ratio_{args.ratio_of_aug}_dataset_{len(train_dataset)}"
+    for name in os.listdir(os.path.join(args.root_path, args.name)): 
+        if not name in ["checkpoint-good", "train_image", "test_image", "log.txt"]: os.rmdir(os.path.join(f"output/{args.name}", name))## easy to check hyper-parameter by making empty folder
+    mkdir(os.path.join(os.path.join(args.root_path, args.name),param))
     logger.info('\n \n========================================================================================================\n' 
-                + 'model = %s, ratio of aug = %.1f, rot= %s, color = %s, output_path = %s, epoch = %i, \ncount = %i, dataset = %s, Use frei = %s, Use general = %s, Train images = %i' 
+                + 'name = %s, model = %s,  epoch = %i, count = %i, dataset = %s, Train images = %i, \n 2d = %i , 3d = %i,  ratio of aug = %.1f, rot= %s, color = %s,  Use frei = %s, Use general = %s' 
                 + '\n========================================================================================================',
-                args.model, args.ratio_of_aug, args.rot, args.color,  args.output_path, args.epoch, args.count, args.dataset, args.frei, args.general, len(train_dataset))
+                 args.name, args.model, args.epoch, args.count, args.dataset, len(train_dataset), args.loss_2d, args.loss_3d, args.ratio_of_aug, args.rot, args.color, args.frei, args.general)
 
     trainset_loader = data.DataLoader(dataset=train_dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True)
     testset_loader = data.DataLoader(dataset=test_dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=False)
@@ -38,7 +38,7 @@ def main(args):
     for epoch in range(epo, args.epoch):
         Graphormer_model, optimizer, batch_time = train(args, trainset_loader, _model, epoch, best_loss, len(train_dataset),logger, count, writer, pck_l, len(trainset_loader)+len(testset_loader), batch_time)
         loss, count, pck, batch_time = test(args, testset_loader, Graphormer_model, epoch, count, best_loss, logger, writer, batch_time, len(trainset_loader)+len(testset_loader))
-
+        
         pck_l = max(pck, pck_l)
         is_best = loss < best_loss
         best_loss = min(loss, best_loss)

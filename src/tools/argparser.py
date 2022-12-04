@@ -39,8 +39,6 @@ def parse_args():
                         help = '20k means CISLAB 20,000 images',type=str)
     parser.add_argument("--root_path", default=f'output', type=str, required=False,
                         help="The root directory to save location which you want")
-    parser.add_argument("--output_path", default='None', type=str, required=False,
-                        help="The output directory to save checkpoint and test results.")
     parser.add_argument("--model", default='ours', type=str, required=False,
                         help="you can choose model like hrnet, simplebaseline, hourglass, ours")
     parser.add_argument("--dataset", default='ours', type=str, required=False,
@@ -51,6 +49,9 @@ def parse_args():
     parser.add_argument("--count", default=5, type=float)
     parser.add_argument("--ratio_of_aug", default=0.2, type=float)
     parser.add_argument("--epoch", default=30, type=int)
+    parser.add_argument("--loss_2d", default=1, type=int)
+    parser.add_argument("--loss_3d", default=1, type=int)
+    parser.add_argument("--test_loss", default="3d", type=str)
     parser.add_argument("--visualize", action='store_true')
     parser.add_argument("--resume", action='store_true')
     parser.add_argument("--rot", action='store_true')
@@ -59,6 +60,7 @@ def parse_args():
     parser.add_argument("--erase", action='store_true')
     parser.add_argument("--frei", action='store_true')
     parser.add_argument("--general", action='store_true')
+    parser.add_argument("--wrist", action='store_true')
     
     ######################################################################################
 
@@ -149,9 +151,9 @@ def load_model(args):
     epo = 0
     best_loss = np.inf
     count = 0
-    args.output_dir = os.path.join(args.root_path, args.output_path)
+    args.output_dir = os.path.join(args.root_path, args.name)
     if not args.resume: args.resume_checkpoint = 'None'
-    else: args.resume_checkpoint = os.path.join(os.path.join(args.root_path, args.output_path),'checkpoint-good/state_dict.bin')
+    else: args.resume_checkpoint = os.path.join(os.path.join(args.root_path, args.name),'checkpoint-good/state_dict.bin')
     if not os.path.isdir(args.output_dir): mkdir(args.output_dir)
 
     if os.path.isfile(os.path.join(args.output_dir, "log.txt")): os.remove(os.path.join(args.output_dir, "log.txt"))
@@ -248,6 +250,8 @@ def load_model(args):
     _model.to(args.device)
     return _model, logger, best_loss, epo, count
 
+
+
 def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,logger, count, writer, pck, len_total, batch_time):
 
     optimizer = torch.optim.Adam(params=list(Graphormer_model.parameters()),
@@ -256,23 +260,31 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
                                  weight_decay=0)
 
     criterion_2d_keypoints = torch.nn.MSELoss(reduction='none').cuda(args.device)
+    criterion_keypoints = torch.nn.MSELoss(reduction='none').cuda(args.device)
     end = time.time()
     Graphormer_model.train()
     log_losses = AverageMeter()
-
+    log_2d_losses = AverageMeter()
+    log_3d_losses = AverageMeter()
     if args.model == "ours":
-        for iteration, (images, gt_2d_joints, _) in enumerate(train_dataloader):
+        for iteration, (images, gt_2d_joints, heatmap, gt_3d_joints) in enumerate(train_dataloader):
             batch_size = images.size(0)
             adjust_learning_rate(optimizer, epoch, args)
             gt_2d_joints[:,:,1] = gt_2d_joints[:,:,1] / images.size(2) ## You Have to check whether weight and height is correct dimenstion
             gt_2d_joints[:,:,0] = gt_2d_joints[:,:,0] / images.size(3)  ## 2d joint value rearrange from 0 to 1
             gt_2d_joint = gt_2d_joints.clone().detach()
             gt_2d_joint = gt_2d_joint.cuda()
+            gt_3d_joints = gt_3d_joints.clone().detach()
+            gt_3d_joints = gt_3d_joints.cuda()
             images = images.cuda()
-            pred_2d_joints= Graphormer_model(images)
-
-            loss= keypoint_2d_loss(criterion_2d_keypoints, pred_2d_joints, gt_2d_joint)
+            pred_2d_joints, pred_3d_joints= Graphormer_model(images)
+            
+            loss_2d= keypoint_2d_loss(criterion_2d_keypoints, pred_2d_joints, gt_2d_joint)
+            loss_3d = keypoint_3d_loss(criterion_keypoints, pred_3d_joints, gt_3d_joints)
+            loss = args.loss_2d * loss_2d + args.loss_3d * loss_3d
             log_losses.update(loss.item(), batch_size)
+            log_2d_losses.update(loss_2d.item(), batch_size)
+            log_3d_losses.update(loss_3d.item(), batch_size)
 
             optimizer.zero_grad()
             loss.backward()
@@ -283,11 +295,11 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
             gt_2d_joint[:,:,1] = gt_2d_joint[:,:,1] * images.size(2) ## You Have to check whether weight and height is correct dimenstion
             gt_2d_joint[:,:,0] = gt_2d_joint[:,:,0] * images.size(3) 
             
-            # if iteration == 0 or iteration == int(len(train_dataloader)/2) or iteration == len(train_dataloader) - 1:
-            fig = plt.figure()
-            visualize_gt(images, gt_2d_joint, fig, iteration)
-            visualize_prediction(images, pred_2d_joints, fig, 'train', epoch, iteration, args,None)
-            plt.close()
+            if iteration == 0 or iteration == int(len(train_dataloader)/2) or iteration == len(train_dataloader) - 1:
+                fig = plt.figure()
+                visualize_gt(images, gt_2d_joint, fig, iteration)
+                visualize_prediction(images, pred_2d_joints, fig, 'train', epoch, iteration, args,None)
+                plt.close()
 
             batch_time.update(time.time() - end)
             end = time.time()
@@ -298,9 +310,11 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
                     ' '.join(
                         ['dataset_length: {len}','epoch: {ep}', 'iter: {iter}', '/{maxi}, count: {count}/5']
                     ).format(len=data_len,ep=epoch, iter=iteration, maxi=len(train_dataloader), count= count)
-                    + ' 2d_loss: {:.8f}, pck: {:.2f}%, best_loss: {:.8f}, expected_date: {}\n'.format(
+                    + ' 2d_loss: {:.8f}, 3d_loss: {:.8f} pck: {:.2f}%, total_loss: {:.8f}, best_loss: {:.8f}, expected_date: {}\n'.format(
+                        log_2d_losses.avg,
+                        log_3d_losses.avg,
+                        pck,
                         log_losses.avg,
-                        pck, 
                         best_loss,
                         ctime(eta_seconds + end))
                 )
@@ -311,19 +325,21 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
                     ' '.join(
                         ['dataset_length: {len}', 'epoch: {ep}', 'iter: {iter}', '/{maxi},  count: {count}/5']
                     ).format(len=data_len, ep=epoch, iter=iteration, maxi=len(train_dataloader), count= count)
-                    + ' 2d_loss: {:.8f}, pck: {:.2f}%, best_loss: {:.8f}\n, expected_date: {}'.format(
+                     + ' 2d_loss: {:.8f}, 3d_loss: {:.8f} pck: {:.2f}%, total_loss: {:.8f}, best_loss: {:.8f}, expected_date: {}'.format(
+                        log_2d_losses.avg,
+                        log_3d_losses.avg,
+                        pck,
                         log_losses.avg,
-                        pck, 
                         best_loss,
                         ctime(eta_seconds + end))
                 )
-
+                
         return Graphormer_model, optimizer, batch_time
     
     else:
         heatmap_size, multiply = 64, 4
         if args.model == "hrnet": heatmap_size, multiply = 128, 2
-        for iteration, (images, gt_2d_joints, gt_heatmaps) in enumerate(train_dataloader):
+        for iteration, (images, gt_2d_joints, gt_heatmaps, gt_3d_joints) in enumerate(train_dataloader):
             batch_time = AverageMeter()
             batch_size = images.size(0)
             adjust_learning_rate(optimizer, epoch, args)
@@ -390,6 +406,7 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
                         best_loss,
                         time.ctime(eta_seconds + end))
                 )
+            
 
 
         return Graphormer_model, optimizer, batch_time
@@ -398,14 +415,16 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
 
     end = time.time()
     criterion_2d_keypoints = torch.nn.MSELoss(reduction='none').cuda(args.device)
+    criterion_keypoints = torch.nn.MSELoss(reduction='none').cuda(args.device)
     log_losses = AverageMeter()
     pck_losses = AverageMeter()
     epe_losses = AverageMeter()
-
+    log_2d_losses = AverageMeter()
+    log_3d_losses = AverageMeter()
 
     if args.model == "ours":
         with torch.no_grad():
-            for iteration, (images, gt_2d_joints, _) in enumerate(test_dataloader):
+            for iteration, (images, gt_2d_joints, heatmap, gt_3d_joints) in enumerate(test_dataloader):
                 Graphormer_model.eval()
                 batch_size = images.size(0)
                 
@@ -413,8 +432,10 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
                 gt_2d_joints = gt_2d_joints
                 gt_2d_joint = gt_2d_joints.clone().detach()
                 gt_2d_joint = gt_2d_joint.cuda()
+                gt_3d_joints = gt_3d_joints.clone().detach()
+                gt_3d_joints = torch.tensor(gt_3d_joints).cuda()
 
-                pred_2d_joints = Graphormer_model(images)
+                pred_2d_joints, pred_3d_joints = Graphormer_model(images)
 
                 pred_2d_joints[:,:,1] = pred_2d_joints[:,:,1] * images.size(2) ## You Have to check whether weight and height is correct dimenstion
                 pred_2d_joints[:,:,0] = pred_2d_joints[:,:,0] * images.size(3)
@@ -422,10 +443,16 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
                 correct, visible_point, threshold = PCK_2d_loss(pred_2d_joints, gt_2d_joint, T= 0.05, threshold='proportion')
                 # epe_loss, epe_per = EPE(pred_2d_joints, gt_2d_joint)      ## don't consider inivisible joint
                 epe_loss, epe_per = EPE_train(pred_2d_joints, gt_2d_joint)  ## consider invisible joint
-                loss_2d_joints = keypoint_2d_loss(criterion_2d_keypoints, pred_2d_joints/224, gt_2d_joint/224)
+                loss_2d_joints = keypoint_2d_loss(criterion_2d_keypoints, pred_2d_joints / 224, gt_2d_joint / 224)
+                loss_3d_joints = keypoint_3d_loss(criterion_keypoints, pred_3d_joints, gt_3d_joints)
+                
+                loss = args.loss_2d * loss_2d_joints + args.loss_3d * loss_3d_joints
+
                 pck_losses.update_p(correct, visible_point)
                 epe_losses.update_p(epe_loss[0], epe_loss[1])
-                log_losses.update(loss_2d_joints, batch_size)
+                log_losses.update(loss.item(), batch_size)
+                log_2d_losses.update(loss_2d_joints.item(), batch_size)
+                log_3d_losses.update(loss_3d_joints.item(), batch_size)
 
                 if iteration == 0 or iteration == int(len(test_dataloader)/2) or iteration == len(test_dataloader) - 1:
                     fig = plt.figure()
@@ -442,12 +469,14 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
                         ' '.join(
                             ['Test =>> epoch: {ep}', 'iter: {iter}', '/{maxi}']
                         ).format(ep=epoch, iter=iteration, maxi=len(test_dataloader))
-                        + ' thresold: {} ,pck: {:.2f}%, epe: {:.2f}mm, loss: {:.2f}, count: {} / 50, best_loss: {:.8f}, expected_date: {} \n'.format(
+                        + ' threshold: {} ,pck: {:.2f}%, epe: {:.2f}mm, 2d_loss: {:.2f}, 3d_loss: {:.8f}, count: {} / 50, total_loss: {:.8f}, best_loss: {:.8f}, expected_date: {} \n'.format(
                             threshold,
                             pck_losses.avg * 100,
                             epe_losses.avg * 0.26,
-                            log_losses.avg,
+                            log_2d_losses.avg,
+                            log_3d_losses.avg,
                             int(count),
+                            log_losses.avg,
                             best_loss,
                             ctime(eta_seconds + end))
                     )
@@ -458,22 +487,28 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
                         ' '.join(
                             ['Test =>> epoch: {ep}', 'iter: {iter}', '/{maxi}']
                         ).format(ep=epoch, iter=iteration, maxi=len(test_dataloader))
-                        + ' thresold: {} ,pck: {:.2f}%, epe: {:.2f}mm, loss: {:.2f}, count: {} / 50, best_loss: {:.8f}, expected_date: {}'.format(
+                         + ' threshold: {} ,pck: {:.2f}%, epe: {:.2f}mm, 2d_loss: {:.2f}, 3d_loss: {:.8f}, count: {} / 50, total_loss: {:.8f}, best_loss: {:.8f}, expected_date: {}'.format(
                             threshold,
                             pck_losses.avg * 100,
                             epe_losses.avg * 0.26,
-                            log_losses.avg,
+                            log_2d_losses.avg,
+                            log_3d_losses.avg,
                             int(count),
+                            log_losses.avg,
                             best_loss,
                             ctime(eta_seconds + end))
                     )
+        
+        if args.test_loss == "3d": return log_3d_losses.avg, count, pck_losses.avg * 100, batch_time
+        if args.test_loss == "2d": return log_2d_losses.avg, count, pck_losses.avg * 100, batch_time
+        else: return log_losses.avg, count, pck_losses.avg * 100, batch_time
 
-        return log_losses.avg, count, pck_losses.avg * 100, batch_time
+       
     
     else:
         heatmap_size, multiply = 64, 4
         if args.model == "hrnet": heatmap_size, multiply = 128, 2
-        for iteration, (images, gt_2d_joints, _, gt_heatmaps) in enumerate(test_dataloader):
+        for iteration, (images, gt_2d_joints, gt_heatmaps, gt_3d_joints) in enumerate(test_dataloader):
             batch_time = AverageMeter()
             batch_size = images.size(0)
             images = images.cuda()
