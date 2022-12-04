@@ -43,4 +43,4 @@ sys.path.append("/usr/your/path/Wearable_Pose_Model")
 ```
 ## Result</br>
 Evaluation Metric: PCK(Percentage of Correct Key-point) </br>
-[eval.md](#docs/Evaluation.md)
+[eval.md](docs/Evaluation.md)
