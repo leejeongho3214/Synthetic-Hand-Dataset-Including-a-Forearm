@@ -8,9 +8,9 @@
   - [Test on our testset](#test-on-our-testset)
     - [Training with our dataset](#training-with-our-dataset)
     - [Training with other dataset](#training-with-other-dataset)
-    - [Etc](#etc)
-      - [Performance according to ratio of aug](#performance-according-to-ratio-of-aug)
-      - [Performance accoriing to kind of aug](#performance-accoriing-to-kind-of-aug)
+  - [Etc](#etc)
+    - [Performance according to ratio of aug](#performance-according-to-ratio-of-aug)
+    - [Performance accoriing to kind of aug](#performance-accoriing-to-kind-of-aug)
 - [3D hand pose](#3d-hand-pose)
   - [Test on each dataset](#test-on-each-dataset)
     - [Training with our dataset](#training-with-our-dataset-1)
@@ -46,8 +46,8 @@
 
 </br>
 
-### Etc
-#### Performance according to ratio of aug
+## Etc
+### Performance according to ratio of aug
 | Model | Ratio of aug | PCKb@0.1 | EPE(mm) |
 | :---: | :----: | :------: | :-----: |
 | Ours  |  0.1   | 81.4925  |   2.64      | 
@@ -63,7 +63,7 @@
 
 </br>
 
-#### Performance accoriing to kind of aug
+### Performance accoriing to kind of aug
 | Model | Catrgory of aug | PCKb@0.1 | EPE(mm) |
 | :---: | :----: | :------: | :-----: |
 | Ours  | X                          | 27.60 | 6.17|
