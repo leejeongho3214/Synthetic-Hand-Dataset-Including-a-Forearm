@@ -103,7 +103,7 @@ def build_dataset(args):
             for iter, degree in enumerate(folder_num):
 
                 dataset = CustomDataset(args, degree, path, rotation=args.rot, color=args.color,
-                                        blur=args.blur, erase=args.erase, ratio_of_aug=args.ratio_of_aug, ratio_of_dataset=1)
+                                        blur=args.blur, erase=args.erase, ratio_of_aug=args.ratio_of_aug, ratio_of_dataset=0.3)
 
                 if iter == 0:
                     train_dataset, test_dataset = random_split(
