@@ -235,7 +235,7 @@ def load_model(args):
             backbone = torch.nn.Sequential(*list(backbone.children())[:-1])
 
         trans_encoder = torch.nn.Sequential(*trans_encoder)
-        _model = Graphormer_Network(args, config, backbone, trans_encoder, token = 70)
+        _model = Graphormer_Network(args, config, backbone, trans_encoder, token = 70, projection= True)
 
     if args.resume_checkpoint != None and args.resume_checkpoint != 'None':
         state_dict = torch.load(args.resume_checkpoint)

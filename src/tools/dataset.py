@@ -96,8 +96,7 @@ def build_dataset(args):
         path = "../../datasets/synthetic_wrist"  # wrist-view image path (about 37K)
         general_path = "../../datasets/synthetic_general" # general-view image path (about 80K)
         folder_num = os.listdir(path)
-        print(args.general)
-        assert args.wrist or args.frei or args.general, "you check option to wrist, frei, and general "
+        assert args.wrist and args.frei and args.general, "you check least one option in wrist, frei, and general "
         
         if args.wrist:
             for iter, degree in enumerate(folder_num):

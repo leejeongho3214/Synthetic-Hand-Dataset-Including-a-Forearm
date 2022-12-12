@@ -18,7 +18,7 @@
             // "args": [ "--name", "panoptic/ours", "--output_path", "panoptic/ours", "--model", "ours", "--dataset", "panoptic"]
             // "args": [ "--name", "hiu/ours", "--output_path", "hiu/ours", "--model", "ours", "--dataset", "hiu"]
             // "args": ["--name", "coco/ours", "--output_path", "coco/ours", "--model", "ours", "--dataset", "coco"]
-            "args": ["--name", "frei_3d", "--dataset", "frei", "--resume" ]
+            // "args": ["--name", "frei_3d", "--dataset", "frei", "--resume" ]
         }
     ]
 }
