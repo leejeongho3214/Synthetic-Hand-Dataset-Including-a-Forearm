@@ -64,3 +64,5 @@ sys.path.append("/usr/your/path/Wearable_Pose_Model")
     * Mean Per Joint Position Error (MPJPE)
     * Calculated after aligning the root joint (= wrist) of the estimated and groundtruth 3D pose </br>
 ### More details => [eval.md](docs/Evaluation.md)
+
+### Paper ==> [paper.md](docs/paper.md)
