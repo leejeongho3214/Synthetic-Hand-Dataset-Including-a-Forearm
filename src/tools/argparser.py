@@ -61,6 +61,7 @@ def parse_args():
     parser.add_argument("--frei", action='store_true')
     parser.add_argument("--general", action='store_true')
     parser.add_argument("--wrist", action='store_true')
+    parser.add_argument("--projection", action='store_true')
     
     ######################################################################################
 
@@ -235,7 +236,7 @@ def load_model(args):
             backbone = torch.nn.Sequential(*list(backbone.children())[:-1])
 
         trans_encoder = torch.nn.Sequential(*trans_encoder)
-        _model = Graphormer_Network(args, config, backbone, trans_encoder, token = 70, projection= True)
+        _model = Graphormer_Network(args, config, backbone, trans_encoder, token = 70, projection= False)
 
     if args.resume_checkpoint != None and args.resume_checkpoint != 'None':
         state_dict = torch.load(args.resume_checkpoint)
@@ -277,10 +278,12 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
             gt_3d_joints = gt_3d_joints.clone().detach()
             gt_3d_joints = gt_3d_joints.cuda()
             images = images.cuda()
-            pred_2d_joints, pred_3d_joints= Graphormer_model(images)
             
-            loss_2d= keypoint_2d_loss(criterion_2d_keypoints, pred_2d_joints, gt_2d_joint)
-            loss_3d = keypoint_3d_loss(criterion_keypoints, pred_3d_joints, gt_3d_joints)
+            if args.projection: pred_2d_joints, pred_3d_joints= Graphormer_model(images)
+            else: pred_2d_joints= Graphormer_model(images); pred_3d_joints = torch.zeros(pred_2d_joints.size()); args.loss_3d = 0
+            
+            loss_2d= keypoint_2d_loss(criterion_2d_keypoints, pred_2d_joints, gt_2d_joint) * batch_size
+            loss_3d = keypoint_3d_loss(criterion_keypoints, pred_3d_joints, gt_3d_joints) * batch_size
             loss = args.loss_2d * loss_2d + args.loss_3d * loss_3d
             log_losses.update(loss.item(), batch_size)
             log_2d_losses.update(loss_2d.item(), batch_size)
@@ -435,12 +438,13 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
                 gt_3d_joints = gt_3d_joints.clone().detach()
                 gt_3d_joints = torch.tensor(gt_3d_joints).cuda()
 
-                pred_2d_joints, pred_3d_joints = Graphormer_model(images)
+                if args.projection: pred_2d_joints, pred_3d_joints= Graphormer_model(images)
+                else: pred_2d_joints= Graphormer_model(images); pred_3d_joints = torch.zeros(pred_2d_joints.size()); args.loss_3d = 0
 
                 pred_2d_joints[:,:,1] = pred_2d_joints[:,:,1] * images.size(2) ## You Have to check whether weight and height is correct dimenstion
                 pred_2d_joints[:,:,0] = pred_2d_joints[:,:,0] * images.size(3)
 
-                correct, visible_point, threshold = PCK_2d_loss(pred_2d_joints, gt_2d_joint, T= 0.05, threshold='proportion')
+                correct, visible_point, threshold = PCK_2d_loss(pred_2d_joints, gt_2d_joint, T= 0.05, threshold = 'proportion')
                 # epe_loss, epe_per = EPE(pred_2d_joints, gt_2d_joint)      ## don't consider inivisible joint
                 epe_loss, epe_per = EPE_train(pred_2d_joints, gt_2d_joint)  ## consider invisible joint
                 loss_2d_joints = keypoint_2d_loss(criterion_2d_keypoints, pred_2d_joints / 224, gt_2d_joint / 224)

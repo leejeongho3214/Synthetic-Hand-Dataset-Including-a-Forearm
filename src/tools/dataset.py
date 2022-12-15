@@ -96,13 +96,13 @@ def build_dataset(args):
         path = "../../datasets/synthetic_wrist"  # wrist-view image path (about 37K)
         general_path = "../../datasets/synthetic_general" # general-view image path (about 80K)
         folder_num = os.listdir(path)
-        assert args.wrist and args.frei and args.general, "you check least one option in wrist, frei, and general "
+        assert args.wrist and args.frei and args.general, "you have to check least one option in wrist, frei, and general "
         
         if args.wrist:
             for iter, degree in enumerate(folder_num):
 
                 dataset = CustomDataset(args, degree, path, rotation=args.rot, color=args.color,
-                                        blur=args.blur, erase=args.erase, ratio_of_aug=args.ratio_of_aug, ratio_of_dataset=0.3)
+                                        blur=args.blur, erase=args.erase, ratio_of_aug=args.ratio_of_aug, ratio_of_dataset= 1)
 
                 if iter == 0:
                     train_dataset, test_dataset = random_split(

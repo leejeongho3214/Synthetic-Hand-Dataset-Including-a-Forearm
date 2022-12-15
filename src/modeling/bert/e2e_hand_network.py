@@ -80,4 +80,4 @@ class Graphormer_Hand_Network(torch.nn.Module):
 
         else:
             pred_3d_joints = features[:, :21, :-1]
-            return pred_3d_joints
+            return pred_2d_joints
