@@ -13,20 +13,20 @@ Data
 
 Data
   1. Train-image: about 800K 2D virtual RGB images (can increase images as many as we want)
-  2. Test-image: any open hand dataset
-    - FreiHAND (2019 ICCV)
-      => first-large scale hand dataset / 130K images / Adobe Research
-    - InterHAND (2020 ECCV)
-      => first-interaction hand dataset / 2.6M images / Facebook Research
-    - HIU-DMTL (2021 ICCV)
-      => annoated all images manually / 40K images
-    - OneHand10K
-    - Coco-WholeBody (2020 ECCV)
-    - Coco
-      => low-resolution hand images
-    - CMU Panoptic
-      => Carnegie Mellon Univ.
-      => but, low-resolution hand images
+  2. Test-image: any open hand dataset </br>
+    - FreiHAND (2019 ICCV) </br>
+      &nbsp; &nbsp;=> first-large scale hand dataset / 130K images / Adobe Research </br>
+    - InterHAND (2020 ECCV) </br>
+      &nbsp; &nbsp;=> first-interaction hand dataset / 2.6M images / Facebook Research </br>
+    - HIU-DMTL (2021 ICCV) </br>
+      &nbsp; &nbsp;=> annoated all images manually / 40K images </br>
+    - OneHand10K </br>
+    - Coco-WholeBody (2020 ECCV) </br>
+    - Coco </br>
+      &nbsp; &nbsp;=> low-resolution hand images </br>
+    - CMU Panoptic </br>
+      &nbsp; &nbsp;=> Carnegie Mellon Univ. </br>
+      &nbsp; &nbsp;=> but, low-resolution hand images </br>
 
 Model
   1. DeepPose
