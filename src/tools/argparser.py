@@ -439,7 +439,7 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
                 gt_3d_joints = torch.tensor(gt_3d_joints).cuda()
 
                 if args.projection: pred_2d_joints, pred_3d_joints= Graphormer_model(images)
-                else: pred_2d_joints= Graphormer_model(images); pred_3d_joints = torch.zeros(pred_2d_joints.size()); args.loss_3d = 0
+                else: pred_2d_joints= Graphormer_model(images); torch.zeros([pred_2d_joints.size()[0], pred_2d_joints.size()[1], 3]).cuda(); args.loss_3d = 0
 
                 pred_2d_joints[:,:,1] = pred_2d_joints[:,:,1] * images.size(2) ## You Have to check whether weight and height is correct dimenstion
                 pred_2d_joints[:,:,0] = pred_2d_joints[:,:,0] * images.size(3)
