@@ -13,6 +13,7 @@
             "console": "integratedTerminal",
             "justMyCode": true,
             "cwd": "${fileDirname}",
+            "args": ["--wrist"]
             // "args": ["--name", "rhd/ours", "--output_path", "rhd/ours", "--model", "ours", "--dataset", "rhd"]
             // "args": ["--name" ,"MediaPipe", "--batch_size", "1"]
             // "args": [ "--name", "panoptic/ours", "--output_path", "panoptic/ours", "--model", "ours", "--dataset", "panoptic"]

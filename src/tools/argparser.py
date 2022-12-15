@@ -280,7 +280,7 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
             images = images.cuda()
             
             if args.projection: pred_2d_joints, pred_3d_joints= Graphormer_model(images)
-            else: pred_2d_joints= Graphormer_model(images); pred_3d_joints = torch.zeros(pred_2d_joints.size()); args.loss_3d = 0
+            else: pred_2d_joints= Graphormer_model(images); pred_3d_joints = torch.zeros([pred_2d_joints.size()[0], pred_2d_joints.size()[1], 3]).cuda(); args.loss_3d = 0
             
             loss_2d= keypoint_2d_loss(criterion_2d_keypoints, pred_2d_joints, gt_2d_joint) * batch_size
             loss_3d = keypoint_3d_loss(criterion_keypoints, pred_3d_joints, gt_3d_joints) * batch_size
