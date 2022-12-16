@@ -11,17 +11,17 @@
      - not only 2D joints coordinates, but also 3D joints
      - Futermore, wrist-attached camera view but general camera view
   - Test-image: any open hand dataset 
-     1. FreiHAND (2019 ICCV) 
+     - FreiHAND (2019 ICCV) 
          - first-large scale hand dataset / 130K images / Adobe Research 
-     2. InterHAND (2020 ECCV) 
+     - InterHAND (2020 ECCV) 
          - first-interaction hand dataset / 2.6M images / Facebook Research 
-     3. HIU-DMTL (2021 ICCV) 
+     - HIU-DMTL (2021 ICCV) 
          - annoated all images manually / 40K images 
-     4. OneHand10K 
-     5. Coco-WholeBody (2020 ECCV) 
-     6. Coco 
+     - OneHand10K 
+     - Coco-WholeBody (2020 ECCV) 
+     - Coco 
         - low-resolution hand images 
-     7. CMU Panoptic 
+     - CMU Panoptic 
         - Carnegie Mellon Univ. 
         - but, low-resolution hand images 
 
@@ -39,18 +39,18 @@
       - Mesh Graphormer
 
 ## Model
-  1. DeepPose
-  2. HourGlass
-  3. SimpleBaseline
-  4. HRNet
-  5. Mesh-Graphormer
+  - DeepPose
+  - HourGlass
+  - SimpleBaseline
+  - HRNet
+  - Mesh-Graphormer
 
 ## Model(pre-train)
   - MediaPipe
 
 
 ## Etc
-1. Convolutional Pose Machines(CVPR 2016)(=CPMs, PoseNet)
+- Convolutional Pose Machines(CVPR 2016)(=CPMs, PoseNet)
    - 순차적 CNN 구조
    - Stage 마다 loss를 계산 
      - Vanishing Gradient overcome
@@ -58,4 +58,4 @@
      - 찾기 쉬운거 관절 먼저 찾아주고 찾은 관절을 참고로 다른 관절들을 찾아나감
    - Stage에 conv & pooling을 반복하여 점차 receptive field를 넓힘
      - 자연스레 다른 관절과의 상관관계도 고려
-2. 
+- 
