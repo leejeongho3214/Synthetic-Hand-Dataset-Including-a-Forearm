@@ -27,15 +27,18 @@
 
 # Model
 ## 2D Hand Pose
+### CNN-based
+#### Directly regression
 - DeepPose
+#### HeatMap
 - HourGlass
 - SimpleBaseline
 - HRNet
+### Transformer-based
 - MeshGraphormer
-- MediaPipe (Pre-Train)
 
 ## 3D Hand Pose
-### lifting the 2D joint into 3D space
+### Before CNN
 -  Nearast neighbor matihing of a given 2D prediction
 -  A probabilistic 3D pose model based upon PCA bases
 -  Etc.
