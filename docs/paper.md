@@ -38,16 +38,18 @@
 ### Transformer-based
   - Mesh Graphormer
 
-## Model
+## 2D Hand Pose Model
   - DeepPose
   - HourGlass
   - SimpleBaseline
   - HRNet
-  - Mesh-Graphormer
+  - MeshGraphormer
+  - MediaPipe (Pre-Train)
 
-## Model(pre-train)
-  - MediaPipe
-
+## 3D Hand Pose Model
+	- HRNet
+	- MediaPipe (Pre-Train)
+	- MeshGraphormer
 
 ## Etc
 ### Convolutional Pose Machines
