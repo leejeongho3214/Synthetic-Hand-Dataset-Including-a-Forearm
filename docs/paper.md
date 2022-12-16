@@ -30,10 +30,18 @@
 ### CNN-based
 - Directly regression
 	- DeepPose (CVPR 2014)
+		- 각 stage의 regressor로부터 얻은 좌표를 토대로 다음 stage에 해당 좌표를 기준으로 한 bbox를 입력으로 넣어주어 iterative하게 관절의 위치를 추정
 - HeatMap
 	- HourGlass (ECCV 2016)
+		- 하나의 hourglass는 대칭적 구조를 가지며, down & upsampling을 거쳐 local과 global feature를 얻을 수 있음
+		- 8개의 hourglass를 이어 붙이며, 그 사이에는 intermediate supervision을 해줌으로써 점차 refinement되는 효과
 	- SimpleBaseline (ECCV 2018)
+		- ResNet 네트워트 output에 decov만 해주는 아주 간단한 네트워크
+		- 좋은 high resolution feature를 얻는게 좋지만, 그 방법들이 성능에 주는 차이는 미미
 	- HRNet (CVPR 2019)
+		- 지금까지 네트워크들과 다르게 직렬이 아닌 병렬 추론방식
+		- 즉, down & upsampling을 전혀 거치지 않아 온전하게 high resolution을 유지하여 성능이 우수
+
 ### Transformer-based
 - MeshGraphormer
 
