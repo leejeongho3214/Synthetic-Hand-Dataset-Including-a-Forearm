@@ -25,7 +25,16 @@
 	- Carnegie Mellon Univ. 
 	- but, low-resolution hand images 
 
-## Previous Model
+## Model
+### 2D Hand Pose
+- DeepPose
+- HourGlass
+- SimpleBaseline
+- HRNet
+- MeshGraphormer
+- MediaPipe (Pre-Train)
+
+### 3D Hand Pose
 ### lifting the 2D joint into 3D space
 -  Nearast neighbor matihing of a given 2D prediction
 -  A probabilistic 3D pose model based upon PCA bases
@@ -38,18 +47,6 @@
 ### Transformer-based
 - Mesh Graphormer
 
-## 2D Hand Pose Model
-- DeepPose
-- HourGlass
-- SimpleBaseline
-- HRNet
-- MeshGraphormer
-- MediaPipe (Pre-Train)
-
-## 3D Hand Pose Model
-- HRNet
-- MediaPipe (Pre-Train)
-- MeshGraphormer
 
 ## Etc
 ### Convolutional Pose Machines
