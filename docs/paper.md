@@ -33,7 +33,7 @@
   - CNN-based
       - Learning to Estimate 3D Hand Pose From Single RGB Images (ICCV 2017)
         - First 3D Hand Pose Model
-        - HandSegNet -> PoseNet(=CPMs) -> PosePrior
+        - HandSegNet -> [PoseNet(=CPMs)](#convolutional-pose-machines) -> PosePrior
 				
   - Transformer-based
       - Mesh Graphormer
@@ -50,7 +50,7 @@
 
 
 ## Etc
-- Convolutional Pose Machines(CVPR 2016)(=CPMs, PoseNet)
+### Convolutional Pose Machines (CVPR 2016)(=CPMs, PoseNet)
    - 순차적 CNN 구조
    - Stage 마다 loss를 계산 
      - Vanishing Gradient overcome
@@ -58,4 +58,4 @@
      - 찾기 쉬운거 관절 먼저 찾아주고 찾은 관절을 참고로 다른 관절들을 찾아나감
    - Stage에 conv & pooling을 반복하여 점차 receptive field를 넓힘
      - 자연스레 다른 관절과의 상관관계도 고려
-- 
+### 
