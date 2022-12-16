@@ -58,7 +58,8 @@
   - 찾기 쉬운거 관절 먼저 찾아주고 찾은 관절을 참고로 다른 관절들을 찾아나감
 - Stage에 conv & pooling을 반복하여 점차 receptive field를 넓힘
   - 자연스레 다른 관절과의 상관관계도 고려
-### Hands deep in deep learning for hand pose estimation (Deep-prior)
+### Hands deep in deep learning for hand pose estimation (Deep-Prior)
 - ICCV 2017 Hands Workshop
 - Bottleneck 구조를 활용
-	- 마지막 FC에서 바로 21개의 joint를 directly regression 하는 것이 아닌 해당 개수나 차원보다 낮게 얻은 뒤 full pose representation으로 reconsturction함
+	- 마지막 FC에서 바로 21개의 joint를 directly regression 하는 것이 아닌 해당 개수나 차원보다 낮게 얻은 뒤 full pose representation으로 reconstruction함
+	- Deep-Prior++에선 ResNet을 거친 뒤 나오는데 1024개의 벡터를 2번의 Drop-out을 거치게 한 뒤 joint coordinate를 구함
