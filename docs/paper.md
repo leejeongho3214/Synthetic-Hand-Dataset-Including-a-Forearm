@@ -28,12 +28,12 @@
 # Model
 ## 2D Hand Pose
 ### CNN-based
-#### Directly regression
-- DeepPose
-#### HeatMap
-- HourGlass
-- SimpleBaseline
-- HRNet
+- Directly regression
+	- DeepPose
+- HeatMap
+	- HourGlass
+	- SimpleBaseline
+	- HRNet
 ### Transformer-based
 - MeshGraphormer
 
