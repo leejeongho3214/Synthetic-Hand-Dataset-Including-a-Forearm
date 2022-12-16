@@ -29,11 +29,11 @@
 ## 2D Hand Pose
 ### CNN-based
 - Directly regression
-	- DeepPose
+	- DeepPose (CVPR 2014)
 - HeatMap
-	- HourGlass
-	- SimpleBaseline
-	- HRNet
+	- HourGlass (ECCV 2016)
+	- SimpleBaseline (ECCV 2018)
+	- HRNet (CVPR 2019)
 ### Transformer-based
 - MeshGraphormer
 
@@ -59,6 +59,7 @@
 - 매 stage마다 이전 stage의 belief map(=heatmap)을 입력으로 함께 넣어줌
   - 찾기 쉬운거 관절 먼저 찾아주고 찾은 관절을 참고로 다른 관절들을 찾아나감
 - Stage에 conv & pooling을 반복하여 점차 receptive field를 넓힘
+	- 뒤로 갈수록 나오는 belief map의 크기가 작아지며 그에 따른 관절의 위치에 해당하는 receptive field가 커짐
   - 자연스레 다른 관절과의 상관관계도 고려
 ## Hands deep in deep learning for hand pose estimation (Deep-Prior)
 - ICCV 2017 Hands Workshop
