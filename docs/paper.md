@@ -27,40 +27,36 @@
 
 # Model
 ## 2D Hand Pose
-### CNN-based
-- Directly regression
-	- DeepPose (CVPR 2014)
-		- 각 stage의 regressor로부터 얻은 좌표를 토대로 다음 stage에 해당 좌표를 기준으로 한 bbox를 입력으로 넣어주어 iterative하게 관절의 위치를 추정
-- HeatMap
-	- HourGlass (ECCV 2016)
-		- 하나의 hourglass는 대칭적 구조를 가지며, down & upsampling을 거쳐 local과 global feature를 얻을 수 있음
-		- 8개의 hourglass를 이어 붙이며, 그 사이에는 intermediate supervision을 해줌으로써 점차 refinement되는 효과
-	- SimpleBaseline (ECCV 2018)
-		- ResNet 네트워트 output에 decov만 해주는 아주 간단한 네트워크
-		- 좋은 high resolution feature를 얻는게 좋지만, 그 방법들이 성능에 주는 차이는 미미
-	- HRNet (CVPR 2019)
-		- 지금까지 네트워크들과 다르게 직렬이 아닌 병렬 추론방식
-		- 즉, down & upsampling을 전혀 거치지 않아 온전하게 high resolution을 유지하였고 병렬로 처리한 low resolution feature 또한 fusion 해주어 성능이 우수
-
-### Transformer-based
-- Mesh Graphormer
-	- ViT와 다르게 입력을 패치가 아닌 BackBone인 HRNet의 feature map으로 활용
-	- 3개의 인코더 블럭 중 마지막 인코더에 graph conv를 사용
-		- graph conv는 해당 모델에서 3d mesh를 추론하므로 778개의 관절에 대해 학습이 되겠지만 2D & 3D joint 추론하는 모델에서 쓸 수 없을 것으로 보임
+### Direct regression
+- DeepPose (CVPR 2014)
+- 각 stage의 regressor로부터 얻은 좌표를 토대로 다음 stage에 해당 좌표를 기준으로 한 bbox를 입력으로 넣어주어 iterative하게 관절의 위치를 추정
+### HeatMap
+- HourGlass (ECCV 2016)
+	- 하나의 hourglass는 대칭적 구조를 가지며, down & upsampling을 거쳐 local과 global feature를 얻을 수 있음
+	- 8개의 hourglass를 이어 붙이며, 그 사이에는 intermediate supervision을 해줌으로써 점차 refinement되는 효과
+- SimpleBaseline (ECCV 2018)
+	- ResNet 네트워트 output에 decov만 해주는 아주 간단한 네트워크
+	- 좋은 high resolution feature를 얻는게 좋지만, 그 방법들이 성능에 주는 차이는 미미
+- HRNet (CVPR 2019)
+	- 지금까지 네트워크들과 다르게 직렬이 아닌 병렬 추론방식
+	- 즉, down & upsampling을 전혀 거치지 않아 온전하게 high resolution을 유지하였고 병렬로 처리한 low resolution feature 또한 fusion 해주어 성능이 우수
 
 ## 3D Hand Pose
-### Before CNN
--  Nearast neighbor matihing of a given 2D prediction
--  A probabilistic 3D pose model based upon PCA bases
--  Etc.
-### CNN-based
+### Direct 3D pose estimation
 - Learning to Estimate 3D Hand Pose From Single RGB Images (ICCV 2017)
   - First 3D Hand Pose Model
   - HandSegNet -> [PoseNet(=CPMs)](#convolutional-pose-machines) -> PosePrior
-				
-### Transformer-based
+### Lifting 2D pose to 3D pose
+-  Nearast neighbor matihing of a given 2D prediction
+-  A probabilistic 3D pose model based upon PCA bases
+-  Etc.				
+### MANO model based estimation
 - Mesh Graphormer
-	- same as above
+	- ViT와 다르게 입력을 패치가 아닌 BackBone인 HRNet의 feature map을 넣어줌
+	- MANO 모델을 통해 3D joint & mesh template의 초기화 값을 얻어줌 (beta와 pose값을 0을 넣어주어 얻은 값)
+	- 3개의 인코더 블럭 중 마지막 인코더에 graph conv를 사용
+		- graph conv는 해당 모델에서 3d mesh를 추론하므로 778개의 관절에 대해 학습이 되겠지만 2D & 3D joint 추론하는 모델에서 쓸 수 없을 것으로 보임
+
 
 
 # Etc
