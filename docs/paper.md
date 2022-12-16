@@ -11,31 +11,31 @@
      - not only 2D joints coordinates, but also 3D joints
      - Futermore, wrist-attached camera view but general camera view
   - Test-image: any open hand dataset 
-     1 FreiHAND (2019 ICCV) 
+     1. FreiHAND (2019 ICCV) 
          - first-large scale hand dataset / 130K images / Adobe Research 
-     2 InterHAND (2020 ECCV) 
+     2. InterHAND (2020 ECCV) 
          - first-interaction hand dataset / 2.6M images / Facebook Research 
-     3 HIU-DMTL (2021 ICCV) 
+     3. HIU-DMTL (2021 ICCV) 
          - annoated all images manually / 40K images 
-     4 OneHand10K 
-     5 Coco-WholeBody (2020 ECCV) 
-     6 Coco 
+     4. OneHand10K 
+     5. Coco-WholeBody (2020 ECCV) 
+     6. Coco 
         - low-resolution hand images 
-     7 CMU Panoptic 
+     7. CMU Panoptic 
         - Carnegie Mellon Univ. 
         - but, low-resolution hand images 
 
 ## Previous Model
-  1. lifting the 2D joint into 3D space
+  - lifting the 2D joint into 3D space
      -  Nearast neighbor matihing of a given 2D prediction
      -  A probabilistic 3D pose model based upon PCA bases
      -  Etc.
-  2. CNN-based
+  - CNN-based
       - Learning to Estimate 3D Hand Pose From Single RGB Images (ICCV 2017)
         - First 3D Hand Pose Model
         - HandSegNet -> PoseNet(=CPMs) -> PosePrior
 				
-  3. Transformer-based
+  - Transformer-based
       - Mesh Graphormer
 
 ## Model
@@ -46,7 +46,7 @@
   5. Mesh-Graphormer
 
 ## Model(pre-train)
-  1. MediaPipe
+  - MediaPipe
 
 
 ## Etc
