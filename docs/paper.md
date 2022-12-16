@@ -43,7 +43,7 @@
 		- 즉, down & upsampling을 전혀 거치지 않아 온전하게 high resolution을 유지하였고 병렬로 처리한 low resolution feature 또한 fusion 해주어 성능이 우수
 
 ### Transformer-based
-- MeshGraphormer
+- Mesh Graphormer
 	- ViT와 다르게 입력을 패치가 아닌 BackBone인 HRNet의 feature map으로 활용
 	- 3개의 인코더 블럭 중 마지막 인코더에 graph conv를 사용
 		- graph conv는 해당 모델에서 3d mesh를 추론하므로 778개의 관절에 대해 학습이 되겠지만 2D & 3D joint 추론하는 모델에서 쓸 수 없을 것으로 보임
@@ -59,7 +59,8 @@
   - HandSegNet -> [PoseNet(=CPMs)](#convolutional-pose-machines) -> PosePrior
 				
 ### Transformer-based
-- [Mesh Graphormer](#meshgraphormer)
+- Mesh Graphormer
+	- above 2D model is same
 
 
 # Etc
