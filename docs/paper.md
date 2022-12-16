@@ -50,7 +50,7 @@
 
 ## Etc
 1. Convolutional Pose Machines(CVPR 2016)(=CPMs, PoseNet)
-   - 순차적 CNN
+   - 순차적 CNN 구조
    - Stage 마다 loss를 계산 
      - Vanishing Gradient overcome
    - 매 stage마다 이전 stage의 belief map(=heatmap)을 입력으로 함께 넣어줌
