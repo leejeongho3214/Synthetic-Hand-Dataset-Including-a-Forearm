@@ -1,27 +1,27 @@
 ## Goal
-  1. Find a 21 joints in 2D RGB-image
-  2. Not only 2D joints coordinates, but 3D joints
-  3. Not wrist-attached camera view, but general camera view
-  4. Make the virtual hand image in general camera view(like almost open hand data)
+  - Find a 21 joints in 2D RGB-image
+  - Not only 2D joints coordinates, but 3D joints
+  - Not wrist-attached camera view, but general camera view
+  - Make the virtual hand image in general camera view(like almost open hand data)
 
 ## Dataset
-  1. Train-image
+  - Train-image
      - about 800K 2D virtual RGB images (can increase images as many as we want)
        - If it can train with only virtual image, we use both virtual and each open hand dataset
      - not only 2D joints coordinates, but also 3D joints
      - Futermore, wrist-attached camera view but general camera view
-  2. Test-image: any open hand dataset 
-     - FreiHAND (2019 ICCV) 
+  - Test-image: any open hand dataset 
+     1 FreiHAND (2019 ICCV) 
          - first-large scale hand dataset / 130K images / Adobe Research 
-     - InterHAND (2020 ECCV) 
+     2 InterHAND (2020 ECCV) 
          - first-interaction hand dataset / 2.6M images / Facebook Research 
-     - HIU-DMTL (2021 ICCV) 
+     3 HIU-DMTL (2021 ICCV) 
          - annoated all images manually / 40K images 
-     - OneHand10K 
-     - Coco-WholeBody (2020 ECCV) 
-     - Coco 
+     4 OneHand10K 
+     5 Coco-WholeBody (2020 ECCV) 
+     6 Coco 
         - low-resolution hand images 
-     - CMU Panoptic 
+     7 CMU Panoptic 
         - Carnegie Mellon Univ. 
         - but, low-resolution hand images 
 
@@ -33,7 +33,8 @@
   2. CNN-based
       - Learning to Estimate 3D Hand Pose From Single RGB Images (ICCV 2017)
         - First 3D Hand Pose Model
-        - HandSegNet -> PoseNet(=CPMs) -> PosePrior Network
+        - HandSegNet -> PoseNet(=CPMs) -> PosePrior
+				
   3. Transformer-based
       - Mesh Graphormer
 
