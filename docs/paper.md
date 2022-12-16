@@ -25,7 +25,7 @@
 	- Carnegie Mellon Univ. 
 	- but, low-resolution hand images 
 
-## Model
+# Model
 ### 2D Hand Pose
 - DeepPose
 - HourGlass
