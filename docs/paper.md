@@ -1,16 +1,16 @@
-## Goal
+# Goal
   - Find a 21 joints in 2D RGB-image
   - Not only 2D joints coordinates, but 3D joints
   - Not wrist-attached camera view, but general camera view
   - Make the virtual hand image in general camera view(like almost open hand data)
 
-## Dataset
-### Train
+# Dataset
+## Train
 - about 800K 2D virtual RGB images (can increase images as many as we want)
   - If it can train with only virtual image, we use both virtual and each open hand dataset
 - not only 2D joints coordinates, but also 3D joints
 - Futermore, wrist-attached camera view but general camera view
-### Test
+## Test
 - FreiHAND (2019 ICCV) 
 	- first-large scale hand dataset / 130K images / Adobe Research 
 - InterHAND (2020 ECCV) 
@@ -48,8 +48,8 @@
 	- Mesh Graphormer
 
 
-## Etc
-### Convolutional Pose Machines
+# Etc
+## Convolutional Pose Machines
 - 순차적 CNN 구조이며 CVPR 2016 발표
 - Stage 마다 loss를 계산 
   - Vanishing Gradient 문제해결
@@ -57,7 +57,7 @@
   - 찾기 쉬운거 관절 먼저 찾아주고 찾은 관절을 참고로 다른 관절들을 찾아나감
 - Stage에 conv & pooling을 반복하여 점차 receptive field를 넓힘
   - 자연스레 다른 관절과의 상관관계도 고려
-### Hands deep in deep learning for hand pose estimation (Deep-Prior)
+## Hands deep in deep learning for hand pose estimation (Deep-Prior)
 - ICCV 2017 Hands Workshop
 - Bottleneck 구조를 활용
 	- 마지막 FC에서 바로 21개의 joint를 directly regression 하는 것이 아닌 해당 개수나 차원보다 낮게 얻은 뒤 full pose representation으로 reconstruction함
