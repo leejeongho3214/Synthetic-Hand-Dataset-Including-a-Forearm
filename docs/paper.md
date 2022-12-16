@@ -26,7 +26,7 @@
 	- but, low-resolution hand images 
 
 # Model
-### 2D Hand Pose
+## 2D Hand Pose
 - DeepPose
 - HourGlass
 - SimpleBaseline
@@ -34,7 +34,7 @@
 - MeshGraphormer
 - MediaPipe (Pre-Train)
 
-### 3D Hand Pose
+## 3D Hand Pose
 - lifting the 2D joint into 3D space
 	-  Nearast neighbor matihing of a given 2D prediction
 	-  A probabilistic 3D pose model based upon PCA bases
