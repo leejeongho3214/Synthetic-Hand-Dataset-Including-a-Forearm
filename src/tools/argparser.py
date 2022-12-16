@@ -454,7 +454,7 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
 
                 pck_losses.update_p(correct, visible_point)
                 epe_losses.update_p(epe_loss[0], epe_loss[1])
-                log_losses.update(loss.item(), batch_size)
+                log_losses.update(loss.item() * batch_size, batch_size)
                 log_2d_losses.update(loss_2d_joints.item(), batch_size)
                 log_3d_losses.update(loss_3d_joints.item(), batch_size)
 
@@ -502,10 +502,8 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
                             best_loss,
                             ctime(eta_seconds + end))
                     )
-        
-        if args.test_loss == "3d": return log_3d_losses.avg, count, pck_losses.avg * 100, batch_time
-        if args.test_loss == "2d": return log_2d_losses.avg, count, pck_losses.avg * 100, batch_time
-        else: return log_losses.avg, count, pck_losses.avg * 100, batch_time
+
+        return log_losses.avg, count, pck_losses.avg * 100, batch_time
 
        
     
