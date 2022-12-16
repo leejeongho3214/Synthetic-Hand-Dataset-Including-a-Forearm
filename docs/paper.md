@@ -5,12 +5,12 @@
   - Make the virtual hand image in general camera view(like almost open hand data)
 
 ## Dataset
-### Train-image
+### Train
 - about 800K 2D virtual RGB images (can increase images as many as we want)
   - If it can train with only virtual image, we use both virtual and each open hand dataset
 - not only 2D joints coordinates, but also 3D joints
 - Futermore, wrist-attached camera view but general camera view
-### Test-image: any open hand dataset 
+### Test
 - FreiHAND (2019 ICCV) 
 	- first-large scale hand dataset / 130K images / Adobe Research 
 - InterHAND (2020 ECCV) 
@@ -54,7 +54,7 @@
 - 순차적 CNN 구조
 - CVPR 2016
 - Stage 마다 loss를 계산 
-  - Vanishing Gradient overcome
+  - Vanishing Gradient 문제해결
 - 매 stage마다 이전 stage의 belief map(=heatmap)을 입력으로 함께 넣어줌
   - 찾기 쉬운거 관절 먼저 찾아주고 찾은 관절을 참고로 다른 관절들을 찾아나감
 - Stage에 conv & pooling을 반복하여 점차 receptive field를 넓힘
