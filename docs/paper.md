@@ -35,17 +35,17 @@
 - MediaPipe (Pre-Train)
 
 ## 3D Hand Pose
-- lifting the 2D joint into 3D space
-	-  Nearast neighbor matihing of a given 2D prediction
-	-  A probabilistic 3D pose model based upon PCA bases
-	-  Etc.
-- CNN-based
-	- Learning to Estimate 3D Hand Pose From Single RGB Images (ICCV 2017)
-  	- First 3D Hand Pose Model
-  	- HandSegNet -> [PoseNet(=CPMs)](#convolutional-pose-machines) -> PosePrior
+### lifting the 2D joint into 3D space
+-  Nearast neighbor matihing of a given 2D prediction
+-  A probabilistic 3D pose model based upon PCA bases
+-  Etc.
+### CNN-based
+- Learning to Estimate 3D Hand Pose From Single RGB Images (ICCV 2017)
+  - First 3D Hand Pose Model
+  - HandSegNet -> [PoseNet(=CPMs)](#convolutional-pose-machines) -> PosePrior
 				
-- Transformer-based
-	- Mesh Graphormer
+### Transformer-based
+- Mesh Graphormer
 
 
 # Etc
