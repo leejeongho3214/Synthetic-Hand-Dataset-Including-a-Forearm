@@ -60,7 +60,7 @@
 				
 ### Transformer-based
 - Mesh Graphormer
-	- above 2D model is same
+	- same as above
 
 
 # Etc
