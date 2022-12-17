@@ -43,6 +43,7 @@
 
 ## 3D Hand Pose
 ### Direct 3D pose estimation
+- Predict a likelihood heatmap for each joint and the joint's location is determined by taking the maximum likelihood of the heatmap
 - Learning to Estimate 3D Hand Pose From Single RGB Images (ICCV 2017)
   - First 3D Hand Pose Model
   - HandSegNet -> [PoseNet(=CPMs)](#convolutional-pose-machines) -> PosePrior
