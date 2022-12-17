@@ -81,3 +81,6 @@
 	- 평균과 분산만 알면 표현할 수 있음
 - 주로 log likelihood를 최대화하는 방법을 사용
 	- log를 붙임으로써 매우 작은 숫자도 표현하며, 곱셈을 덧셈으로 변환 가능하며, 가우시안 분포 식에서 지수를 날려버릴 수 있음
+- Discrete vs Continuous
+	- 이산확률변수에서 특정 사건이 일어날 확률은 likelihood가 되며, 연속확률변수에서는 PDF(Probability Density Function)으로 특정 구간에 속할 확률만 구해줄 수 있어 PDF의 y값을 likelihood라고 정의함
+	- 만약, 정규분포를 따르는 PDF에서 0부터 100까지의 수 가운데 50을 뽑을 확률은 1/∞이지만 likelihood로는 해당 PDF의 y값으로 표현가능하여 여러 사건이 일어날 경우, 해당 likelihood를 곱해주면 해당 사건들이 일어날 가능도가 계산
