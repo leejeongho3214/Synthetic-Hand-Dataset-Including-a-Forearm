@@ -19,7 +19,6 @@
 	- annoated all images manually / 40K images 
 - OneHand10K 
 - Coco-WholeBody (2020 ECCV) 
-- Coco 
 	- low-resolution hand images 
 - CMU Panoptic 
 	- Carnegie Mellon Univ. 
@@ -29,7 +28,7 @@
 ## 2D Hand Pose
 ### Direct regression
 - DeepPose (CVPR 2014)
-- 각 stage의 regressor로부터 얻은 좌표를 토대로 다음 stage에 해당 좌표를 기준으로 한 bbox를 입력으로 넣어주어 iterative하게 관절의 위치를 추정
+	- 각 stage의 regressor로부터 얻은 좌표를 토대로 다음 stage에 해당 좌표를 기준으로 한 bbox를 입력으로 넣어주어 iterative하게 관절의 위치를 추정
 ### HeatMap
 - HourGlass (ECCV 2016)
 	- 하나의 hourglass는 대칭적 구조를 가지며, down & upsampling을 거쳐 local과 global feature를 얻을 수 있음
