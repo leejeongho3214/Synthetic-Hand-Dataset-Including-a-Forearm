@@ -1,5 +1,5 @@
-# Now
-## 22.12.17 -
+# Research
+## 22.12.17 - now
 - 조합들 중에 가장 성능이 우수했던 가상 이미지 13만장만을 가지고 학습
 	- Hourglass, HRNet, Simplebaseline
 	- ratio of aug를 0.1, 0.2 모델을 재학습 (37만장)
