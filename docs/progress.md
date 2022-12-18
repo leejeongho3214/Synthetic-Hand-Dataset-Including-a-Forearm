@@ -23,3 +23,9 @@
 				auc3d: 0.781
 
 	- use our virtual image 830K
+
+- MeshGraphormer
+	- use FreiHAND 130K image
+
+				mean3d_error: 0.64 cm
+				auc3d: 0.873
