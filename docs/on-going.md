@@ -17,4 +17,4 @@
 				mean3d_error: 1.10 cm
 				auc3d: 78.1 %
 
-	- use only our virtual image 830K
+	- use our virtual image 830K
