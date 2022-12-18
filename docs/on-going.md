@@ -10,4 +10,11 @@
 
 
 # 3D Hand Pose Estimation
-##  
+##  FreiHAND
+- Ours
+	- use FreiHAND 130K image
+		''' 
+					xyz_al_mean3d: 1.101192
+					xyz_al_auc3d: 0.781031
+																												'''
+	- use only our virtual image 830K
