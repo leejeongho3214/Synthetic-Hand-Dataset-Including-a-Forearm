@@ -7,6 +7,7 @@
 
 - 3D Hand Pose의 성능을 비교하기 위한 joint error를 확인
 	- 2D와 다르게 상대적으로 복잡하여 FreiHAND의 Eval방식을 따르기로 함 (MeshGraphormer 또한 위 방법 사용)
+	- our virtual image 800K 이미지로 학습해서 성능보기
 
 
 # 3D Hand Pose Estimation
