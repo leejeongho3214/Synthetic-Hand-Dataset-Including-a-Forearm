@@ -12,10 +12,10 @@
 
 # 3D Hand Pose Estimation
 ##  FreiHAND
-> pck의 threshold를 0 ~ 5cm 사이에 동일한 간격으로 서로 다른 100개의 값 사용
-
-> auc는 regressor를 분류기의 정확도처럼 표현하기 위해 pck 그래프의 아래 면적 값을 의미
->> 최댓값은 1이며, 서로 다른 threshold에 의해 나온 pck 평균 값으로 봐도 무방
+> Evaluation Metric
+>> pck의 threshold를 0 ~ 5cm 사이에 동일한 간격으로 서로 다른 100개의 값 사용
+>> auc는 regressor를 분류기의 정확도처럼 표현하기 위해 pck 그래프의 아래 면적 값을 의미
+>>> 최댓값은 1이며, 서로 다른 threshold에 의해 나온 pck 평균 값으로 봐도 무방
 
 - Ours
 	- use FreiHAND 130K image
