@@ -11,10 +11,11 @@
 
 # 3D Hand Pose Estimation
 ##  FreiHAND
+> pck의 threshold를 0cm ~ 5cm 사이에 동일한 간격으로 100개 사용
 - Ours
 	- use FreiHAND 130K image
 
 				mean3d_error: 1.10 cm
-				auc3d: 78.1 %
+				auc3d: 0.781
 
 	- use our virtual image 830K
