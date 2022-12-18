@@ -45,6 +45,11 @@
 - Learning to Estimate 3D Hand Pose From Single RGB Images (ICCV 2017)
   - First 3D Hand Pose Model
   - HandSegNet -> [PoseNet(=CPMs)](#convolutional-pose-machines) -> PosePrior
+	- 3D coordinate의 여러 추론 문제점들을 해결
+		- A scale ambiguity 
+			- 짝을 이루는 관절들의 뼈 길이(l2 norm)를 구한 뒤 coordinate에 나눠줌
+		- Translation invariant representation
+			- root 관절을 다른 관절에 빼줌으로써 위치에 무관한 coordinate를 얻음
 ### Lifting 2D pose to 3D pose
 -  Nearast neighbor matihing of a given 2D prediction
 -  A probabilistic 3D pose model based upon PCA bases
