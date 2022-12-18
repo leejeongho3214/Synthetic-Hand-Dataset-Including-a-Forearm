@@ -12,7 +12,7 @@
 # 3D Hand Pose Estimation
 ##  FreiHAND
 - Ours
-	- use <mark>FreiHAND</mark> 130K image
+	- >use FreiHAND 130K image
 
 				mean3d_error: 1.10 cm
 				auc3d: 78.1 %
