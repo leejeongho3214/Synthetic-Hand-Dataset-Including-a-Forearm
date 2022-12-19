@@ -85,6 +85,10 @@
 - Bottleneck 구조를 활용
 	- 마지막 FC에서 바로 21개의 joint를 directly regression 하는 것이 아닌 해당 개수나 차원보다 낮게 얻은 뒤 full pose representation으로 reconstruction함
 	- Deep-Prior++에선 ResNet을 거친 뒤 나오는데 1024개의 벡터를 2번의 Drop-out을 거치게 한 뒤 joint coordinate를 구함
+## Hand pose estimation via latent 2.5 d heatmap regression
+- ECCV 2018 발표, Nvidia Research
+- 3D pose에서 scale과 depth 모호성의 문제를 해결하기 위해 2.5D pose representation을 제안
+- 카메라와의 상대적인 거리로 z축을 변경
 ## Likelihoood
 - 딥러닝 관점으로 살펴보면, 만약 classification task에서 숫자를 판별하는 모델을 제작할 때, 정답이 0부터 9까지 있다고 하자. 그리고 3개의 모델을 구현했을 때, 해당 모델들의 마지막 softmax layer에서 확률 값을 뽑아보면 0에서 9까지의 수로 판별할 확률이 나오게 되고 우리는 이 모델 중에서 가장 데이터를 잘 설명하는 distribution을 찾으며 찾은 모델이 가장 높은 likelihood을 갖는다. 또한, 학습을 통해 모델의 likelihood를 최대화하는 것이 목적이며 그러기위해 최적의 모델 파라미터 θ를 찾아줌
 - Gaussian distribution(정규분포)를 확률 모형으로 대부분 표현함
