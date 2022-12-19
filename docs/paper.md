@@ -1,13 +1,15 @@
 # Goal
-  - Find a 21 3D joint coordinates in 2D RGB-image
-  - Not wrist-attached camera view, but **general camera view**
-  - Make the virtual hand image for training
+- 한 장의 2D RGB image에서 3D 관절의 좌표를 딥러닝 모델을 통해 추론
+- 일반적인 카메라로 촬영된 공개된 손 데이터셋에서 우리가 제작한 데이터로 학습한 모델이 가장 우수한 성능이 보이게 함
+
+# Contibution
+- 우리의 가상 이미지를 사용함으로써, 기존의 다른 데이터 셋에서 3D joint를 얻는 방식들보다 정확한 3D joint 추론이 가능하게 함
+- 또한, 이미지를 원하는만큼 빠르게 제작이 가능하며 피실험자가 하기 힘든 손 동작들도 쉽게 취득 가능함
 
 # Dataset
 ## Train
-- 875K virtual RGB images in general camera view, not attached camera on wrist view (can increase images as many as we want)
-  - we might be able to use both virtual and open dataset for training
-- Annotation has 2D & 3D joints coordinates
+- 약 88만 장의 가상 이미지를 제작
+- 2D와 3D 관절의 좌표 annotation을 가짐
 
 ## Test
 - FreiHAND (2019 ICCV) 
@@ -16,12 +18,12 @@
 	- first-interaction hand dataset / 2.6M images / Facebook Research 
 - HIU-DMTL (2021 ICCV) 
 	- annoated all images manually / 40K images 
-- OneHand10K 
 - Coco-WholeBody (2020 ECCV) 
 	- low-resolution hand images 
 - CMU Panoptic 
 	- Carnegie Mellon Univ. 
 	- but, low-resolution hand images 
+- OneHand10K 
 
 # Model
 ## 2D Hand Pose
