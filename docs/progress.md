@@ -34,7 +34,7 @@
 
 
 # Reference
-## Error	Calculation
+## Error Calculation
 - Procrustes Analysis (침대에 팔, 다리를 강제로 맞춤)
 	1. gt, pred의 평균 값을 계산
 	2. 각 평균값으로 빼줌 => 벡터들의 원점을 기준으로 이동
