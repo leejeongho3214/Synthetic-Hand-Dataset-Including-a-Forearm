@@ -64,7 +64,7 @@
 
 
 
-# Etc
+# Reference
 ## Convolutional Pose Machines
 - 순차적 CNN 구조이며 CVPR 2016 발표
 - Stage 마다 loss를 계산 
