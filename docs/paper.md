@@ -1,8 +1,7 @@
 # Goal
-  - Find a 21 joints in 2D RGB-image
-  - Not only 2D joints coordinates, but 3D joints
-  - Not wrist-attached camera view, but general camera view
-  - Make the virtual hand image in general camera view(like almost open hand data)
+  - Find a 21 3D joint coordinates in 2D RGB-image
+  - Not wrist-attached camera view, but *general camera view*
+  - Make the virtual hand image for training
 
 # Dataset
 ## Train
