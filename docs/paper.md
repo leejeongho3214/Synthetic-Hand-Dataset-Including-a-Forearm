@@ -7,7 +7,7 @@
 ## Train
 - 875K virtual RGB images in general camera view, not attached camera on wrist view (can increase images as many as we want)
   - we might be able to use both virtual and open dataset for training
-- Annotation have 2D & 3D joints coordinates
+- Annotation has 2D & 3D joints coordinates
 
 ## Test
 - FreiHAND (2019 ICCV) 
