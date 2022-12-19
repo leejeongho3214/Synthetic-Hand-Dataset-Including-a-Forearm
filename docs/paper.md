@@ -6,8 +6,7 @@
 # Contibution
 - 우리의 가상 이미지를 사용함으로써, 기존의 다른 데이터 셋에서 3D joint를 얻는 방식들보다 정확한 3D joint 추론이 가능하게 함
 - 또한, 이미지를 원하는만큼 빠르게 제작이 가능하며 피실험자가 하기 힘든 손 동작들도 쉽게 취득 가능함
-
-
+</br></br></br>
 
 # Dataset
 ## Train
@@ -26,7 +25,8 @@
 - CMU Panoptic 
 	- Carnegie Mellon Univ. 
 	- but, low-resolution hand images 
-- OneHand10K 
+- OneHand10K
+</br></br></br> 
 
 # Model
 ## 2D Hand Pose
@@ -64,8 +64,7 @@
 	- MANO 모델을 통해 인접행렬과 3D joint & mesh template의 초기화 값을 얻어줌 (beta와 pose값을 0을 넣어주어 얻은 값)
 	- 3개의 인코더 블럭 중 마지막 인코더에 graph conv를 사용
 		- graph conv는 해당 모델에서 3d mesh를 추론하므로 778개의 관절에 대해 학습이 되겠지만 2D & 3D joint 추론하는 모델에서 쓸 수 없을 것으로 보임
-
-
+</br></br></br>
 
 # Reference
 ## Convolutional Pose Machines
