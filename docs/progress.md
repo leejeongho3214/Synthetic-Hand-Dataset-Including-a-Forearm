@@ -12,7 +12,7 @@
 
 # 3D Hand Pose Estimation
 ##  FreiHAND
-> Evaluation Metric
+> [Evaluation Metric](#error-계산과정)
 >> pck의 threshold를 0 ~ 5cm 사이에 동일한 간격으로 서로 다른 100개의 값 사용
 
 >> auc는 regressor를 분류기의 정확도처럼 표현하기 위해 pck 그래프의 아래 면적 값을 의미
@@ -31,3 +31,8 @@
 
 				mean3d_error: 0.64 cm
 				auc3d: 0.873
+
+
+# Reference
+## Error	계산과정
+- 
