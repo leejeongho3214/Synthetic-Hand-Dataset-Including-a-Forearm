@@ -35,9 +35,11 @@
 
 # Reference
 ## Error	Calculation
-- Gt와 Pred 사이의 3D joint coordinate를 계산
+- Procrustes Analysis (침대에 팔, 다리를 강제로 맞춤)
 	1. gt, pred의 평균 값을 계산
 	2. 각 평균값으로 빼줌 => 벡터들의 원점을 기준으로 이동
 	3. 각 l2 norm을 계산하여 나눠줌 => normalization
 	4. pred를 gt와 동일한 scale과 orientation을 갖게 하기위해 변환행렬을 구해줌
 	5. 4에서 구한 변환행렬을 pred에 적용해 aligned pred를 얻음
+- PA 적용 후 MPJPE 측정
+	- PA를 적용함으로써 회전과 스케일을 제외하고 오로지 자세의 차이만 계산
