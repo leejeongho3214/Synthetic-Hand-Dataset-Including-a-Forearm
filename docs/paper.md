@@ -5,10 +5,10 @@
 
 # Dataset
 ## Train
-- about 800K 2D virtual RGB images (can increase images as many as we want)
-  - If it can train with only virtual image, we use both virtual and each open hand dataset
-- not only 2D joints coordinates, but also 3D joints
-- Futermore, wrist-attached camera view but general camera view
+- 875K virtual RGB images in general camera view, not attached camera on wrist view (can increase images as many as we want)
+  - we might be able to use both virtual and open dataset for training
+- Annotation have 2D & 3D joints coordinates
+
 ## Test
 - FreiHAND (2019 ICCV) 
 	- first-large scale hand dataset / 130K images / Adobe Research 
