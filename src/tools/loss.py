@@ -71,19 +71,22 @@ def keypoint_2d_loss(criterion_keypoints, pred_keypoints_2d, gt_keypoints_2d):
     The confidence is binary and indicates whether the keypoints exist or not.
     """
     conf = 1
-    loss = (conf * criterion_keypoints(pred_keypoints_2d, gt_keypoints_2d)).mean()
+    loss = (conf * criterion_keypoints(pred_keypoints_2d, gt_keypoints_2d)).mean(2).mean(1).sum()
     return loss
 
 def PCK_2d_loss_visible(pred_2d, gt_2d, T = 0.1, threshold = 'proportion'):
     bbox_size = []
     point = []
-    pred_2d = pred_2d.detach().cpu()
+    # pred_2d = pred_2d.detach().cpu()  
     gt_2d = gt_2d.detach().cpu()
 
     for j in gt_2d:
         width = max(j[:,0]) - min(j[:,0])
         height = max(j[:,1]) - min(j[:,1])
-        bbox_size.append(max(width, height))
+        square_len = width ** 2 + height ** 2
+        length = np.sqrt(square_len)
+        bbox_size.append(length)
+        # bbox_size.append(max(width, height))
         point.append(((min(j[:,0]),min(j[:,1])),(max(j[:,0]),max(j[:,1]))))
 
     correct = 0
@@ -100,7 +103,7 @@ def PCK_2d_loss_visible(pred_2d, gt_2d, T = 0.1, threshold = 'proportion'):
                         correct += 1
                 elif threshold == 'pixel':
                     distance = np.sqrt((x ** 2 + y ** 2))
-                    if distance * 0.26 < T * 20:
+                    if distance * 0.26 < T:
                         correct += 1
                 else:
                     assert False, "Please check variable threshold is right"
@@ -138,6 +141,17 @@ def PCK_2d_loss(pred_2d, gt_2d, T = 0.1, threshold = 'proportion'):
                 assert False, "Please check variable threshold is right"
 
     return correct, visible_joint, threshold
+
+def PCK_3d_loss(pred_3d, gt_3d, T = 0.1):
+    
+    pred_3d = pred_3d.detach().cpu()
+    gt_3d = gt_3d.detach().cpu()
+    diff = pred_3d - gt_3d
+    euclidean_dist = diff.square().sum(2).sqrt()
+    pixel_to_mm = 3.779527559
+    pck = (euclidean_dist * pixel_to_mm <= T).type(torch.float).mean(1).sum()
+
+    return pck, T
 
 def PCK_2d_loss_No_batch(pred_2d, gt_2d, images,T=0.1, threshold = 'proportion'):
     point = []
@@ -197,6 +211,6 @@ def keypoint_3d_loss(criterion_keypoints, pred_keypoints_3d, gt_keypoints_3d):
         gt_keypoints_3d = gt_keypoints_3d - gt_root[:, None, :]
         pred_root = pred_keypoints_3d[:, 0, :]
         pred_keypoints_3d = pred_keypoints_3d - pred_root[:, None, :]
-        return (criterion_keypoints(pred_keypoints_3d, gt_keypoints_3d)).mean()
+        return (criterion_keypoints(pred_keypoints_3d, gt_keypoints_3d)).mean(2).mean(1).sum()
     else:
         assert False, "gt_3d_keypoint No"

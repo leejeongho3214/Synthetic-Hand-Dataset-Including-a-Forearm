@@ -7,18 +7,20 @@ from matplotlib import pyplot as plt
 from src.utils.miscellaneous import mkdir
 from torchvision.transforms import transforms
 
-def visualize_prediction(images, pred_2d_joint, fig, method = None, epoch = 0, iteration = 0,args =None, dataset_name = 'p'):
-    num = iteration % images.size(0)
+def visualize_prediction(images, pred_2d_joint, fig, method = None, epoch = 0, iteration = 0, args =None, dataset_name = 'p'):
+    num = 0
+    # images = images[None, :, :, :]
+    # pred_2d_joint = pred_2d_joint[None, :, :]
     image = np.moveaxis(images[num].detach().cpu().numpy(), 0, -1)
     image = ((image + abs(image.min())) / (image + abs(image.min())).max()).copy()
     parents = np.array([-1, 0, 1, 2, 3, 0, 5, 6, 7, 0, 9, 10, 11, 0, 13, 14, 15, 0, 17, 18, 19,])
     for i in range(21):
         cv2.circle(image, (int(pred_2d_joint[num][i][0]), int(pred_2d_joint[num][i][1])), 2, [0, 1, 0],
-                   thickness=-1)
+                thickness=-1)
         if i != 0:
             cv2.line(image, (int(pred_2d_joint[num][i][0]), int(pred_2d_joint[num][i][1])),
-                     (int(pred_2d_joint[num][parents[i]][0]), int(pred_2d_joint[num][parents[i]][1])),
-                     [0, 0, 1], 1)
+                    (int(pred_2d_joint[num][parents[i]][0]), int(pred_2d_joint[num][parents[i]][1])),
+                    [0, 0, 1], 1)
 
     ax1 = fig.add_subplot(1, 2, 2)
     ax1.imshow(image)
@@ -71,7 +73,10 @@ def visualize_prediction(images, pred_2d_joint, fig, method = None, epoch = 0, i
 
 def visualize_gt(images, gt_2d_joint, fig, num):
 
-    num = num % images.size(0)
+    # num = num % images.size(0)
+    num = 0
+    # images = images[None, :, :, :]
+    # gt_2d_joint = gt_2d_joint[None, :, :]
     image = np.moveaxis(images[num].detach().cpu().numpy(), 0, -1)
     image = ((image + abs(image.min())) / (image + abs(image.min())).max()).copy()
     parents = np.array([-1, 0, 1, 2, 3, 0, 5, 6, 7, 0, 9, 10, 11, 0, 13, 14, 15, 0, 17, 18, 19,])

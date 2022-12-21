@@ -5,12 +5,10 @@
 # LICENSE file in the root directory of this source tree.
 #
 
-import os
 import cv2
 import numpy as np
 from .config import cfg
 import random
-import math
 
 def load_img(path, order='RGB'):
     

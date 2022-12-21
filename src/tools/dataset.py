@@ -1,47 +1,23 @@
-from src.tools.visualize import visualize_gt
 from src.utils.preprocessing import load_skeleton, process_bbox
 from src.utils.miscellaneous import mkdir
 from src.utils.comm import is_main_process
 from src.datasets.build import make_hand_data_loader
 from src.utils.transforms import world2cam, cam2pixel
-from src.utils.config import cfg
 import json
 import math
 import os
 import os.path as op
 import random
 import cv2
-from matplotlib import pyplot as plt
 import numpy as np
-from scipy import io
 from torch.utils.data import Dataset
-from PIL import Image, ImageFile
+from PIL import Image
 from torchvision import transforms
 from torch.utils.data import random_split, ConcatDataset
 import torch
 import sys
 from pycocotools.coco import COCO
 sys.path.append("/home/jeongho/tmp/Wearable_Pose_Model")
-
-def visualize_gt2(images, gt_2d_joint, fig, num):
-    num = 0
-    # image = Image.fromarray(images)
-    images = np.array(images)
-    images = images.transpose(1,2,0)
-    image = images.copy()
-    gt_2d_joint = gt_2d_joint[None, :, :]
-    parents = np.array([-1, 0, 1, 2, 3, 0, 5, 6, 7, 0, 9, 10, 11, 0, 13, 14, 15, 0, 17, 18, 19,])
-    for i in range(21):
-        cv2.circle(image, (int(gt_2d_joint[num][i][0]), int(gt_2d_joint[num][i][1])), 2, [0, 1, 0],
-                thickness=-1)
-        if i != 0:
-            cv2.line(image, (int(gt_2d_joint[num][i][0]), int(gt_2d_joint[num][i][1])),
-                    (int(gt_2d_joint[num][parents[i]][0]), int(gt_2d_joint[num][parents[i]][1])),
-                    [0, 0, 1], 1)
-
-    ax1 = fig.add_subplot(1, 2, 1)
-    ax1.imshow(image)
-    plt.savefig('aa.jpg')
 
 def build_dataset(args):
 
@@ -96,13 +72,12 @@ def build_dataset(args):
         path = "../../datasets/synthetic_wrist"  # wrist-view image path (about 37K)
         general_path = "../../datasets/synthetic_general" # general-view image path (about 80K)
         folder_num = os.listdir(path)
-        assert args.wrist or args.frei or args.general, "you have to check least one option in wrist, frei, and general "
         
-        if args.wrist:
+        if not args.general:
             for iter, degree in enumerate(folder_num):
 
                 dataset = CustomDataset(args, degree, path, rotation=args.rot, color=args.color,
-                                        blur=args.blur, erase=args.erase, ratio_of_aug=args.ratio_of_aug, ratio_of_dataset= 1)
+                                        ratio_of_aug=args.ratio_of_aug, ratio_of_dataset= 0.3)
 
                 if iter == 0:
                     train_dataset, test_dataset = random_split(
@@ -116,19 +91,11 @@ def build_dataset(args):
                     test_dataset = ConcatDataset(
                         [test_dataset, test_dataset_other])
 
-        if args.frei:
-            train_dataset = make_hand_data_loader(args, args.train_yaml, False, is_train=True,
-                                                                                scale_factor=args.img_scale_factor)  # RGB image
-            # train_dataset = ConcatDataset([train_dataset_frei, train_dataset])
-            # test_dataset = ConcatDataset([test_dataset_frei, test_dataset])
-
-        if args.general:
-
+        else:
             folder_num = os.listdir(general_path)
             for iter, degree in enumerate(folder_num):
 
-                dataset = CustomDataset(args, degree,general_path, rotation=args.rot, color=args.color, blur=args.blur,
-                                        erase=args.erase, ratio_of_aug=args.ratio_of_aug, ratio_of_dataset = 1)
+                dataset = CustomDataset(args, degree,general_path, rotation=args.rot, color=args.color, ratio_of_aug=args.ratio_of_aug, ratio_of_dataset = 1)
 
                 if iter == 0:
                     train_dataset_general, test_dataset_general = random_split(
@@ -339,15 +306,13 @@ class Json_transform(Dataset):
 
 
 class CustomDataset(Dataset):
-    def __init__(self, args, degree, path, rotation=False, color=False, blur=False, erase=False, ratio_of_aug=0.2, ratio_of_dataset=1):
+    def __init__(self, args, degree, path, rotation=False, color=False, ratio_of_aug=0.2, ratio_of_dataset=1):
         self.args = args
         self.rotation = rotation
         self.color = color
         self.degree = degree
         self.path = path
         self.ratio_of_aug = ratio_of_aug
-        self.blur = blur
-        self.erase = erase
         self.ratio_of_dataset = ratio_of_dataset
         with open(f"{path}/{degree}/annotations/train/CISLAB_train_data_update.json", "r") as st_json:
             self.meta = json.load(st_json)
@@ -364,21 +329,6 @@ class CustomDataset(Dataset):
             f'{self.path}/{self.degree}/images/train/{name}')  # PIL image
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-        if idx < len(self.meta['images']) * self.ratio_of_aug:
-
-            if self.rotation:
-                image = i_rotate(image, degrees, 0, move)
-                image = Image.fromarray(image)
-                joint_2d = torch.tensor(
-                    self.meta['images'][idx]['rot_joint_2d'])
-
-            else:
-                image = Image.fromarray(image)
-                joint_2d = torch.tensor(self.meta['images'][idx]['joint_2d'])
-        else:
-            image = Image.fromarray(image)
-            joint_2d = torch.tensor(self.meta['images'][idx]['joint_2d'])
-
         if not self.args.model == "ours":
             image_size = 256
         else:
@@ -388,20 +338,35 @@ class CustomDataset(Dataset):
             'resize': transforms.Resize((image_size, image_size)),
             'to_tensor': transforms.ToTensor(),
             'color': transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5),
-            'blur': transforms.GaussianBlur(kernel_size=(5, 5), sigma=(0.1, 1)),
-            'erase': transforms.RandomErasing(p=1.0, scale=(0.02, 0.04), ratio=(0.3, 3.3)),
             'norm': transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
         }
-
-        if not self.blur:
-            del trans_option['blur']
+        
         if not self.color:
             del trans_option['color']
-        if not self.erase:
-            del trans_option['erase']
+        
+        image = i_rotate(image, degrees, 0, move)
+        image = Image.fromarray(image)
+        joint_2d = torch.tensor(self.meta['images'][idx]['rot_joint_2d'])
+        
+        if idx < len(self.meta['images']) * self.ratio_of_aug:
 
-        trans = transforms.Compose([trans_option[i] for i in trans_option])
+            # if self.rotation:
+            trans = transforms.Compose([trans_option[i] for i in trans_option])
+
+            
+        else:
+            trans = transforms.Compose([transforms.Resize((image_size, image_size)),
+                                        transforms.ToTensor(),
+                                        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
         image = trans(image)
+        #     else:
+        #         image = Image.fromarray(image)
+        #         joint_2d = torch.tensor(self.meta['images'][idx]['joint_2d'])
+        # else:
+        #     image = Image.fromarray(image)
+        #     joint_2d = torch.tensor(self.meta['images'][idx]['joint_2d'])
+
+
 
         if self.args.model == "hrnet":
             heatmap = GenerateHeatmap(128, 21)(joint_2d/2)
@@ -411,6 +376,7 @@ class CustomDataset(Dataset):
         joint_3d = torch.tensor(self.meta['images'][idx]['joint_3d'])
 
         return image, joint_2d, heatmap, joint_3d
+
 
 
 class AverageMeter(object):
@@ -525,6 +491,7 @@ class Our_testset(Dataset):
             size = 256
         else:
             size = 224
+            
         image = Image.open(os.path.join(self.image_path, self.list[idx]))
         scale_x = size / image.width
         scale_y = size / image.height
