@@ -506,9 +506,10 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
                 pred_2d_joints[:,:,0] = pred_2d_joints[:,:,0] * images.size(3)
 
                 
-                
-                # correct, visible_point, threshold = PCK_2d_loss(pred_2d_joints, gt_2d_joint, T= 0.05, threshold = 'proportion')
-                pck, threshold = PCK_3d_loss(pred_3d_joints, gt_3d_joints, T= 10)
+                if args.general:
+                   pck, threshold = PCK_3d_loss(pred_3d_joints, gt_3d_joints, T= 10)
+                else:
+                    pck = PCK_2d_loss(pred_2d_joints, gt_2d_joint, T= 0.05, threshold = 'proportion')
                 # epe_loss, epe_per = EPE(pred_2d_joints, gt_2d_joint)      ## don't consider inivisible joint
                 epe_loss, _ = EPE_train(pred_2d_joints, gt_2d_joint)  ## consider invisible joint
                 # loss_2d_joints = keypoint_2d_loss(criterion_2d_keypoints, pred_2d_joints / 224, gt_2d_joint / 224)
@@ -517,7 +518,7 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
                 # loss = args.loss_2d * loss_2d_joints + args.loss_3d * loss_3d_joints
                 loss = reconstruction_error(np.array(pred_3d_joints.cpu()), np.array(gt_3d_joints.cpu()))
 
-                pck_losses.update_p(pck, batch_size)
+                pck_losses.update(pck, batch_size)
                 epe_losses.update_p(epe_loss[0], epe_loss[1])
                 log_losses.update(loss.item(), batch_size)
                 # log_2d_losses.update(loss_2d_joints.item(), batch_size)
@@ -603,9 +604,9 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
             pred_joint = torch.tensor(pred_joint)
             pred_2d_joints = pred_joint * multiply ## heatmap resolution was 64 x 64 so multiply 4 to make it 256 x 256
             
-            correct, visible_point, threshold = PCK_2d_loss(pred_2d_joints, gt_2d_joint, T= 0.05, threshold='proportion')
+            pck = PCK_2d_loss(pred_2d_joints, gt_2d_joint, T= 0.05, threshold='proportion')
             epe_loss, _ = EPE_train(pred_2d_joints, gt_2d_joint)  ## consider invisible joint
-            pck_losses.update_p(correct, visible_point)
+            pck_losses.update(pck, batch_size)
             epe_losses.update_p(epe_loss[0], epe_loss[1])
             
             if iteration == 0 or iteration == int(len(test_dataloader)/2) or iteration == len(test_dataloader) - 1:
