@@ -91,10 +91,10 @@ def PCK_2d_loss_visible(pred_2d, gt_2d, T = 0.1, threshold = 'proportion'):
     vis_index = gt_2d_vis == 1
     diff = gt_2d_value - pred_2d_value
     distance = diff.square().sum(2).sqrt() * vis_index                                            ## Consider only visible joint
-    norm_distance = distance.reshape(-1, 32)/torch.tensor(bbox_size)
-
+    num_vis = len(vis_index[vis_index == True])
+    
     if threshold == 'proportion':
-        norm_distance = distance.reshape(-1, 32) / torch.tensor(bbox_size)
+        norm_distance = distance.permute(1, 0) / torch.tensor(bbox_size)
         num_correct = num_vis - len(norm_distance[norm_distance > T])
             
     elif threshold == 'mm':
@@ -103,7 +103,7 @@ def PCK_2d_loss_visible(pred_2d, gt_2d, T = 0.1, threshold = 'proportion'):
     else:
         assert False, "Please check variable threshold is right"
 
-    num_vis = len(vis_index[vis_index == True])
+    
     pck = num_correct / num_vis
     return pck, threshold
 
@@ -126,7 +126,7 @@ def PCK_2d_loss(pred_2d, gt_2d, T = 0.1, threshold = 'proportion'):
     num_total = len(distance.flatten())
    
     if threshold == 'proportion':
-        norm_distance = distance.reshape(-1, 32) / torch.tensor(bbox_size)
+        norm_distance = distance.permute(1, 0) / torch.tensor(bbox_size)
         num_correct = num_total - len(norm_distance[norm_distance > T])
             
     elif threshold == 'mm':
