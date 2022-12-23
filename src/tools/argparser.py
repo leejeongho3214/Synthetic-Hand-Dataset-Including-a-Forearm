@@ -398,6 +398,7 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
                         ctime(eta_seconds + end))
                 )
                 
+            break
                 
         return Graphormer_model, optimizer, batch_time
     

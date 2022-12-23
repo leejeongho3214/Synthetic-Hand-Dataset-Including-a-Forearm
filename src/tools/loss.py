@@ -90,25 +90,21 @@ def PCK_2d_loss_visible(pred_2d, gt_2d, T = 0.1, threshold = 'proportion'):
     gt_2d_value = gt_2d[:, 1:, :-1]; gt_2d_vis = gt_2d[:, 1: ,-1]; pred_2d_value = pred_2d[:, 1:] ## Excluded the wrist joint by starting 1
     vis_index = gt_2d_vis == 1
     diff = gt_2d_value - pred_2d_value
-    distance = diff.square().sum(2).sqrt() * vis_index
+    distance = diff.square().sum(2).sqrt() * vis_index                                            ## Consider only visible joint
     norm_distance = distance.reshape(-1, 32)/torch.tensor(bbox_size)
-    num_vis = len(vis_index[vis_index == True])
-    num_correct = num_vis - len(norm_distance[norm_distance>T])
-    pck = num_correct / num_vis
-   
-                
+
     if threshold == 'proportion':
-        distance = np.sqrt((x ** 2 + y ** 2))/box_size
-        if distance < T:
-            correct += 1
+        norm_distance = distance.reshape(-1, 32) / torch.tensor(bbox_size)
+        num_correct = num_vis - len(norm_distance[norm_distance > T])
             
     elif threshold == 'mm':
-        distance = np.sqrt((x ** 2 + y ** 2))
-        if distance * 0.26 < T:
-            correct += 1
+        num_correct = num_vis - len(distance[distance > (T * 3.78)])
+
     else:
         assert False, "Please check variable threshold is right"
 
+    num_vis = len(vis_index[vis_index == True])
+    pck = num_correct / num_vis
     return pck, threshold
 
 def PCK_2d_loss(pred_2d, gt_2d, T = 0.1, threshold = 'proportion'):
@@ -120,30 +116,28 @@ def PCK_2d_loss(pred_2d, gt_2d, T = 0.1, threshold = 'proportion'):
     for j in gt_2d:
         width = max(j[:,0]) - min(j[:,0])
         height = max(j[:,1]) - min(j[:,1])
-        square_len = width ** 2 + height ** 2
-        length = np.sqrt(square_len)
+        length = np.sqrt( width ** 2 + height ** 2)
         bbox_size.append(length)
         point.append(((min(j[:,0]),min(j[:,1])),(max(j[:,0]),max(j[:,1]))))
 
-    correct = 0
-    visible_joint = 0
-    for box_num, box_size in enumerate(bbox_size):
-        for joint_num in range(1, 21):      ## Excluded the wrist joint by starting 1
-            visible_joint += 1
-            x = gt_2d[box_num][joint_num][0] - pred_2d[box_num][joint_num][0]
-            y = gt_2d[box_num][joint_num][1] - pred_2d[box_num][joint_num][1]
-            if threshold == 'proportion':
-                distance = np.sqrt((x ** 2 + y ** 2))/box_size
-                if distance < T:
-                    correct += 1
-            elif threshold == 'pixel':
-                distance = np.sqrt((x ** 2 + y ** 2))
-                if distance * 0.26 < T * 20:
-                    correct += 1
-            else:
-                assert False, "Please check variable threshold is right"
+    gt_2d_value = gt_2d[:, 1:]; pred_2d_value = pred_2d[:, 1:] ## Excluded the wrist joint by starting 1
+    diff = gt_2d_value - pred_2d_value
+    distance = diff.square().sum(2).sqrt()
+    num_total = len(distance.flatten())
+   
+    if threshold == 'proportion':
+        norm_distance = distance.reshape(-1, 32) / torch.tensor(bbox_size)
+        num_correct = num_total - len(norm_distance[norm_distance > T])
+            
+    elif threshold == 'mm':
+        num_correct = num_total - len(distance[distance > (T * 3.78)])
 
-    return correct, visible_joint, threshold
+    else:
+        assert False, "Please check variable threshold is right"
+
+    pck = num_correct / num_total
+    
+    return pck
 
 def PCK_3d_loss(pred_3d, gt_3d, T = 0.1):
     
