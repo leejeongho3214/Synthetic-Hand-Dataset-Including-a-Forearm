@@ -54,7 +54,7 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss, T, da
 
                 pck = PCK_2d_loss_visible(pred_2d_joints, gt_2d_joint, T, threshold = 'proportion')
                 epe_loss, _ = EPE(pred_2d_joints, gt_2d_joint)
-                pck_losses.update_p(pck * images.size(0), images.size(0))
+                pck_losses.update(pck , images.size(0))
                 epe_losses.update_p(epe_loss[0], epe_loss[1])
                 # for i in range(len(bbox)): bbox_list.append(int(bbox[i]))
 
@@ -98,7 +98,7 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss, T, da
                 
                 pck = PCK_2d_loss_visible(pred_2d_joints, gt_2d_joint, T, threshold = 'proportion')
                 epe_loss,_ = EPE(pred_2d_joints, gt_2d_joint)
-                pck_losses.update_p(pck * images.size(0), images.size(0))
+                pck_losses.update(pck , images.size(0))
                 epe_losses.update_p(epe_loss[0], epe_loss[1])
                 
                 xyz_list.append(pred_2d_joints)
@@ -146,7 +146,7 @@ def main(args, T_list):
                 name_list.append(os.path.join(os.path.join(root_path, models_name), a))
                 continue
         
-    name_list = ["final_models/ours/wrist/only_synthetic/rot_color_0.2", "final_models/ours/wrist/only_synthetic/rot_color_0.1"]    
+    # name_list = ["final_models/ours/wrist/only_synthetic/rot_color_0.2", "final_models/ours/wrist/only_synthetic/rot_color_0.1"]    
     
     pbar = tqdm(total = len(name_list) * 4 * 4) 
     

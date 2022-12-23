@@ -34,8 +34,9 @@ class Graphormer_Hand_Network(torch.nn.Module):
         self.token = token
         self.projection = True if args.projection else False
         self.backbone = backbone
-        self.cam_param_fc = torch.nn.Linear(3, 1)     ## If you evaluate, 37-38 lines delete
-        self.cam_param_fc2 = torch.nn.Linear(21, 3)
+        if self.projection:
+            self.cam_param_fc = torch.nn.Linear(3, 1)    
+            self.cam_param_fc2 = torch.nn.Linear(21, 3)
         self.trans_encoder = trans_encoder
         self.grid_feat_dim = torch.nn.Linear(1024, 2048)
 

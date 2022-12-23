@@ -508,7 +508,7 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
                 if args.general:
                    pck, threshold = PCK_3d_loss(pred_3d_joints, gt_3d_joints, T= 10)
                 else:
-                   pck, threshold= PCK_2d_loss(pred_2d_joints, gt_2d_joint, T= 0.05, threshold = 'proportion')
+                   pck= PCK_2d_loss(pred_2d_joints, gt_2d_joint, T= 0.05, threshold = 'proportion')
                    
                 # epe_loss, epe_per = EPE(pred_2d_joints, gt_2d_joint)      ## don't consider inivisible joint
                 epe_loss, _ = EPE_train(pred_2d_joints, gt_2d_joint)  ## consider invisible joint
@@ -539,9 +539,8 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
                         ' '.join(
                             ['Test =>> epoch: {ep}', 'iter: {iter}', '/{maxi}']
                         ).format(ep=epoch, iter=iteration, maxi=len(test_dataloader))
-                        + ' threshold: {} ,pck: {:.2f}%, epe: {:.2f}mm, count: {} / 50, total_loss: {:.8f}, best_loss: {:.8f}, expected_date: {} \n'.format(
+                        + ' pck: {:.2f}%, epe: {:.2f}mm, count: {} / 50, total_loss: {:.8f}, best_loss: {:.8f}, expected_date: {} \n'.format(
                         # + ' threshold: {} ,pck: {:.2f}%, epe: {:.2f}mm, 2d_loss: {:.2f}, 3d_loss: {:.8f}, count: {} / 50, total_loss: {:.8f}, best_loss: {:.8f}, expected_date: {} \n'.format( 
-                            threshold,
                             pck_losses.avg * 100,
                             epe_losses.avg * 0.26,
                             # log_2d_losses.avg,
@@ -558,9 +557,8 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
                         ' '.join(
                             ['Test =>> epoch: {ep}', 'iter: {iter}', '/{maxi}']
                         ).format(ep=epoch, iter=iteration, maxi=len(test_dataloader))
-                         + ' threshold: {} ,pck: {:.2f}%, epe: {:.2f}mm, count: {} / 50, total_loss: {:.8f}, best_loss: {:.8f}, expected_date: {}'.format(
+                         + ' pck: {:.2f}%, epe: {:.2f}mm, count: {} / 50, total_loss: {:.8f}, best_loss: {:.8f}, expected_date: {}'.format(
                         #  + ' threshold: {} ,pck: {:.2f}%, epe: {:.2f}mm, 2d_loss: {:.2f}, 3d_loss: {:.8f}, count: {} / 50, total_loss: {:.8f}, best_loss: {:.8f}, expected_date: {}'.format(
-                            threshold,
                             pck_losses.avg * 100,
                             epe_losses.avg * 0.26,
                             # log_2d_losses.avg,
