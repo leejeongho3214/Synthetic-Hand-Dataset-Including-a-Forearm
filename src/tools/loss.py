@@ -77,31 +77,35 @@ def keypoint_2d_loss(criterion_keypoints, pred_keypoints_2d, gt_keypoints_2d):
 def PCK_2d_loss_visible(pred_2d, gt_2d, T = 0.1, threshold = 'proportion'):
     bbox_size = []
     point = []
-    # pred_2d = pred_2d.detach().cpu()  
+    pred_2d = pred_2d.detach().cpu()  
     gt_2d = gt_2d.detach().cpu()
 
     for j in gt_2d:
         width = max(j[:,0]) - min(j[:,0])
         height = max(j[:,1]) - min(j[:,1])
-        square_len = width ** 2 + height ** 2
-        length = np.sqrt(square_len)
+        length = np.sqrt( width ** 2 + height ** 2)
         bbox_size.append(length)
-        # bbox_size.append(max(width, height))
         point.append(((min(j[:,0]),min(j[:,1])),(max(j[:,0]),max(j[:,1]))))
 
     correct = 0
     visible_joint = 0
+    gt_2d_value = gt_2d[:, :, :-1], gt_2d_vis = gt_2d[:, : ,-1]
+    vis_index = gt_2d_vis == 1
+    diff = gt_2d_value[vis_index] - pred_2d[vis_index]
+    dtstnace = diff.square().sum(1).sqrt().sum()/len(gt_2d[vis_index])
     for box_num, box_size in enumerate(bbox_size):
         for joint_num in range(1, 21):          ## Excluded the wrist joint by starting 1
             if gt_2d[box_num][joint_num][2] == 1: ## Check whether visible or invisible joint
                 visible_joint += 1
                 x = gt_2d[box_num][joint_num][0] - pred_2d[box_num][joint_num][0]
                 y = gt_2d[box_num][joint_num][1] - pred_2d[box_num][joint_num][1]
+                
                 if threshold == 'proportion':
                     distance = np.sqrt((x ** 2 + y ** 2))/box_size
                     if distance < T:
                         correct += 1
-                elif threshold == 'pixel':
+                        
+                elif threshold == 'mm':
                     distance = np.sqrt((x ** 2 + y ** 2))
                     if distance * 0.26 < T:
                         correct += 1
@@ -119,7 +123,9 @@ def PCK_2d_loss(pred_2d, gt_2d, T = 0.1, threshold = 'proportion'):
     for j in gt_2d:
         width = max(j[:,0]) - min(j[:,0])
         height = max(j[:,1]) - min(j[:,1])
-        bbox_size.append(max(width, height))
+        square_len = width ** 2 + height ** 2
+        length = np.sqrt(square_len)
+        bbox_size.append(length)
         point.append(((min(j[:,0]),min(j[:,1])),(max(j[:,0]),max(j[:,1]))))
 
     correct = 0
@@ -160,7 +166,8 @@ def PCK_2d_loss_No_batch(pred_2d, gt_2d, images,T=0.1, threshold = 'proportion')
 
     width = max(gt_2d[:, 0]) - min(gt_2d[:, 0])
     height = max(gt_2d[:, 1]) - min(gt_2d[:, 1])
-    box_size = max(width, height)
+    square_len = width ** 2 + height ** 2
+    box_size = np.sqrt(square_len)
     point.append(((min(gt_2d[:, 0]), min(gt_2d[:, 1])), (max(gt_2d[:, 0]), max(gt_2d[:, 1]))))
 
     # If you want to show joint with bbox, it can do
@@ -174,9 +181,10 @@ def PCK_2d_loss_No_batch(pred_2d, gt_2d, images,T=0.1, threshold = 'proportion')
             visible_joint += 1
             x = gt_2d[joint_num][0] - pred_2d[joint_num][0]
             y = gt_2d[joint_num][1] - pred_2d[joint_num][1]
+            
             if threshold == 'proportion':
-                distance = np.sqrt((x ** 2 + y ** 2))/box_size
-                if distance < T:
+                distance = np.sqrt((x ** 2 + y ** 2))
+                if distance < T * box_size:
                     correct += 1
             elif threshold == 'pixel':
                 distance = np.sqrt((x ** 2 + y ** 2))

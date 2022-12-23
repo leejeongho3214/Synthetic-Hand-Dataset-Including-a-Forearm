@@ -95,21 +95,11 @@ def build_dataset(args):
             folder_num = os.listdir(general_path)
             for iter, degree in enumerate(folder_num):
 
-                dataset = CustomDataset(args, degree,general_path, rotation=args.rot, color=args.color, ratio_of_aug=args.ratio_of_aug, ratio_of_dataset = 1)
-
                 if iter == 0:
-                    train_dataset_general, test_dataset_general = random_split(
-                        dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
-
+                    train_dataset = CustomDataset(args, degree,general_path, rotation=args.rot, color=args.color, ratio_of_aug=args.ratio_of_aug, ratio_of_dataset = 1)
                 else:
-                    train_dataset_other, test_dataset_other = random_split(
-                        dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
-                    train_dataset_general = ConcatDataset(
-                        [train_dataset_general, train_dataset_other])
-                    test_dataset_general = ConcatDataset(
-                        [test_dataset_general, test_dataset_other])
-
-            train_dataset = train_dataset_general
+                    dataset = CustomDataset(args, degree,general_path, rotation=args.rot, color=args.color, ratio_of_aug=args.ratio_of_aug, ratio_of_dataset = 1)
+                    train_dataset = ConcatDataset(train_dataset, dataset)
             test_dataset = Frei(args)
             # test_dataset = ConcatDataset([test_dataset_general, test_dataset])
 

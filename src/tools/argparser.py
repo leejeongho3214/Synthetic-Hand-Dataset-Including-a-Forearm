@@ -119,6 +119,71 @@ def parse_args():
     args = parser.parse_args()
     return args
 
+def compute_similarity_transform(S1, S2):
+    """Computes a similarity transform (sR, t) that takes
+    a set of 3D points S1 (3 x N) closest to a set of 3D points S2,
+    where R is an 3x3 rotation matrix, t 3x1 translation, s scale.
+    i.e. solves the orthogonal Procrutes problem.
+    """
+    transposed = False
+    if S1.shape[0] != 3 and S1.shape[0] != 2:
+        S1 = S1.T
+        S2 = S2.T
+        transposed = True
+    assert(S2.shape[1] == S1.shape[1])
+
+    # 1. Remove mean.
+    mu1 = S1.mean(axis=1, keepdims=True)
+    mu2 = S2.mean(axis=1, keepdims=True)
+    X1 = S1 - mu1
+    X2 = S2 - mu2
+
+    # 2. Compute variance of X1 used for scale.
+    var1 = np.sum(X1**2)
+
+    # 3. The outer product of X1 and X2.
+    K = X1.dot(X2.T)
+
+    # 4. Solution that Maximizes trace(R'K) is R=U*V', where U, V are
+    # singular vectors of K.
+    U, s, Vh = np.linalg.svd(K)
+    V = Vh.T
+    # Construct Z that fixes the orientation of R to get det(R)=1.
+    Z = np.eye(U.shape[0])
+    Z[-1, -1] *= np.sign(np.linalg.det(U.dot(V.T)))
+    # Construct R.
+    R = V.dot(Z.dot(U.T))
+
+    # 5. Recover scale.
+    scale = np.trace(R.dot(K)) / var1
+
+    # 6. Recover translation.
+    t = mu2 - scale*(R.dot(mu1))
+
+    # 7. Error:
+    S1_hat = scale*R.dot(S1) + t
+
+    if transposed:
+        S1_hat = S1_hat.T
+
+    return S1_hat
+
+def compute_similarity_transform_batch(S1, S2):
+    """Batched version of compute_similarity_transform."""
+    S1_hat = np.zeros_like(S1)
+    for i in range(S1.shape[0]):
+        S1_hat[i] = compute_similarity_transform(S1[i], S2[i])
+    return S1_hat
+
+def reconstruction_error(S1, S2, reduction='mean'):
+    """Do Procrustes alignment and compute reconstruction error."""
+    S1_hat = compute_similarity_transform_batch(S1, S2)
+    re = np.sqrt( ((S1_hat - S2)** 2).sum(axis=-1)).mean(axis=-1)
+    if reduction == 'mean':
+        re = re.mean()
+    elif reduction == 'sum':
+        re = re.sum()
+    return re
 
 class HeatmapLoss(torch.nn.Module):
     """
@@ -440,20 +505,23 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
                 pred_2d_joints[:,:,1] = pred_2d_joints[:,:,1] * images.size(2) ## You Have to check whether weight and height is correct dimenstion
                 pred_2d_joints[:,:,0] = pred_2d_joints[:,:,0] * images.size(3)
 
-                # correct, visible_point, threshold = PCK_2d_loss(pred_2d_joints, gt_2d_joint, T= 0.05, threshold = 'proportion')
-                pck, threshold = PCK_3d_loss(pred_3d_joints, gt_3d_joints, T= 20)
-                # epe_loss, epe_per = EPE(pred_2d_joints, gt_2d_joint)      ## don't consider inivisible joint
-                epe_loss, epe_per = EPE_train(pred_2d_joints, gt_2d_joint)  ## consider invisible joint
-                loss_2d_joints = keypoint_2d_loss(criterion_2d_keypoints, pred_2d_joints / 224, gt_2d_joint / 224)
-                loss_3d_joints = keypoint_3d_loss(criterion_keypoints, pred_3d_joints, gt_3d_joints)
                 
-                loss = args.loss_2d * loss_2d_joints + args.loss_3d * loss_3d_joints
+                
+                # correct, visible_point, threshold = PCK_2d_loss(pred_2d_joints, gt_2d_joint, T= 0.05, threshold = 'proportion')
+                pck, threshold = PCK_3d_loss(pred_3d_joints, gt_3d_joints, T= 10)
+                # epe_loss, epe_per = EPE(pred_2d_joints, gt_2d_joint)      ## don't consider inivisible joint
+                epe_loss, _ = EPE_train(pred_2d_joints, gt_2d_joint)  ## consider invisible joint
+                # loss_2d_joints = keypoint_2d_loss(criterion_2d_keypoints, pred_2d_joints / 224, gt_2d_joint / 224)
+                # loss_3d_joints = keypoint_3d_loss(criterion_keypoints, pred_3d_joints, gt_3d_joints)                
+                
+                # loss = args.loss_2d * loss_2d_joints + args.loss_3d * loss_3d_joints
+                loss = reconstruction_error(np.array(pred_3d_joints.cpu()), np.array(gt_3d_joints.cpu()))
 
                 pck_losses.update_p(pck, batch_size)
                 epe_losses.update_p(epe_loss[0], epe_loss[1])
                 log_losses.update(loss.item(), batch_size)
-                log_2d_losses.update(loss_2d_joints.item(), batch_size)
-                log_3d_losses.update(loss_3d_joints.item(), batch_size)
+                # log_2d_losses.update(loss_2d_joints.item(), batch_size)
+                # log_3d_losses.update(loss_3d_joints.item(), batch_size)
 
                 if iteration == 0 or iteration == int(len(test_dataloader)/2) or iteration == len(test_dataloader) - 1:
                     fig = plt.figure()
@@ -470,12 +538,13 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
                         ' '.join(
                             ['Test =>> epoch: {ep}', 'iter: {iter}', '/{maxi}']
                         ).format(ep=epoch, iter=iteration, maxi=len(test_dataloader))
-                        + ' threshold: {} ,pck: {:.2f}%, epe: {:.2f}mm, 2d_loss: {:.2f}, 3d_loss: {:.8f}, count: {} / 50, total_loss: {:.8f}, best_loss: {:.8f}, expected_date: {} \n'.format(
+                        + ' threshold: {} ,pck: {:.2f}%, epe: {:.2f}mm, count: {} / 50, total_loss: {:.8f}, best_loss: {:.8f}, expected_date: {} \n'.format(
+                        # + ' threshold: {} ,pck: {:.2f}%, epe: {:.2f}mm, 2d_loss: {:.2f}, 3d_loss: {:.8f}, count: {} / 50, total_loss: {:.8f}, best_loss: {:.8f}, expected_date: {} \n'.format( 
                             threshold,
                             pck_losses.avg * 100,
                             epe_losses.avg * 0.26,
-                            log_2d_losses.avg,
-                            log_3d_losses.avg,
+                            # log_2d_losses.avg,
+                            # log_3d_losses.avg,
                             int(count),
                             log_losses.avg,
                             best_loss,
@@ -488,12 +557,13 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
                         ' '.join(
                             ['Test =>> epoch: {ep}', 'iter: {iter}', '/{maxi}']
                         ).format(ep=epoch, iter=iteration, maxi=len(test_dataloader))
-                         + ' threshold: {} ,pck: {:.2f}%, epe: {:.2f}mm, 2d_loss: {:.2f}, 3d_loss: {:.8f}, count: {} / 50, total_loss: {:.8f}, best_loss: {:.8f}, expected_date: {}'.format(
+                         + ' threshold: {} ,pck: {:.2f}%, epe: {:.2f}mm, count: {} / 50, total_loss: {:.8f}, best_loss: {:.8f}, expected_date: {}'.format(
+                        #  + ' threshold: {} ,pck: {:.2f}%, epe: {:.2f}mm, 2d_loss: {:.2f}, 3d_loss: {:.8f}, count: {} / 50, total_loss: {:.8f}, best_loss: {:.8f}, expected_date: {}'.format(
                             threshold,
                             pck_losses.avg * 100,
                             epe_losses.avg * 0.26,
-                            log_2d_losses.avg,
-                            log_3d_losses.avg,
+                            # log_2d_losses.avg,
+                            # log_3d_losses.avg,
                             int(count),
                             log_losses.avg,
                             best_loss,

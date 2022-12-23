@@ -146,7 +146,7 @@ def main(args, T_list):
                 name_list.append(os.path.join(os.path.join(root_path, models_name), a))
                 continue
         
-    name_list = ["final_models/hourglass/14k_rot_color_0.6"]    
+    name_list = ["final_models/ours/wrist/only_synthetic/rot_color_0.2", "final_models/ours/wrist/only_synthetic/rot_color_0.1"]    
     
     pbar = tqdm(total = len(name_list) * 4 * 4) 
     
@@ -192,5 +192,6 @@ def main(args, T_list):
 
 if __name__ == "__main__":
     args = parse_args()
-    losses = main(args, 0)
+    T_list = [0]
+    losses = main(args, T_list)
     print("End")

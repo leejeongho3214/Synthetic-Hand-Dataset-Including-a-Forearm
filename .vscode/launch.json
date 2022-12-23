@@ -14,8 +14,8 @@
             "justMyCode": true,
             "cwd": "${fileDirname}",
             // "args": ["--rot", "--color"]
-            // "args": ["--projection", "--general"]
-            "args": ["../datasets/frei_test", "."]
+            "args": ["--projection", "--general"]
+            // "args": ["../datasets/frei_test", "."]
             // "args": ["--name", "rhd/ours", "--output_path", "rhd/ours", "--model", "ours", "--dataset", "rhd"]
             // "args": ["--name" ,"MediaPipe", "--batch_size", "1"]
             // "args": [ "--name", "panoptic/ours", "--output_path", "panoptic/ours", "--model", "ours", "--dataset", "panoptic"]
