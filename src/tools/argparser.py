@@ -398,8 +398,6 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
                         ctime(eta_seconds + end))
                 )
                 
-            break
-                
         return Graphormer_model, optimizer, batch_time
     
     else:
@@ -510,7 +508,8 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
                 if args.general:
                    pck, threshold = PCK_3d_loss(pred_3d_joints, gt_3d_joints, T= 10)
                 else:
-                    pck = PCK_2d_loss(pred_2d_joints, gt_2d_joint, T= 0.05, threshold = 'proportion')
+                   pck, threshold= PCK_2d_loss(pred_2d_joints, gt_2d_joint, T= 0.05, threshold = 'proportion')
+                   
                 # epe_loss, epe_per = EPE(pred_2d_joints, gt_2d_joint)      ## don't consider inivisible joint
                 epe_loss, _ = EPE_train(pred_2d_joints, gt_2d_joint)  ## consider invisible joint
                 # loss_2d_joints = keypoint_2d_loss(criterion_2d_keypoints, pred_2d_joints / 224, gt_2d_joint / 224)

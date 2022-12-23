@@ -137,7 +137,7 @@ def PCK_2d_loss(pred_2d, gt_2d, T = 0.1, threshold = 'proportion'):
 
     pck = num_correct / num_total
     
-    return pck
+    return pck, threshold
 
 def PCK_3d_loss(pred_3d, gt_3d, T = 0.1):
     
