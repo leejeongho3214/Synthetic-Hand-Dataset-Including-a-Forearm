@@ -583,7 +583,7 @@ class HIU_Dataset(Dataset):
         else:
             heatmap = GenerateHeatmap(64, 21)(joint_2d / 4)
 
-        return trans_image, joint_2d, heatmap, torch.ones_like([21, 3])
+        return trans_image, joint_2d, heatmap, torch.ones(21, 3)
 
 
 class Our_testset(Dataset):
@@ -742,7 +742,7 @@ class Coco(Dataset):
         img = Image.fromarray(img)
         img = trans(img)
 
-        return img, joint.float(), heatmap, torch.ones_like([21, 3])
+        return img, joint.float(), heatmap, torch.ones(21, 3)
 
 
 class Panoptic(Dataset):
@@ -810,7 +810,7 @@ class Panoptic(Dataset):
         img = Image.fromarray(img)
         img = trans(img)
 
-        return img, joint[:, :2].float(), heatmap, torch.ones_like([21, 3])
+        return img, joint[:, :2].float(), heatmap, torch.ones(21, 3)
 
 
 class Rhd(Dataset):
@@ -866,7 +866,7 @@ class Rhd(Dataset):
         img = Image.fromarray(img)
         img = trans(img)
 
-        return img, joint[:, :2].float(), heatmap,torch.ones_like([21, 3])
+        return img, joint[:, :2].float(), heatmap, torch.ones(21, 3)
 
 
 class Dataset_interhand(torch.utils.data.Dataset):
@@ -1049,7 +1049,7 @@ class Dataset_interhand(torch.utils.data.Dataset):
         else:
             heatmap = GenerateHeatmap(64, 21)(targets/4)
 
-        return img, targets, heatmap, torch.ones_like([21, 3])
+        return img, targets, heatmap, torch.ones(21, 3)
     
 class Frei(torch.utils.data.Dataset):
     def __init__(self, args):

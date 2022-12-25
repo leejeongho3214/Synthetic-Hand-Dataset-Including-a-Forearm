@@ -507,17 +507,16 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
                 
                 if args.general:
                    pck, threshold = PCK_3d_loss(pred_3d_joints, gt_3d_joints, T= 10)
+                   loss = reconstruction_error(np.array(pred_3d_joints.cpu()), np.array(gt_3d_joints.cpu()))
                 else:
                    pck= PCK_2d_loss(pred_2d_joints, gt_2d_joint, T= 0.05, threshold = 'proportion')
+                   loss = keypoint_2d_loss(criterion_2d_keypoints, pred_2d_joints, gt_2d_joint)
                    
                 # epe_loss, epe_per = EPE(pred_2d_joints, gt_2d_joint)      ## don't consider inivisible joint
                 epe_loss, _ = EPE_train(pred_2d_joints, gt_2d_joint)  ## consider invisible joint
                 # loss_2d_joints = keypoint_2d_loss(criterion_2d_keypoints, pred_2d_joints / 224, gt_2d_joint / 224)
                 # loss_3d_joints = keypoint_3d_loss(criterion_keypoints, pred_3d_joints, gt_3d_joints)                
                 
-                # loss = args.loss_2d * loss_2d_joints + args.loss_3d * loss_3d_joints
-                loss = reconstruction_error(np.array(pred_3d_joints.cpu()), np.array(gt_3d_joints.cpu()))
-
                 pck_losses.update(pck, batch_size)
                 epe_losses.update_p(epe_loss[0], epe_loss[1])
                 log_losses.update(loss.item(), batch_size)
