@@ -32,7 +32,7 @@ def build_dataset(args):
             dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
         
         for iter, degree in enumerate(folder_num):
-                ratio  = ((len(trainset_dataset) + len(testset_dataset)) * 0.3) / 373184
+                ratio  = ((len(trainset_dataset) + len(testset_dataset)) * args.ratio_of_other) / 373184
                 dataset = CustomDataset(args, degree, path, rotation=args.rot, color=args.color,
                                         ratio_of_aug=args.ratio_of_aug, ratio_of_dataset= ratio)
 
@@ -60,7 +60,7 @@ def build_dataset(args):
             dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
         
         for iter, degree in enumerate(folder_num):
-                ratio  = ((len(trainset_dataset) + len(testset_dataset)) * 0.3) / 373184
+                ratio  = ((len(trainset_dataset) + len(testset_dataset)) * args.ratio_of_other) / 373184
                 dataset = CustomDataset(args, degree, path, rotation=args.rot, color=args.color,
                                         ratio_of_aug=args.ratio_of_aug, ratio_of_dataset= ratio)
 
@@ -88,7 +88,7 @@ def build_dataset(args):
             dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
         
         for iter, degree in enumerate(folder_num):
-                ratio  = ((len(trainset_dataset) + len(testset_dataset)) * 0.3) / 373184
+                ratio  = ((len(trainset_dataset) + len(testset_dataset)) * args.ratio_of_other) / 373184
                 dataset = CustomDataset(args, degree, path, rotation=args.rot, color=args.color,
                                         ratio_of_aug=args.ratio_of_aug, ratio_of_dataset= ratio)
 
@@ -116,7 +116,7 @@ def build_dataset(args):
             dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
         
         for iter, degree in enumerate(folder_num):
-                ratio  = ((len(trainset_dataset) + len(testset_dataset)) * 0.3) / 373184
+                ratio  = ((len(trainset_dataset) + len(testset_dataset)) *args.ratio_of_other) / 373184
                 dataset = CustomDataset(args, degree, path, rotation=args.rot, color=args.color,
                                         ratio_of_aug=args.ratio_of_aug, ratio_of_dataset= ratio)
 
@@ -144,7 +144,7 @@ def build_dataset(args):
         testset_dataset = Frei(args)
         
         for iter, degree in enumerate(folder_num):
-                ratio  = ((len(trainset_dataset) + len(testset_dataset)) * 0.3) / 373184
+                ratio  = ((len(trainset_dataset) + len(testset_dataset)) * args.ratio_of_other) / 373184
                 dataset = CustomDataset(args, degree, path, rotation=args.rot, color=args.color,
                                         ratio_of_aug=args.ratio_of_aug, ratio_of_dataset= ratio)
 
@@ -172,7 +172,7 @@ def build_dataset(args):
             dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
         
         for iter, degree in enumerate(folder_num):
-                ratio  = ((len(trainset_dataset) + len(testset_dataset)) * 0.3) / 373184
+                ratio  = ((len(trainset_dataset) + len(testset_dataset)) * args.ratio_of_other) / 373184
                 dataset = CustomDataset(args, degree, path, rotation=args.rot, color=args.color,
                                         ratio_of_aug=args.ratio_of_aug, ratio_of_dataset= ratio)
 
@@ -198,7 +198,7 @@ def build_dataset(args):
             for iter, degree in enumerate(folder_num):
 
                 dataset = CustomDataset(args, degree, path, rotation=args.rot, color=args.color,
-                                        ratio_of_aug=args.ratio_of_aug, ratio_of_dataset= 0.3)
+                                        ratio_of_aug=args.ratio_of_aug, ratio_of_dataset= args.ratio_of_our)
 
                 if iter == 0:
                     train_dataset, test_dataset = random_split(
@@ -539,7 +539,7 @@ def save_checkpoint(model, args, epoch, optimizer, best_loss, count, ment, num_t
 class HIU_Dataset(Dataset):
     def __init__(self, args):
         image_list = []
-        for (root, _, files) in os.walk("../../datasets/HIU_DMTL_Full"):
+        for (root, _, files) in os.walk("../../datasets/HIU_DMTL"):
             for file in files:
                 if not file.endswith('.json') and not file.endswith('_mask.png') and not file.endswith('_mask.jpg'):
                     file_path = os.path.join(root, file)
@@ -578,7 +578,7 @@ class HIU_Dataset(Dataset):
         joint_2d[:, 0] = joint_2d[:, 0] * scale_x
         joint_2d[:, 1] = joint_2d[:, 1] * scale_y
 
-        if self.args.model == "hrnet" or self.args.model == "ours":
+        if self.args.model == "hrnet":
             heatmap = GenerateHeatmap(128, 21)(joint_2d / 2)
         else:
             heatmap = GenerateHeatmap(64, 21)(joint_2d / 4)
