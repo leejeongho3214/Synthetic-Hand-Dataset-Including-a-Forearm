@@ -53,7 +53,7 @@
 			- A scale ambiguity 
 				- 짝을 이루는 관절들의 뼈 길이(l2 norm)를 구한 뒤 coordinate에 나눠줌
 			- Translation invariant representation
-				- root 관절을 다른 관절에 빼줌으로써 위치에 무관한 coordinate를 
+				- root 관절을 다른 관절에 빼줌으로써 위치에 무관한 coordinate를 얻어줌
 - 3D Hand Shape and Pose from Images in the Wild (CVPR 2019)
 	- 인코더를 통해 MANO 모델의 Pose, Beta 값과 Camera View 파라미터를 얻음
 	- MANO 모델을 통해 3D joint와 동시에 Camera View 파라미터로 2D projection 시켜 2D & 3D joint를 얻음
@@ -95,7 +95,7 @@
 	- 2D heatmap + depth heatmap
 	- softargmax 방법을 사용하여 2D heatmap에서 coordinate를 얻어냄
 ## Likelihoood
-- 딥러닝 관점으로 살펴보면, 만약 classification task에서 숫자를 판별하는 모델을 제작할 때, 정답이 0부터 9까지 있다고 하자. 그리고 3개의 모델을 구현했을 때, 해당 모델들의 마지막 softmax layer에서 확률 값을 뽑아보면 0에서 9까지의 수로 판별할 확률이 나오게 되고 우리는 이 모델 중에서 가장 데이터를 잘 설명하는 distribution을 찾으며 찾은 모델이 가장 높은 likelihood을 갖는다. 또한, 학습을 통해 모델의 likelihood를 최대화하는 것이 목적이며 그러기위해 최적의 모델 파라미터 θ를 찾아줌
+- 딥러닝 관점으로 살펴보면, 만약 classification task에서 숫자를 판별하는 모델을 제작할 때, 정답이 0부터 9까지 있다고 하자. </br> 그리고 3개의 모델을 구현했을 때, 해당 모델들의 마지막 softmax layer에서 확률 값을 뽑아보면 0에서 9까지의 수로 판별할 확률이 나오게 되고 우리는 이 모델 중에서 가장 데이터를 잘 설명하는 distribution을 찾으며 찾은 모델이 가장 높은 likelihood을 갖는다.</br>또한, 학습을 통해 모델의 likelihood를 최대화하는 것이 목적이며 그러기위해 최적의 모델 파라미터 θ를 찾아줌
 - Gaussian distribution(정규분포)를 확률 모형으로 대부분 표현함
 	- 관찰된 전체 데이터 집합이 평균을 중심으로 하여 뭉쳐져 있는 형태를 표현하는데 적합
 	- 평균과 분산만 알면 표현할 수 있음
