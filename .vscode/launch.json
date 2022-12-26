@@ -13,8 +13,9 @@
             "console": "integratedTerminal",
             "justMyCode": true,
             "cwd": "${fileDirname}",
+            "args": ["--name", "other_dataset/rhd", "--dataset", "rhd", "--color"]
             // "args": ["--rot", "--color"]
-            "args": ["--projection", "--general"]
+            // "args": ["--projection", "--general"]
             // "args": ["../datasets/frei_test", "."]
             // "args": ["--name", "rhd/ours", "--output_path", "rhd/ours", "--model", "ours", "--dataset", "rhd"]
             // "args": ["--name" ,"MediaPipe", "--batch_size", "1"]

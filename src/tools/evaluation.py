@@ -52,9 +52,9 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss, T, da
                 pred_2d_joints[:,:,1] = pred_2d_joints[:,:,1] * images.size(2) ## You Have to check whether weight and height is correct dimenstion
                 pred_2d_joints[:,:,0] = pred_2d_joints[:,:,0] * images.size(3)
 
-                correct, visible_point, thresh = PCK_2d_loss_visible(pred_2d_joints, gt_2d_joint, T, threshold = 'proportion')
-                epe_loss, epe_per = EPE(pred_2d_joints, gt_2d_joint)
-                pck_losses.update_p(correct, visible_point)
+                pck = PCK_2d_loss_visible(pred_2d_joints, gt_2d_joint, T, threshold = 'proportion')
+                epe_loss, _ = EPE(pred_2d_joints, gt_2d_joint)
+                pck_losses.update(pck , images.size(0))
                 epe_losses.update_p(epe_loss[0], epe_loss[1])
                 # for i in range(len(bbox)): bbox_list.append(int(bbox[i]))
 
@@ -96,9 +96,9 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss, T, da
                 pred_joint = torch.tensor(pred_joint)
                 pred_2d_joints = pred_joint * multiply ## heatmap resolution was 64 x 64 so multiply 4 to make it 256 x 256
                 
-                correct, visible_point, thresh= PCK_2d_loss_visible(pred_2d_joints, gt_2d_joint, T, threshold = 'proportion')
-                epe_loss, epe_per = EPE(pred_2d_joints, gt_2d_joint)
-                pck_losses.update_p(correct, visible_point)
+                pck = PCK_2d_loss_visible(pred_2d_joints, gt_2d_joint, T, threshold = 'proportion')
+                epe_loss,_ = EPE(pred_2d_joints, gt_2d_joint)
+                pck_losses.update(pck , images.size(0))
                 epe_losses.update_p(epe_loss[0], epe_loss[1])
                 
                 xyz_list.append(pred_2d_joints)
@@ -115,14 +115,13 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss, T, da
         # plt.ylabel('count')
         # plt.savefig("distriution.jpg")
         # print()
-    return pck_losses.avg, epe_losses.avg, thresh
+    return pck_losses.avg, epe_losses.avg
     
 
 def main(args, T_list):
     root_path = "final_models"
     name_list = []
     loss = []
-    other_list = ["14k_rot_color_1.0", "rot_color_0.6", "rot_color_frei"]
     
     for models_name in os.listdir(root_path):
         if models_name == "other_dataset": 
@@ -142,11 +141,11 @@ def main(args, T_list):
                 #         name_list.append(os.path.join(current_loc, general_category))
                         
         else: 
+            other_list = os.listdir(os.path.join(root_path, models_name))
             for a in other_list:
                 name_list.append(os.path.join(os.path.join(root_path, models_name), a))
-                continue
         
-    name_list = ["final_models/ours/wrist/only_synthetic/rot_color_0.2", "final_models/ours/wrist/only_synthetic/rot_color_0.1"]    
+    # name_list = ["final_models/ours/wrist/only_synthetic/rot_color_0.2", "final_models/ours/wrist/only_synthetic/rot_color_0.1"]    
     
     pbar = tqdm(total = len(name_list) * 4 * 4) 
     
@@ -182,7 +181,7 @@ def main(args, T_list):
 
             for set_name in categories: 
                 data_loader = data.DataLoader(dataset=globals()[f'dataset_{set_name}'], batch_size=args.batch_size, num_workers=0, shuffle=False)
-                pck, epe ,thresh= test(args, data_loader, _model, 0, 0, best_loss, T, set_name)    
+                pck, epe = test(args, data_loader, _model, 0, 0, best_loss, T, set_name)    
                 category_loss.append([set_name, pck * 100, epe * 0.26, args.name[13:-31]])    
                 pbar.update(1)
             sub_loss.append(category_loss)
