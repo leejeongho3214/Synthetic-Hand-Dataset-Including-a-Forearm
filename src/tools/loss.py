@@ -71,8 +71,13 @@ def keypoint_2d_loss(criterion_keypoints, pred_keypoints_2d, gt_keypoints_2d):
     The confidence is binary and indicates whether the keypoints exist or not.
     """
     conf = 1
-    loss = (conf * criterion_keypoints(pred_keypoints_2d, gt_keypoints_2d)).mean(2).mean(1).sum()
-    return loss
+    if gt_keypoints_2d.size(2) > 2:
+        loss = (conf * criterion_keypoints(pred_keypoints_2d, gt_keypoints_2d[:, : ,:2])) * gt_keypoints_2d[:, : ,2][:, :, None]      ## It consider to calculate only the visible joint  
+        return loss[loss>0].mean()
+    else:
+        loss = (conf * criterion_keypoints(pred_keypoints_2d, gt_keypoints_2d[:, : ,:2])).mean(2).mean(1).sum()
+        return loss
+    
 
 def PCK_2d_loss_visible(pred_2d, gt_2d, T = 0.1, threshold = 'proportion'):
     bbox_size = []

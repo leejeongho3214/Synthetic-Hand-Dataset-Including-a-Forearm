@@ -330,6 +330,8 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
     log_losses = AverageMeter()
     log_2d_losses = AverageMeter()
     log_3d_losses = AverageMeter()
+    log_3d_re_losses = AverageMeter()
+    
     if args.model == "ours":
         for iteration, (images, gt_2d_joints, heatmap, gt_3d_joints) in enumerate(train_dataloader):
             batch_size = images.size(0)
@@ -347,10 +349,13 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
             
             loss_2d= keypoint_2d_loss(criterion_2d_keypoints, pred_2d_joints, gt_2d_joint)
             loss_3d = keypoint_3d_loss(criterion_keypoints, pred_3d_joints, gt_3d_joints)
-            loss = args.loss_2d * loss_2d + args.loss_3d * loss_3d
+            loss_3d_re = reconstruction_error(np.array(pred_3d_joints.detach().cpu()), np.array(gt_3d_joints.detach().cpu()))
+            loss = args.loss_2d * loss_2d + args.loss_3d * loss_3d + loss_3d_re
             log_losses.update(loss.item(), batch_size)
             log_2d_losses.update(loss_2d.item(), batch_size)
             log_3d_losses.update(loss_3d.item(), batch_size)
+            log_3d_re_losses.update(loss_3d_re.item(), batch_size)
+
 
             optimizer.zero_grad()
             loss.backward()
@@ -361,11 +366,12 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
             gt_2d_joint[:,:,1] = gt_2d_joint[:,:,1] * images.size(2) ## You Have to check whether weight and height is correct dimenstion
             gt_2d_joint[:,:,0] = gt_2d_joint[:,:,0] * images.size(3) 
             
-            if iteration == 0 or iteration == int(len(train_dataloader)/2) or iteration == len(train_dataloader) - 1:
-                fig = plt.figure()
-                visualize_gt(images, gt_2d_joint, fig, iteration)
-                visualize_prediction(images, pred_2d_joints, fig, 'train', epoch, iteration, args, None)
-                plt.close()
+            if not args.projection:
+                if iteration == 0 or iteration == int(len(train_dataloader)/2) or iteration == len(train_dataloader) - 1:
+                    fig = plt.figure()
+                    visualize_gt(images, gt_2d_joint, fig, iteration)
+                    visualize_prediction(images, pred_2d_joints, fig, 'train', epoch, iteration, args, None)
+                    plt.close()
 
             batch_time.update(time.time() - end)
             end = time.time()
@@ -376,9 +382,10 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
                     ' '.join(
                         ['dataset_length: {len}', 'epoch: {ep}', 'iter: {iter}', '/{maxi},  count: {count}/{max_count}']
                     ).format(len=data_len, ep=epoch, iter=iteration, maxi=len(train_dataloader), count= count, max_count = args.count)
-                    + ' 2d_loss: {:.8f}, 3d_loss: {:.8f} pck: {:.2f}%, total_loss: {:.8f}, best_loss: {:.8f}, expected_date: {}\n'.format(
+                    + ' 2d_loss: {:.8f}, 3d_loss: {:.8f}, 3d_re_loss:{:.8f} ,pck: {:.2f}%, total_loss: {:.8f}, best_loss: {:.8f}, expected_date: {}\n'.format(
                         log_2d_losses.avg,
                         log_3d_losses.avg,
+                        log_3d_re_losses.avg,
                         pck,
                         log_losses.avg,
                         best_loss,
@@ -391,9 +398,10 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
                     ' '.join(
                         ['dataset_length: {len}', 'epoch: {ep}', 'iter: {iter}', '/{maxi},  count: {count}/{max_count}']
                     ).format(len=data_len, ep=epoch, iter=iteration, maxi=len(train_dataloader), count= count, max_count = args.count)
-                     + ' 2d_loss: {:.8f}, 3d_loss: {:.8f} pck: {:.2f}%, total_loss: {:.8f}, best_loss: {:.8f}, expected_date: {}'.format(
+                     + ' 2d_loss: {:.8f}, 3d_loss: {:.8f} ,3d_re_loss:{:.8f} ,pck: {:.2f}%, total_loss: {:.8f}, best_loss: {:.8f}, expected_date: {}'.format(
                         log_2d_losses.avg,
                         log_3d_losses.avg,
+                        log_3d_re_losses.avg,
                         pck,
                         log_losses.avg,
                         best_loss,
@@ -437,11 +445,12 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
             loss.backward()
             optimizer.step()
 
-            if iteration == 0 or iteration == int(len(train_dataloader)/2) or iteration == len(train_dataloader) - 1:
-                fig = plt.figure()
-                visualize_gt(images, gt_2d_joints, fig, iteration)
-                visualize_prediction(images, pred_joint, fig, 'train', epoch, iteration, args,None)
-                plt.close()
+            if not args.projection:
+                if iteration == 0 or iteration == int(len(train_dataloader)/2) or iteration == len(train_dataloader) - 1:
+                    fig = plt.figure()
+                    visualize_gt(images, gt_2d_joints, fig, iteration)
+                    visualize_prediction(images, pred_joint, fig, 'train', epoch, iteration, args,None)
+                    plt.close()
 
             batch_time.update(time.time() - end)
             end = time.time()
@@ -480,13 +489,10 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
 
     end = time.time()
     criterion_2d_keypoints = torch.nn.MSELoss(reduction='none').cuda(args.device)
-    criterion_keypoints = torch.nn.MSELoss(reduction='none').cuda(args.device)
     log_losses = AverageMeter()
     pck_losses = AverageMeter()
     epe_losses = AverageMeter()
-    log_2d_losses = AverageMeter()
-    log_3d_losses = AverageMeter()
-
+    
     if args.model == "ours":
         with torch.no_grad():
             for iteration, (images, gt_2d_joints, heatmap, gt_3d_joints) in enumerate(test_dataloader):
@@ -500,37 +506,32 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
                 gt_3d_joints = gt_3d_joints.clone().detach()
                 gt_3d_joints = torch.tensor(gt_3d_joints).cuda()
 
-                if args.projection: pred_2d_joints, pred_3d_joints= Graphormer_model(images)
-                else: pred_2d_joints= Graphormer_model(images); pred_3d_joints = torch.zeros([pred_2d_joints.size()[0], pred_2d_joints.size()[1], 3]).cuda(); args.loss_3d = 0
-
-                pred_2d_joints[:,:,1] = pred_2d_joints[:,:,1] * images.size(2) ## You Have to check whether weight and height is correct dimenstion
-                pred_2d_joints[:,:,0] = pred_2d_joints[:,:,0] * images.size(3)
-
-                
-                if args.general:
-                   pck, threshold = PCK_3d_loss(pred_3d_joints, gt_3d_joints, T= 10)
-                   loss = reconstruction_error(np.array(pred_3d_joints.cpu()), np.array(gt_3d_joints.cpu()))
-                else:
-                   pck= PCK_2d_loss(pred_2d_joints, gt_2d_joint, T= 0.05, threshold = 'proportion')
-                   loss = keypoint_2d_loss(criterion_2d_keypoints, pred_2d_joints, gt_2d_joint)
-                   
-                # epe_loss, epe_per = EPE(pred_2d_joints, gt_2d_joint)      ## don't consider inivisible joint
+                if args.projection: 
+                    pred_2d_joints, pred_3d_joints= Graphormer_model(images)
+                    pck, threshold = PCK_3d_loss(pred_3d_joints, gt_3d_joints, T= 10)
+                    loss = reconstruction_error(np.array(pred_3d_joints.detach().cpu()), np.array(gt_3d_joints.detach().cpu()))
+                    
+                else: 
+                    pred_2d_joints= Graphormer_model(images); pred_3d_joints = torch.zeros([pred_2d_joints.size()[0], pred_2d_joints.size()[1], 3]).cuda(); args.loss_3d = 0
+                    pred_2d_joints[:,:,1] = pred_2d_joints[:,:,1] * images.size(2) ## You Have to check whether weight and height is correct dimenstion
+                    pred_2d_joints[:,:,0] = pred_2d_joints[:,:,0] * images.size(3)
+                    # pck= PCK_2d_loss(pred_2d_joints, gt_2d_joint, T= 0.05, threshold = 'proportion')
+                    pck = PCK_2d_loss_visible(pred_2d_joints, gt_2d_joint, T= 0.05, threshold = 'proportion')
+                    loss = keypoint_2d_loss(criterion_2d_keypoints, pred_2d_joints, gt_2d_joint)
+                    
                 epe_loss, _ = EPE_train(pred_2d_joints, gt_2d_joint)  ## consider invisible joint
-                # loss_2d_joints = keypoint_2d_loss(criterion_2d_keypoints, pred_2d_joints / 224, gt_2d_joint / 224)
-                # loss_3d_joints = keypoint_3d_loss(criterion_keypoints, pred_3d_joints, gt_3d_joints)                
-                
+
                 pck_losses.update(pck, batch_size)
                 epe_losses.update_p(epe_loss[0], epe_loss[1])
                 log_losses.update(loss.item(), batch_size)
-                # log_2d_losses.update(loss_2d_joints.item(), batch_size)
-                # log_3d_losses.update(loss_3d_joints.item(), batch_size)
-
-                if iteration == 0 or iteration == int(len(test_dataloader)/2) or iteration == len(test_dataloader) - 1:
-                    fig = plt.figure()
-                    visualize_gt(images, gt_2d_joint, fig, iteration)
-                    visualize_prediction(images, pred_2d_joints, fig, 'test', epoch, iteration,args,None)
-                    plt.close()
-
+                
+                if not args.projection:
+                    if iteration == 0 or iteration == int(len(test_dataloader)/2) or iteration == len(test_dataloader) - 1:
+                        fig = plt.figure()
+                        visualize_gt(images, gt_2d_joint, fig, iteration)
+                        visualize_prediction(images, pred_2d_joints, fig, 'test', epoch, iteration, args,None)
+                        plt.close()
+                        
                 batch_time.update(time.time() - end)
                 end = time.time()
                 eta_seconds = batch_time.avg * ((len(test_dataloader) - iteration) + (args.epoch - epoch -1) *len_total)
@@ -610,11 +611,12 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
             pck_losses.update(pck, batch_size)
             epe_losses.update_p(epe_loss[0], epe_loss[1])
             
-            if iteration == 0 or iteration == int(len(test_dataloader)/2) or iteration == len(test_dataloader) - 1:
-                fig = plt.figure()
-                visualize_gt(images, gt_2d_joints, fig, iteration)
-                visualize_prediction(images, pred_2d_joints, fig, 'test', epoch, iteration, args, None)
-                plt.close()
+            if not args.projection:
+                if iteration == 0 or iteration == int(len(test_dataloader)/2) or iteration == len(test_dataloader) - 1:
+                    fig = plt.figure()
+                    visualize_gt(images, gt_2d_joints, fig, iteration)
+                    visualize_prediction(images, pred_2d_joints, fig, 'test', epoch, iteration, args, None)
+                    plt.close()
 
             batch_time.update(time.time() - end)
             end = time.time()

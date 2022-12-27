@@ -143,25 +143,25 @@ def build_dataset(args):
             args, args.train_yaml, False, is_train=True, scale_factor=args.img_scale_factor)  # RGB image
         testset_dataset = Frei(args)
         
-        for iter, degree in enumerate(folder_num):
-                ratio  = ((len(trainset_dataset) + len(testset_dataset)) * args.ratio_of_other) / 373184
-                dataset = CustomDataset(args, degree, path, rotation=args.rot, color=args.color,
-                                        ratio_of_aug=args.ratio_of_aug, ratio_of_dataset= ratio)
+        # for iter, degree in enumerate(folder_num):
+        #         ratio  = ((len(trainset_dataset) + len(testset_dataset)) * args.ratio_of_other) / 373184
+        #         dataset = CustomDataset(args, degree, path, rotation=args.rot, color=args.color,
+        #                                 ratio_of_aug=args.ratio_of_aug, ratio_of_dataset= ratio)
 
-                if iter == 0:
-                    train_dataset, test_dataset = random_split(
-                        dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
+        #         if iter == 0:
+        #             train_dataset, test_dataset = random_split(
+        #                 dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
 
-                else:
-                    train_dataset_other, test_dataset_other = random_split(
-                        dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
-                    train_dataset = ConcatDataset(
-                        [train_dataset, train_dataset_other])
-                    test_dataset = ConcatDataset(
-                        [test_dataset, test_dataset_other])
+        #         else:
+        #             train_dataset_other, test_dataset_other = random_split(
+        #                 dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
+        #             train_dataset = ConcatDataset(
+        #                 [train_dataset, train_dataset_other])
+        #             test_dataset = ConcatDataset(
+        #                 [test_dataset, test_dataset_other])
                     
-        trainset_dataset = ConcatDataset([train_dataset, trainset_dataset])
-        testset_dataset = ConcatDataset([test_dataset, testset_dataset])
+        # trainset_dataset = ConcatDataset([train_dataset, trainset_dataset])
+        # testset_dataset = ConcatDataset([test_dataset, testset_dataset])
                     
         return trainset_dataset, testset_dataset
 
@@ -195,22 +195,18 @@ def build_dataset(args):
 
     else:
         if not args.general:
+            test_dataset = Our_testset_new(args)
             for iter, degree in enumerate(folder_num):
 
-                dataset = CustomDataset(args, degree, path, rotation=args.rot, color=args.color,
+                if iter == 0 :
+                    train_dataset = CustomDataset(args, degree, path, rotation=args.rot, color=args.color,
                                         ratio_of_aug=args.ratio_of_aug, ratio_of_dataset= args.ratio_of_our)
-
-                if iter == 0:
-                    train_dataset, test_dataset = random_split(
-                        dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
-
+                
                 else:
-                    train_dataset_other, test_dataset_other = random_split(
-                        dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
+                    train_dataset_other = CustomDataset(args, degree, path, rotation=args.rot, color=args.color,
+                                        ratio_of_aug=args.ratio_of_aug, ratio_of_dataset= args.ratio_of_our)
                     train_dataset = ConcatDataset(
                         [train_dataset, train_dataset_other])
-                    test_dataset = ConcatDataset(
-                        [test_dataset, test_dataset_other])
 
         else:
             folder_num = os.listdir(general_path)
@@ -641,6 +637,55 @@ class Our_testset(Dataset):
         joint_2d[:, 1] = joint_2d[:, 1] * scale_y
 
         return trans_image, joint_2d
+
+class Our_testset_new(Dataset):
+    def __init__(self, args):
+        self.args = args
+        self.image_path = f'../../datasets/test/rgb'
+        self.anno_path = f'../../datasets/test/annotations.json'
+        self.list = os.listdir(self.image_path)
+
+    def __len__(self):
+        return len(os.listdir(self.image_path))
+
+    def __getitem__(self, idx):
+        if not self.args.model == "ours":
+            size = 256
+        else:
+            size = 224
+
+        with open(self.anno_path, "r") as st_json:
+            json_data = json.load(st_json)
+            joint = json_data[f"{idx}"]['coordinates']
+            file_name = json_data[f"{idx}"]['file_name']
+            visible = json_data[f"{idx}"]['visible']
+            try: 
+                joint_2d = torch.tensor(joint)[:, :2]
+            except:
+                print(file_name)
+                print("EROOORROORR")
+            visible = torch.tensor(visible)
+            joint_2d_v = torch.concat([joint_2d, visible[:, None]], axis = 1)
+            assert len(joint) == 21, f"{file_name} have joint error"
+            assert len(visible) == 21, f"{file_name} have visible error"
+            
+        trans = transforms.Compose([transforms.Resize((size, size)),
+                                    transforms.ToTensor(),
+                                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+        
+        image = Image.open(f"../../datasets/{file_name}")
+        trans_image = trans(image)
+        joint_2d_v[:, 0] = joint_2d_v[:, 0] * image.width
+        joint_2d_v[:, 1] = joint_2d_v[:, 1] * image.height
+        joint_2d[:, 0] = joint_2d[:, 0] * image.width
+        joint_2d[:, 1] = joint_2d[:, 1] * image.height
+        
+        if self.args.model == "hrnet":
+            heatmap = GenerateHeatmap(128, 21)(joint_2d / 2)
+        else:
+            heatmap = GenerateHeatmap(64, 21)(joint_2d / 4)
+
+        return trans_image, joint_2d_v, heatmap, joint_2d_v
 
 
 class Our_testset_media(Dataset):
