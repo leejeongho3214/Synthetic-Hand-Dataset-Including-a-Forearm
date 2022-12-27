@@ -370,7 +370,7 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
                 if iteration == 0 or iteration == int(len(train_dataloader)/2) or iteration == len(train_dataloader) - 1:
                     fig = plt.figure()
                     visualize_gt(images, gt_2d_joint, fig, iteration)
-                    visualize_prediction(images, pred_2d_joints, fig, 'train', epoch, iteration, args, None)
+                    visualize_pred(images, pred_2d_joints, fig, 'train', epoch, iteration, args, None)
                     plt.close()
 
             batch_time.update(time.time() - end)
@@ -449,7 +449,7 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
                 if iteration == 0 or iteration == int(len(train_dataloader)/2) or iteration == len(train_dataloader) - 1:
                     fig = plt.figure()
                     visualize_gt(images, gt_2d_joints, fig, iteration)
-                    visualize_prediction(images, pred_joint, fig, 'train', epoch, iteration, args,None)
+                    visualize_pred(images, pred_joint, fig, 'train', epoch, iteration, args,None)
                     plt.close()
 
             batch_time.update(time.time() - end)
@@ -529,7 +529,7 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
                     if iteration == 0 or iteration == int(len(test_dataloader)/2) or iteration == len(test_dataloader) - 1:
                         fig = plt.figure()
                         visualize_gt(images, gt_2d_joint, fig, iteration)
-                        visualize_prediction(images, pred_2d_joints, fig, 'test', epoch, iteration, args,None)
+                        visualize_pred(images, pred_2d_joints, fig, 'test', epoch, iteration, args,None)
                         plt.close()
                         
                 batch_time.update(time.time() - end)
@@ -615,7 +615,7 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
                 if iteration == 0 or iteration == int(len(test_dataloader)/2) or iteration == len(test_dataloader) - 1:
                     fig = plt.figure()
                     visualize_gt(images, gt_2d_joints, fig, iteration)
-                    visualize_prediction(images, pred_2d_joints, fig, 'test', epoch, iteration, args, None)
+                    visualize_pred(images, pred_2d_joints, fig, 'test', epoch, iteration, args, None)
                     plt.close()
 
             batch_time.update(time.time() - end)
