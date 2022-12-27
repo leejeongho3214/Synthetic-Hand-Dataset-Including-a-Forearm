@@ -70,11 +70,8 @@ def visualize_gt(images, gt_2d_joint, fig, iteration):
     parents = np.array([-1, 0, 1, 2, 3, 0, 5, 6, 7, 0, 9, 10, 11, 0, 13, 14, 15, 0, 17, 18, 19,])
     
     for i in range(21):
-        if not gt_2d_joint[num][i][2] < 1:
-            cv2.circle(image, (int(gt_2d_joint[num][i][0]), int(gt_2d_joint[num][i][1])), 2, [0, 1, 0],
-                    thickness=-1)
-        else:
-            cv2.circle(image, (int(gt_2d_joint[num][i][0]), int(gt_2d_joint[num][i][1])), 2, [1, 0, 0],
+
+        cv2.circle(image, (int(gt_2d_joint[num][i][0]), int(gt_2d_joint[num][i][1])), 2, [0, 1, 0],
                     thickness=-1)
         if i != 0:
             cv2.line(image, (int(gt_2d_joint[num][i][0]), int(gt_2d_joint[num][i][1])),
