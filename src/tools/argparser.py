@@ -368,9 +368,7 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
             loss_2d= keypoint_2d_loss(criterion_2d_keypoints, pred_2d_joints, gt_2d_joint)
             loss_3d = keypoint_3d_loss(criterion_keypoints, pred_3d_joints, gt_3d_joints)
             loss_3d_re = reconstruction_error(np.array(pred_3d_joints.detach().cpu()), np.array(gt_3d_joints.detach().cpu()))
-
             loss = args.loss_2d * loss_2d + args.loss_3d * loss_3d
-
             log_losses.update(loss.item(), batch_size)
             log_2d_losses.update(loss_2d.item(), batch_size)
             log_3d_losses.update(loss_3d.item(), batch_size)
@@ -525,7 +523,6 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
                 gt_2d_joint = gt_2d_joint.cuda()
                 gt_3d_joints = gt_3d_joints.clone().detach()
                 gt_3d_joints = torch.tensor(gt_3d_joints).cuda()
-
                 scale = ((gt_3d_joints[:, 10,:] - gt_3d_joints[:, 9, :])**2).sum(-1).sqrt()
                 for i in range(batch_size):
                     gt_3d_joints[i] = gt_3d_joints[i]/scale[i]
@@ -537,7 +534,7 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
                 # gt_3d_root = gt_3d_joints[:, 0, :]
                 # gt_vertices = gt_vertices - gt_3d_root[:, None, :]
                 # gt_3d_joints = gt_3d_joints - gt_3d_root[:, None, :]
-
+            
                 if args.projection: 
                     pred_2d_joints, pred_3d_joints= Graphormer_model(images)
                     pck, threshold = PCK_3d_loss(pred_3d_joints, gt_3d_joints, T= 10)

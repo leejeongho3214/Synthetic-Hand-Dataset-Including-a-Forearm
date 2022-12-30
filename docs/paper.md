@@ -57,23 +57,12 @@
 - 3D Hand Shape and Pose from Images in the Wild (CVPR 2019)
 	- 인코더를 통해 MANO 모델의 Pose, Beta 값과 Camera View 파라미터를 얻음
 	- MANO 모델을 통해 3D joint와 동시에 Camera View 파라미터로 2D projection 시켜 2D & 3D joint를 얻음
-<<<<<<< HEAD
-	- Camera View 파라미터: Rotation, Translation, Scale
-- Coarse-to-Fine Volumetric Prediction for Single-Image 3D Human Pose (CVPR 2017) (Body pose)
-	- 
-### Lifting 2D pose to 3D pose
--  Nearast neighbor matihing of a given 2D prediction
--  A probabilistic 3D pose model based upon PCA bases
--  Etc.				
-### MANO model based estimation
-=======
 		- Camera View 파라미터: Rotation, Translation, Scale
 - Weakly Supervised 3D Hand Pose Estimation via Biomechanical Constraints (2020)
 	- The biomechanical constraint를 사용하며 weakly supervised learning
 	- 즉, 뼈의 길이, root bone 사이의 각도, 손가락 bone의 각도 등을 제약을 둬서 학습
 		
 ### Model-based
->>>>>>> 75095027a1e1ec114691fcfe220c154ef0b276bb
 - Mesh Graphormer
 	- ViT와 다르게 입력을 패치가 아닌 BackBone인 HRNet의 feature map을 넣어줌
 	- MANO 모델을 통해 인접행렬과 3D joint & mesh template의 초기화 값을 얻어줌 (beta와 pose값을 0을 넣어주어 얻은 값)

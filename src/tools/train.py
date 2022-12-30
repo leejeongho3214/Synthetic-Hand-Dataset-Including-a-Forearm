@@ -13,7 +13,7 @@ from argparser import parse_args, load_model, train, test
 from dataset import *
 
 def main(args):
-
+    a = 100 - 100
     _model, logger, best_loss, epo, count = load_model(args)
     train_dataset, test_dataset = build_dataset(args)
 

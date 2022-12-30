@@ -13,11 +13,7 @@
             "console": "integratedTerminal",
             "justMyCode": true,
             "cwd": "${fileDirname}",
-<<<<<<< HEAD
-            "args": ["--name", "None"]
-=======
             "args": ["--name", "None", "--dataset", "frei"]
->>>>>>> 75095027a1e1ec114691fcfe220c154ef0b276bb
         }
     ]
 }

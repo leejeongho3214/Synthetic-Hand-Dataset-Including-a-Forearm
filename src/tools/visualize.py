@@ -12,10 +12,7 @@ def visualize_pred(images, pred_2d_joint, fig, method = None, epoch = 0, iterati
     num = iteration % images.size(0)
     image = np.moveaxis(images[num].detach().cpu().numpy(), 0, -1)
     image = ((image + abs(image.min())) / (image + abs(image.min())).max()).copy()
-
-
     parents = np.array([-1, 0, 1, 2, 3, 0, 5, 6, 7, 0, 9, 10, 11, 0, 13, 14, 15, 0, 17, 18, 19])
-
     
     for i in range(21):
         cv2.circle(image, (int(pred_2d_joint[num][i][0]), int(pred_2d_joint[num][i][1])), 2, [0, 1, 0],
@@ -70,7 +67,6 @@ def visualize_gt(images, gt_2d_joint, fig, iteration):
     num = iteration % images.size(0)
     image = np.moveaxis(images[num].detach().cpu().numpy(), 0, -1)
     image = ((image + abs(image.min())) / (image + abs(image.min())).max()).copy()
-
     parents = np.array([-1, 0, 1, 2, 3, 0, 5, 6, 7, 0, 9, 10, 11, 0, 13, 14, 15, 0, 17, 18, 19])
     
     for i in range(21):

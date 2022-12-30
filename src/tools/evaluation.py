@@ -146,15 +146,11 @@ def main(args, T_list):
                 name_list.append(os.path.join(os.path.join(root_path, models_name), a))
         
     # name_list = ["final_models/ours/wrist/only_synthetic/rot_color_0.2", "final_models/ours/wrist/only_synthetic/rot_color_0.1"]    
-<<<<<<< HEAD
-    
-=======
     loo = [] 
     for idx, name in enumerate(name_list):
         if name[-7:] == "new_13k" or name[-7:] == "new_37k": 
             loo.append(name)
     name_list = loo
->>>>>>> 75095027a1e1ec114691fcfe220c154ef0b276bb
     pbar = tqdm(total = len(name_list) * 4 * 4) 
     
     for name_p in name_list:
