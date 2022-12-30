@@ -58,6 +58,8 @@
 	- 인코더를 통해 MANO 모델의 Pose, Beta 값과 Camera View 파라미터를 얻음
 	- MANO 모델을 통해 3D joint와 동시에 Camera View 파라미터로 2D projection 시켜 2D & 3D joint를 얻음
 	- Camera View 파라미터: Rotation, Translation, Scale
+- Coarse-to-Fine Volumetric Prediction for Single-Image 3D Human Pose (CVPR 2017) (Body pose)
+	- 
 ### Lifting 2D pose to 3D pose
 -  Nearast neighbor matihing of a given 2D prediction
 -  A probabilistic 3D pose model based upon PCA bases

@@ -71,8 +71,13 @@ def keypoint_2d_loss(criterion_keypoints, pred_keypoints_2d, gt_keypoints_2d):
     The confidence is binary and indicates whether the keypoints exist or not.
     """
     conf = 1
-    loss = (conf * criterion_keypoints(pred_keypoints_2d, gt_keypoints_2d)).mean(2).mean(1).sum()
-    return loss
+    if gt_keypoints_2d.size(2) > 2:
+        loss = (conf * criterion_keypoints(pred_keypoints_2d, gt_keypoints_2d[:, : ,:2])) * gt_keypoints_2d[:, : ,2][:, :, None]      ## It consider to calculate only the visible joint  
+        return loss[loss>0].mean()
+    else:
+        loss = (conf * criterion_keypoints(pred_keypoints_2d, gt_keypoints_2d[:, : ,:2])).mean(2).mean(1).sum()
+        return loss
+    
 
 def PCK_2d_loss_visible(pred_2d, gt_2d, T = 0.1, threshold = 'proportion'):
     bbox_size = []
@@ -146,46 +151,9 @@ def PCK_3d_loss(pred_3d, gt_3d, T = 0.1):
     diff = pred_3d - gt_3d
     euclidean_dist = diff.square().sum(2).sqrt()
     pixel_to_mm = 3.779527559
-    pck = (euclidean_dist * pixel_to_mm <= T).type(torch.float).mean(1).sum()
+    pck = (euclidean_dist * pixel_to_mm <= T).type(torch.float).mean()
 
     return pck, T
-
-def PCK_2d_loss_No_batch(pred_2d, gt_2d, images,T=0.1, threshold = 'proportion'):
-    point = []
-    pred_2d = pred_2d.detach().cpu()
-    gt_2d = gt_2d.detach().cpu()
-
-    width = max(gt_2d[:, 0]) - min(gt_2d[:, 0])
-    height = max(gt_2d[:, 1]) - min(gt_2d[:, 1])
-    square_len = width ** 2 + height ** 2
-    box_size = np.sqrt(square_len)
-    point.append(((min(gt_2d[:, 0]), min(gt_2d[:, 1])), (max(gt_2d[:, 0]), max(gt_2d[:, 1]))))
-
-    # If you want to show joint with bbox, it can do
-    # for k, l, point in zip(images, gt_2d, point):
-    #     visualize_with_bbox(k, l, point[0], point[1])
-    correct = 0
-    visible_joint = 0
-
-    for joint_num in range(1, 21):
-        if gt_2d[joint_num][2] == 1:
-            visible_joint += 1
-            x = gt_2d[joint_num][0] - pred_2d[joint_num][0]
-            y = gt_2d[joint_num][1] - pred_2d[joint_num][1]
-            
-            if threshold == 'proportion':
-                distance = np.sqrt((x ** 2 + y ** 2))
-                if distance < T * box_size:
-                    correct += 1
-            elif threshold == 'pixel':
-                distance = np.sqrt((x ** 2 + y ** 2))
-                if distance * 0.26 < T * 20:
-                    correct += 1
-            else:
-                assert False, "Please check variable threshold is right"
-
-    return correct, visible_joint , threshold
-
 
 def adjust_learning_rate(optimizer, epoch, args):
     """
