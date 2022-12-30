@@ -62,7 +62,7 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss, T, da
                     for i in range(images.size(0)):
                         fig = plt.figure()
                         visualize_gt(images[i], gt_2d_joint[i], fig, i)
-                        visualize_prediction(images[i], pred_2d_joints[i], fig, 'evaluation', epoch, i, args, dataset_name)
+                        visualize_pred(images[i], pred_2d_joints[i], fig, 'evaluation', epoch, i, args, dataset_name)
                         plt.close()
                 xyz_list.append(pred_2d_joints)
         dump(pred_out_path, xyz_list)
@@ -106,7 +106,7 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss, T, da
                     for i in range(images.size(0)):
                         fig = plt.figure()
                         visualize_gt(images[i], gt_2d_joint[i], fig, iteration)
-                        visualize_prediction(images[i], pred_2d_joints[i], fig, 'evaluation', epoch, iteration, args, dataset_name)
+                        visualize_pred(images[i], pred_2d_joints[i], fig, 'evaluation', epoch, iteration, args, dataset_name)
                         plt.close()
 
         dump(pred_out_path, xyz_list)
@@ -146,7 +146,11 @@ def main(args, T_list):
                 name_list.append(os.path.join(os.path.join(root_path, models_name), a))
         
     # name_list = ["final_models/ours/wrist/only_synthetic/rot_color_0.2", "final_models/ours/wrist/only_synthetic/rot_color_0.1"]    
-    
+    loo = [] 
+    for idx, name in enumerate(name_list):
+        if name[-7:] == "new_13k" or name[-7:] == "new_37k": 
+            loo.append(name)
+    name_list = loo
     pbar = tqdm(total = len(name_list) * 4 * 4) 
     
     for name_p in name_list:

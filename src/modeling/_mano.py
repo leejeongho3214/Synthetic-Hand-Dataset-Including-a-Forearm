@@ -8,13 +8,16 @@ GraphCMR (https://github.com/nkolot/GraphCMR/)
 """
 
 from __future__ import division
+import os
+import sys
+sys.path.append("/home/jeongho/tmp/Wearable_Pose_Model")
 import numpy as np
 import torch
 import torch.nn as nn
 import os.path as osp
 import json
 import code
-from manopth.manopth.manolayer import ManoLayer
+from manopth.manolayer import ManoLayer
 import scipy.sparse
 import src.modeling.data.config as cfg
 
@@ -22,7 +25,7 @@ class MANO(nn.Module):
     def __init__(self):
         super(MANO, self).__init__()
 
-        self.mano_dir = '../modeling/data'
+        self.mano_dir = '../../manopth/mano/models'
         self.layer = self.get_layer()
         self.vertex_num = 778
         self.face = self.layer.th_faces.numpy()

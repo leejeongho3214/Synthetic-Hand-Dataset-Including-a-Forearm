@@ -1,7 +1,7 @@
-import sys
-sys.path.append("/home/jeongho/tmp/Wearable_Pose_Model")
 import argparse
 import torchvision.models as models
+import sys
+sys.path.append("/home/jeongho/tmp/Wearable_Pose_Model")
 from src.modeling.hrnet.config.default import update_config
 from src.modeling.hrnet.config.default import _C as cfg
 from src.modeling.bert import BertConfig, Graphormer
@@ -36,29 +36,34 @@ def parse_args():
     ## Set Hyper-parameter ##
     ######################################################################################
     parser.add_argument("--name", default='None',
-                        help = '20k means CISLAB 20,000 images',type=str)
+                        help = 'You write down to store the directory path',type=str)
     parser.add_argument("--root_path", default=f'output', type=str, required=False,
                         help="The root directory to save location which you want")
     parser.add_argument("--model", default='ours', type=str, required=False,
                         help="you can choose model like hrnet, simplebaseline, hourglass, ours")
     parser.add_argument("--dataset", default='ours', type=str, required=False,
-                        help="you can choose dataset like ours, coco, interhand, rhd")
-    parser.add_argument("--batch_size", default=32, type=int)
+                        help="you can choose dataset like ours, coco, interhand, rhd, frei, hiu, etc.")
     parser.add_argument("--num_train_epochs", default=50, type=int,
                         help="Total number of training epochs to perform.")
+    parser.add_argument("--batch_size", default=32, type=int)
     parser.add_argument("--count", default=5, type=int)
-    parser.add_argument("--ratio_of_our", default=0.3, type=float)
+    parser.add_argument("--ratio_of_our", default=0.3, type=float,
+                        help="Our dataset have 420k imaegs so you can use train data as many as you want, according to this ratio")
     parser.add_argument("--ratio_of_other", default=0.3, type=float)
-    parser.add_argument("--ratio_of_aug", default=0.2, type=float)
+    parser.add_argument("--ratio_of_aug", default=0.2, type=float,
+                        help="You can use color jitter to train data as many as you want, according to this ratio")
     parser.add_argument("--epoch", default=30, type=int)
     parser.add_argument("--loss_2d", default=1, type=int)
     parser.add_argument("--loss_3d", default=1, type=int)
-    parser.add_argument("--visualize", action='store_true')
+    parser.add_argument("--memo", default='None',
+                        help = 'You can write down comment as you want',type=str)
     parser.add_argument("--resume", action='store_true')
-    parser.add_argument("--rot", action='store_true')
-    parser.add_argument("--color", action='store_true')
-    parser.add_argument("--general", action='store_true')
-    parser.add_argument("--projection", action='store_true')
+    parser.add_argument("--color", action='store_true',
+                        help="If you write down, This dataset would be applied color jitter to train data, according to ratio of aug")
+    parser.add_argument("--general", action='store_true', 
+                        help="If you write down, This dataset would be view of the general")
+    parser.add_argument("--projection", action='store_true',
+                        help="If you write down, The output of model would be 3d joint coordinate")
     
     ######################################################################################
 
@@ -334,6 +339,15 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
     
     if args.model == "ours":
         for iteration, (images, gt_2d_joints, heatmap, gt_3d_joints) in enumerate(train_dataloader):
+            # gt_pose = annotations['pose'].cuda()
+            # gt_betas = annotations['betas'].cuda()
+            # gt_vertices, gt_3d_joints = mano_model.layer(gt_pose, gt_betas)
+            # gt_vertices = gt_vertices/1000.0
+            # gt_3d_joints = gt_3d_joints/1000.0
+            # gt_3d_root = gt_3d_joints[:, 0, :]
+            # gt_vertices = gt_vertices - gt_3d_root[:, None, :]
+            # gt_3d_joints = gt_3d_joints - gt_3d_root[:, None, :]
+            
             batch_size = images.size(0)
             adjust_learning_rate(optimizer, epoch, args)  
             gt_2d_joints[:,:,1] = gt_2d_joints[:,:,1] / images.size(2) ## You Have to check whether weight and height is correct dimenstion
@@ -342,6 +356,10 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
             gt_2d_joint = gt_2d_joint.cuda()
             gt_3d_joints = gt_3d_joints.clone().detach()
             gt_3d_joints = gt_3d_joints.cuda()
+            scale = ((gt_3d_joints[:, 10,:] - gt_3d_joints[:, 9, :])**2).sum(-1).sqrt()
+            for i in range(batch_size):
+                gt_3d_joints[i] = gt_3d_joints[i]/scale[i]
+
             images = images.cuda()
             
             if args.projection: pred_2d_joints, pred_3d_joints= Graphormer_model(images)
@@ -350,7 +368,7 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
             loss_2d= keypoint_2d_loss(criterion_2d_keypoints, pred_2d_joints, gt_2d_joint)
             loss_3d = keypoint_3d_loss(criterion_keypoints, pred_3d_joints, gt_3d_joints)
             loss_3d_re = reconstruction_error(np.array(pred_3d_joints.detach().cpu()), np.array(gt_3d_joints.detach().cpu()))
-            loss = args.loss_2d * loss_2d + args.loss_3d * loss_3d + loss_3d_re
+            loss = args.loss_2d * loss_2d + args.loss_3d * loss_3d
             log_losses.update(loss.item(), batch_size)
             log_2d_losses.update(loss_2d.item(), batch_size)
             log_3d_losses.update(loss_3d.item(), batch_size)
@@ -505,7 +523,18 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
                 gt_2d_joint = gt_2d_joint.cuda()
                 gt_3d_joints = gt_3d_joints.clone().detach()
                 gt_3d_joints = torch.tensor(gt_3d_joints).cuda()
-
+                scale = ((gt_3d_joints[:, 10,:] - gt_3d_joints[:, 9, :])**2).sum(-1).sqrt()
+                for i in range(batch_size):
+                    gt_3d_joints[i] = gt_3d_joints[i]/scale[i]
+                # gt_pose = annotations[:, :48].cuda()
+                # gt_betas = annotations[:, 48:].cuda()
+                # gt_vertices, gt_3d_joints = mano_model.layer(gt_pose, gt_betas)
+                # gt_vertices = gt_vertices/1000.0
+                # gt_3d_joints = gt_3d_joints/1000.0
+                # gt_3d_root = gt_3d_joints[:, 0, :]
+                # gt_vertices = gt_vertices - gt_3d_root[:, None, :]
+                # gt_3d_joints = gt_3d_joints - gt_3d_root[:, None, :]
+            
                 if args.projection: 
                     pred_2d_joints, pred_3d_joints= Graphormer_model(images)
                     pck, threshold = PCK_3d_loss(pred_3d_joints, gt_3d_joints, T= 10)

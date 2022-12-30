@@ -18,9 +18,9 @@ def main(args):
     train_dataset, test_dataset = build_dataset(args)
 
     logger.info('\n \n========================================================================================================\n' 
-                + 'name = %s, model = %s,  epoch = %i, count = %i, dataset = %s, Train images = %i, \n 2d = %i , 3d = %i,  ratio of aug = %.1f, rot= %s, color = %s, Use general = %s' 
+                + 'name = %s, model = %s,  epoch = %i, count = %i, dataset = %s, Train images = %i, \n 2d = %i , 3d = %i,  ratio of aug = %.1f, color = %s, general = %s, memo = %s'
                 + '\n========================================================================================================',
-                 args.name, args.model, args.epoch, args.count, args.dataset, len(train_dataset), args.loss_2d, args.loss_3d, args.ratio_of_aug, args.rot, args.color, args.general)
+                 args.name, args.model, args.epoch, args.count, args.dataset, len(train_dataset), args.loss_2d, args.loss_3d, args.ratio_of_aug, args.color, args.general, args.memo)
 
     trainset_loader = data.DataLoader(dataset=train_dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True)
     testset_loader = data.DataLoader(dataset=test_dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=False)
