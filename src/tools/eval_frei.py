@@ -33,7 +33,7 @@ def dump(pred_out_path, xyz_pred_list, verts_pred_list):
     print('Dumped %d joints and %d verts predictions to %s' % (len(xyz_pred_list), len(verts_pred_list), pred_out_path))
 
 def main(args, T_list):
-    name = "output/ours/general/only_frei"
+    name = "output/ours/general/only_frei_not_2d"
     args.name = os.path.join(name, "checkpoint-good/state_dict.bin")
     args.model = args.name.split('/')[1]
     if args.model == "other_dataset": args.model = "ours"
@@ -52,7 +52,7 @@ def main(args, T_list):
     
     pbar = tqdm(total = len(testset_loader)) 
     xyz_list, verts_list = list(), list()
-    for idx, (images, gt_2d_joints, heatmap, gt_3d_joints, _) in enumerate(testset_loader):
+    for idx, (images, gt_2d_joints, heatmap, gt_3d_joints) in enumerate(testset_loader):
 
         _model.eval()
         with torch.no_grad():

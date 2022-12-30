@@ -356,23 +356,34 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
             gt_2d_joint = gt_2d_joint.cuda()
             gt_3d_joints = gt_3d_joints.clone().detach()
             gt_3d_joints = gt_3d_joints.cuda()
-            scale = ((gt_3d_joints[:, 10,:] - gt_3d_joints[:, 9, :])**2).sum(-1).sqrt()
-            for i in range(batch_size):
-                gt_3d_joints[i] = gt_3d_joints[i]/scale[i]
+            
+            parents = [-1, 0, 1, 2, 3, 0, 5, 6, 7, 0, 9, 10, 11, 0, 13, 14, 15, 0, 17, 18, 19]
+            gt_3d_mid_joints = torch.ones(batch_size, 20, 3)
+            for i in range(20): 
+                gt_3d_mid_joints[:, i, :] = (gt_3d_joints[:, i+1, :] + gt_3d_joints[:, parents[i+1], :]) / 2
+            # scale = ((gt_3d_joints[:, 10,:] - gt_3d_joints[:, 9, :])**2).sum(-1).sqrt()
+            # for i in range(batch_size):
+            #     gt_3d_joints[i] = gt_3d_joints[i]/scale[i]
 
             images = images.cuda()
             
             if args.projection: pred_2d_joints, pred_3d_joints= Graphormer_model(images)
             else: pred_2d_joints= Graphormer_model(images); pred_3d_joints = torch.zeros([pred_2d_joints.size()[0], pred_2d_joints.size()[1], 3]).cuda(); args.loss_3d = 0
             
+            pred_3d_mid_joints = torch.ones(batch_size, 20, 3)
+            for i in range(20): 
+                pred_3d_mid_joints[:, i, :] = (pred_3d_joints[:, i+1, :] + pred_3d_joints[:, parents[i+1], :]) / 2
+
             loss_2d= keypoint_2d_loss(criterion_2d_keypoints, pred_2d_joints, gt_2d_joint)
             loss_3d = keypoint_3d_loss(criterion_keypoints, pred_3d_joints, gt_3d_joints)
             loss_3d_re = reconstruction_error(np.array(pred_3d_joints.detach().cpu()), np.array(gt_3d_joints.detach().cpu()))
-            loss = args.loss_2d * loss_2d + args.loss_3d * loss_3d
+            loss_3d_mid = keypoint_3d_loss(criterion_keypoints, pred_3d_mid_joints, gt_3d_mid_joints)
+            loss = args.loss_2d * loss_2d + args.loss_3d * loss_3d + loss_3d_mid
             log_losses.update(loss.item(), batch_size)
             log_2d_losses.update(loss_2d.item(), batch_size)
             log_3d_losses.update(loss_3d.item(), batch_size)
             log_3d_re_losses.update(loss_3d_re.item(), batch_size)
+
 
 
             optimizer.zero_grad()
@@ -523,9 +534,9 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
                 gt_2d_joint = gt_2d_joint.cuda()
                 gt_3d_joints = gt_3d_joints.clone().detach()
                 gt_3d_joints = torch.tensor(gt_3d_joints).cuda()
-                scale = ((gt_3d_joints[:, 10,:] - gt_3d_joints[:, 9, :])**2).sum(-1).sqrt()
-                for i in range(batch_size):
-                    gt_3d_joints[i] = gt_3d_joints[i]/scale[i]
+                # scale = ((gt_3d_joints[:, 10,:] - gt_3d_joints[:, 9, :])**2).sum(-1).sqrt()
+                # for i in range(batch_size):
+                #     gt_3d_joints[i] = gt_3d_joints[i]/scale[i]
                 # gt_pose = annotations[:, :48].cuda()
                 # gt_betas = annotations[:, 48:].cuda()
                 # gt_vertices, gt_3d_joints = mano_model.layer(gt_pose, gt_betas)
