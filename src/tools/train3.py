@@ -17,6 +17,7 @@ def main(args):
     _model, logger, best_loss, epo, count = load_model(args)
     train_dataset, test_dataset = build_dataset(args)
 
+<<<<<<< HEAD
     param = f"model_{args.model}_general_{args.general}_2d_{args.loss_2d}_3d_{args.loss_3d}_rot_{args.rot}_color_{args.color}_ratio_{args.ratio_of_aug}_dataset_{len(train_dataset)}"
     for name in os.listdir(os.path.join(args.root_path, args.name)): 
         if not name in ["checkpoint-good", "train_image", "test_image", "log.txt"]: os.rmdir(os.path.join(f"output/{args.name}", name))## easy to check hyper-parameter by making empty folder
@@ -25,14 +26,24 @@ def main(args):
                 + 'name = %s, model = %s,  epoch = %i, count = %i, dataset = %s, Train images = %i, \n 2d = %i , 3d = %i,  ratio of aug = %.1f, rot= %s, color = %s, Use general = %s' 
                 + '\n========================================================================================================',
                  args.name, args.model, args.epoch, args.count, args.dataset, len(train_dataset), args.loss_2d, args.loss_3d, args.ratio_of_aug, args.rot, args.color, args.general)
+=======
+    logger.info('\n \n========================================================================================================\n' 
+                + 'name = %s, model = %s,  epoch = %i, count = %i, dataset = %s, Train images = %i, \n 2d = %i , 3d = %i,  ratio of aug = %.1f, color = %s, general = %s, memo = %s'
+                + '\n========================================================================================================',
+                 args.name, args.model, args.epoch, args.count, args.dataset, len(train_dataset), args.loss_2d, args.loss_3d, args.ratio_of_aug, args.color, args.general, args.memo)
+>>>>>>> 75095027a1e1ec114691fcfe220c154ef0b276bb
 
     trainset_loader = data.DataLoader(dataset=train_dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True)
     testset_loader = data.DataLoader(dataset=test_dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=False)
     
     log_dir = f'tensorboard/{args.output_dir}'
+<<<<<<< HEAD
     if os.path.isdir(log_dir): shutil.rmtree(log_dir); mkdir(log_dir); mkdir(os.path.join(log_dir, param))
     else: mkdir(log_dir); mkdir(os.path.join(log_dir, param))
     writer = SummaryWriter(log_dir = os.path.join(log_dir, param)); pck_l = 0; batch_time = AverageMeter()
+=======
+    writer = SummaryWriter(log_dir); pck_l = 0; batch_time = AverageMeter()
+>>>>>>> 75095027a1e1ec114691fcfe220c154ef0b276bb
 
     
     for epoch in range(epo, args.epoch):

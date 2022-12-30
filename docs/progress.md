@@ -19,9 +19,10 @@
 
 - Ours
 	- use FreiHAND 130K image
+		> 학습: 2d loss + 3d loss // 검증: aligned 3d pose 
 
-				mean3d_error: 1.10 cm
-				auc3d: 0.781
+				mean3d_error: 0.84 cm
+				auc3d: 0.834
 
 	- use our virtual image 830K
 

@@ -1104,6 +1104,8 @@ class Frei(torch.utils.data.Dataset):
             self.anno_K = json.load(st_json)
         with open("../../datasets/frei_test/evaluation_xyz.json", "r") as st_json:
             self.anno_xyz = json.load(st_json)
+        # with open("../../datasets/frei_test/evaluation_mano.json", "r") as st_json:
+        #     self.anno_mano = json.load(st_json)
             
     def __len__(self):
         return len(self.anno_K)
@@ -1113,6 +1115,7 @@ class Frei(torch.utils.data.Dataset):
     def __getitem__(self, idx):
         anno_K = torch.tensor(self.anno_K[idx])
         anno_xyz = torch.tensor(self.anno_xyz[idx])
+        # anno_mano = torch.tensor(self.anno_mano[idx][0][:-3])
         
         joint_2d = torch.matmul(anno_K, anno_xyz.T).T
         joint_2d = (joint_2d[:, :2].T / joint_2d[:, -1]).T
