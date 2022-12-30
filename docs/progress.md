@@ -19,9 +19,15 @@
 
 - Ours
 	- use FreiHAND 130K image
+		> 기존에는 유클리디안 거리로 좌표의 error를 계산했지만, scale과 rot 모호성떄문에 aligned error를 계산하여 모델을 eval함
 
-				mean3d_error: 1.10 cm
-				auc3d: 0.781
+				mean3d_error: 0.92 cm
+				auc3d: 0.818
+
+		> 위 방법에 추가로 loss를 aligned 3d를 추가학습함
+
+				mean3d_error: 0.85 cm
+				auc3d: 0.831
 
 	- use our virtual image 830K
 
