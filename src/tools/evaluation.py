@@ -145,13 +145,20 @@ def main(args, T_list):
             for a in other_list:
                 name_list.append(os.path.join(os.path.join(root_path, models_name), a))
         
-    # name_list = ["final_models/ours/wrist/only_synthetic/rot_color_0.2", "final_models/ours/wrist/only_synthetic/rot_color_0.1"]    
-    loo = [] 
-    for idx, name in enumerate(name_list):
-        if name[-7:] == "new_13k" or name[-7:] == "new_37k": 
-            loo.append(name)
-    name_list = loo
-    pbar = tqdm(total = len(name_list) * 4 * 4) 
+    # name_list = ["final_models/ours/wrist/only_synthetic/rot_color_0.2", "final_models/ours/wrist/only_synthetic/rot_color_0.1"]   
+                
+    categories = ['general', 'p', 't', 't+p'] 
+    # loo = [] 
+    # for idx, name in enumerate(name_list):
+    #     if name[-7:] == "new_13k" or name[-7:] == "new_37k": 
+    #         loo.append(name)
+    # name_list = loo
+    
+    n = "final_models/ours/wrist/only_synthetic"
+    name_list = [os.path.join(n, os.listdir(n)[i]) for i in range(len(os.listdir(n)))]
+    pbar = tqdm(total = len(name_list) * len(categories) * len(T_list)) 
+    print(name_list)
+    # print()
     
     for name_p in name_list:
         sub_loss = []
@@ -166,8 +173,7 @@ def main(args, T_list):
 
             path = "../../datasets/our_testset"
             folder_path = os.listdir(path)
-            
-            categories = ['general', 'p', 't', 't+p']
+
             category_loss = []
             for name in categories:
                 count = 0

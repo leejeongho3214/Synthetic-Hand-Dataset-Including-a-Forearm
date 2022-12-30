@@ -226,7 +226,7 @@ def load_model(args):
     if not os.path.isdir(args.output_dir): mkdir(args.output_dir)
     if os.path.isfile(os.path.join(args.output_dir, "log.txt")): os.remove(os.path.join(args.output_dir, "log.txt"))
     
-    logger = setup_logger(args.name, args.output_dir, get_rank())
+    if not args.name.split('/')[0] == "final_models": logger = setup_logger(args.name, args.output_dir, get_rank())
     args.num_gpus = int(os.environ['WORLD_SIZE']) if 'WORLD_SIZE' in os.environ else 1
     os.environ['OMP_NUM_THREADS'] = str(args.num_workers)
     args.device = torch.device(args.device)
