@@ -362,7 +362,7 @@ if __name__ == '__main__':
     parser.add_argument('output_dir', type=str,
                         help='Path to where the eval result should be.')
     # parser.add_argument('--pred_file_name', type=str, default='../../MeshGraphormer/pred1.json',
-    parser.add_argument('--pred_file_name', type=str, default='pred_only_frei_not_2d_scale.json',
+    parser.add_argument('--pred_file_name', type=str, default='pred_only_frei_not_2d.json',
                         help='Name of the eval file.')
     args = parser.parse_args()
 
