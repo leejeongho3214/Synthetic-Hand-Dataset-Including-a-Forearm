@@ -1,3 +1,6 @@
+import sys
+from pycocotools.coco import COCO
+sys.path.append("/home/jeongho/tmp/Wearable_Pose_Model")
 from src.utils.preprocessing import load_skeleton, process_bbox
 from src.utils.miscellaneous import mkdir
 from src.utils.comm import is_main_process
@@ -15,9 +18,7 @@ from PIL import Image
 from torchvision import transforms
 from torch.utils.data import random_split, ConcatDataset
 import torch
-import sys
-from pycocotools.coco import COCO
-sys.path.append("/home/jeongho/tmp/Wearable_Pose_Model")
+
 
 def build_dataset(args):
 
@@ -279,13 +280,10 @@ def i_rotate(img, degree, move_x, move_y):
 
 
 class Json_transform(Dataset):
-    def __init__(self, degree, path, rotation=False, color=False):
+    def __init__(self, degree, path):
         self.degree = degree
-        self.rotation = rotation
-        self.color = color
         self.path = path
         self.degree = degree
-        # self.num = int(args.train_data[9:-1])
         with open(f"{path}/{degree}/annotations/train/CISLAB_train_camera.json", "r") as st_json:
             self.camera = json.load(st_json)
         with open(f"{path}/{degree}/annotations/train/CISLAB_train_joint_3d.json", "r") as st_json:
@@ -312,14 +310,6 @@ class Json_transform(Dataset):
             name = j['file_name']
             ori_image = cv2.imread(f'{path}/{self.degree}/images/train/{name}')
             ori_image = cv2.cvtColor(ori_image, cv2.COLOR_BGR2RGB)
-
-            ori_image[ori_image < 30] = 0  # remove the noise, not hand pixel
-
-            root = "../../datasets/background/bg"
-            path1 = os.listdir(root)
-            bg = cv2.imread(os.path.join(root, random.choice(path1)))
-            bg = cv2.cvtColor(bg, cv2.COLOR_BGR2RGB)
-            bg = cv2.resize(bg, (224, 224))
 
             degrees = random.uniform(-20, 20)
             rad = math.radians(degrees)
@@ -1143,3 +1133,14 @@ class Frei(torch.utils.data.Dataset):
             heatmap = GenerateHeatmap(64, 21)(joint_2d/4)
 
         return trans_image, joint_2d, heatmap, anno_xyz
+    
+def main():
+    path = "../../../../../../data1/1231"
+    path_dir = os.listdir(path)
+    for dir_name in path_dir:
+        if len(dir_name) < 5:
+            Json_transform(path = path, degree = dir_name)
+    
+if __name__ =="__main__":
+    main()
+    print("end")
