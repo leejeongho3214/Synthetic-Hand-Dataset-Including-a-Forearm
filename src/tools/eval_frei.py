@@ -33,7 +33,7 @@ def dump(pred_out_path, xyz_pred_list, verts_pred_list):
     print('Dumped %d joints and %d verts predictions to %s' % (len(xyz_pred_list), len(verts_pred_list), pred_out_path))
 
 def main(args, T_list):
-    name = "output/ours/general/only_frei_not_2d"
+    name = "output/ours/general/only_frei_not_2d_scale"
     args.name = os.path.join(name, "checkpoint-good/state_dict.bin")
     args.model = args.name.split('/')[1]
     if args.model == "other_dataset": args.model = "ours"
@@ -41,13 +41,13 @@ def main(args, T_list):
     state_dict = torch.load(args.name)
     _model.load_state_dict(state_dict['model_state_dict'], strict=False)
     _model.cuda()
-    pred_out_path = "../../freihand/pred_only_frei.json"
+    pred_out = "../../freihand"
+    pred_name = name.split("/")[-1]
+    pred_out_path = os.path.join(pred_out, f"pred_{pred_name}.json")
     
     test_dataset = Frei(args)
     testset_loader = data.DataLoader(dataset=test_dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=False)
-    criterion_keypoints = torch.nn.MSELoss(reduction='none').cuda(args.device)
-    pck_losses = AverageMeter()
-    epe_losses = AverageMeter()
+
     mpjpe_losses = AverageMeter()
     
     pbar = tqdm(total = len(testset_loader)) 
@@ -57,20 +57,13 @@ def main(args, T_list):
         _model.eval()
         with torch.no_grad():
             images = images.cuda()
-            batch_size = images.size(0)
             gt_3d_joints = gt_3d_joints.cuda()
             pred_2d_joints, pred_3d_joints = _model(images)
-            
-            # loss_3d_joints = keypoint_3d_loss(criterion_keypoints, pred_3d_joints, gt_3d_joints)
-            # mpjpe_losses.update(loss_3d_joints.item(), batch_size)
             pred_3d_joints = np.array(pred_3d_joints.cpu())
             for xyz in pred_3d_joints:
                 xyz_list.append(xyz)
                 verts_list.append(np.zeros([778, 3]))
-            # correct, visible_point, thresh = PCK_2d_loss_visible(pred_2d_joints, gt_2d_joint, T, threshold = 'proportion')
-            # epe_loss, epe_per = EPE(pred_2d_joints, gt_2d_joint)
-            # pck_losses.update_p(correct, visible_point)
-            # epe_losses.update_p(epe_loss[0], epe_loss[1])
+
         pbar.update(1)
     pbar.close()
     dump(pred_out_path, xyz_list, verts_list)
