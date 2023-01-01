@@ -276,14 +276,16 @@ def main(gt_path, pred_path, output_dir, pred_file_name=None, set_name=None):
         # f_score.append(l)
         # f_score_aligned.append(la)
 
-    # Calculate results
-    xyz_mean3d, _, xyz_auc3d, pck_xyz, thresh_xyz = eval_xyz.get_measures(0.0, 0.05, 100)
-    print('Evaluation 3D KP results:')
-    print('auc=%.3f, mean_kp3d_avg=%.2f cm' % (xyz_auc3d, xyz_mean3d * 100.0))
+    # # Calculate results
+    # xyz_mean3d, _, xyz_auc3d, pck_xyz, thresh_xyz = eval_xyz.get_measures(0.0, 0.05, 100)
+    # print('Evaluation 3D KP results:')
+    # print('auc=%.3f, mean_kp3d_avg=%.2f cm' % (xyz_auc3d, xyz_mean3d * 100.0))
+
 
     xyz_al_mean3d, _, xyz_al_auc3d, pck_xyz_al, thresh_xyz_al = eval_xyz_aligned.get_measures(0.0, 0.05, 100)
     print('Evaluation 3D KP ALIGNED results:')
     print('auc=%.3f, mean_kp3d_avg=%.2f cm\n' % (xyz_al_auc3d, xyz_al_mean3d * 100.0))
+    return 
 
     if shape_is_mano:
         mesh_mean3d, _, mesh_auc3d, pck_mesh, thresh_mesh = eval_mesh_err.get_measures(0.0, 0.05, 100)
@@ -361,8 +363,7 @@ if __name__ == '__main__':
                         help='Path to where prediction the submited result and the ground truth is.')
     parser.add_argument('output_dir', type=str,
                         help='Path to where the eval result should be.')
-    # parser.add_argument('--pred_file_name', type=str, default='../../MeshGraphormer/pred1.json',
-    parser.add_argument('--pred_file_name', type=str, default='pred_only_frei_not_2d.json',
+    parser.add_argument('--pred_file_name', type=str, default='pred_only_frei_mid_not_2d_scale.json',
                         help='Name of the eval file.')
     args = parser.parse_args()
 
