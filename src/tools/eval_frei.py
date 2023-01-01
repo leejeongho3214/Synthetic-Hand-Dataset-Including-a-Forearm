@@ -1,7 +1,7 @@
 import os
 import sys
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"  # Arrange GPU devices starting from 0
-os.environ["CUDA_VISIBLE_DEVICES"]= "2" 
+os.environ["CUDA_VISIBLE_DEVICES"]= "1" 
 sys.path.append("/home/jeongho/tmp/Wearable_Pose_Model")
 import numpy as np
 from matplotlib import pyplot as plt
@@ -33,7 +33,7 @@ def dump(pred_out_path, xyz_pred_list, verts_pred_list):
     print('Dumped %d joints and %d verts predictions to %sds' % (len(xyz_pred_list), len(verts_pred_list), pred_out_path))
 
 def main(args, T_list):
-    name = "output/ours/general/only_frei_mid"
+    name = "output/ours/general/only_frei_norm_root"
     args.name = os.path.join(name, "checkpoint-good/state_dict.bin")
     args.model = args.name.split('/')[1]
     if args.model == "other_dataset": args.model = "ours"
