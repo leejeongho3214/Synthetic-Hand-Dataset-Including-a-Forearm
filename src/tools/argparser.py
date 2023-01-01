@@ -519,6 +519,7 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
 
     end = time.time()
     criterion_2d_keypoints = torch.nn.MSELoss(reduction='none').cuda(args.device)
+    criterion_keypoints = torch.nn.MSELoss(reduction='none').cuda(args.device)
     log_losses = AverageMeter()
     pck_losses = AverageMeter()
     epe_losses = AverageMeter()
@@ -539,7 +540,8 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
                 if args.projection: 
                     pred_2d_joints, pred_3d_joints= Graphormer_model(images)
                     pck, threshold = PCK_3d_loss(pred_3d_joints, gt_3d_joints, T= 1)
-                    loss = reconstruction_error(np.array(pred_3d_joints.detach().cpu()), np.array(gt_3d_joints.detach().cpu()))
+                    # loss = reconstruction_error(np.array(pred_3d_joints.detach().cpu()), np.array(gt_3d_joints.detach().cpu()))
+                    loss = keypoint_3d_loss(criterion_keypoints, pred_3d_joints, gt_3d_joints)
                     
                 else: 
                     pred_2d_joints= Graphormer_model(images); pred_3d_joints = torch.zeros([pred_2d_joints.size()[0], pred_2d_joints.size()[1], 3]).cuda(); args.loss_3d = 0
