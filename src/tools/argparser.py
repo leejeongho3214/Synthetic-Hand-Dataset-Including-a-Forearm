@@ -230,7 +230,7 @@ def load_model(args):
     if os.path.isfile(os.path.join(args.output_dir, "log.txt")): os.remove(os.path.join(args.output_dir, "log.txt"))
     
     try:
-        if not args.name.split('/')[1] == "output": logger = setup_logger(args.name, args.output_dir, get_rank())
+        if not args.output_dir.split('/')[1] == "output": logger = setup_logger(args.name, args.output_dir, get_rank())
         else: logger = None
     except:
         logger = setup_logger(args.name, args.output_dir, get_rank())
