@@ -142,7 +142,9 @@ def build_dataset(args):
 
         trainset_dataset = make_hand_data_loader(
             args, args.train_yaml, False, is_train=True, scale_factor=args.img_scale_factor)  # RGB image
-        testset_dataset = Frei(args)
+        # testset_dataset = Frei(args)
+        testset_dataset = make_hand_data_loader(
+            args, args.val_yaml, False, is_train=False, scale_factor=args.img_scale_factor)
         
         # for iter, degree in enumerate(folder_num):
         #         ratio  = ((len(trainset_dataset) + len(testset_dataset)) * args.ratio_of_other) / 373184
