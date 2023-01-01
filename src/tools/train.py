@@ -30,8 +30,8 @@ def main(args):
 
     
     for epoch in range(epo, args.epoch):
-        Graphormer_model, optimizer, batch_time = train(args, trainset_loader, _model, epoch, best_loss, len(train_dataset),logger, count, writer, pck_l, len(trainset_loader)+len(testset_loader), batch_time)
-        loss, count, pck, batch_time = test(args, testset_loader, Graphormer_model, epoch, count, best_loss, logger, writer, batch_time, len(trainset_loader)+len(testset_loader))
+        # Graphormer_model, optimizer, batch_time = train(args, trainset_loader, _model, epoch, best_loss, len(train_dataset),logger, count, writer, pck_l, len(trainset_loader)+len(testset_loader), batch_time)
+        loss, count, pck, batch_time = test(args, testset_loader, _model, epoch, count, best_loss, logger, writer, batch_time, len(trainset_loader)+len(testset_loader))
         
         pck_l = max(pck, pck_l)
         is_best = loss < best_loss
