@@ -53,8 +53,9 @@ def parse_args():
     parser.add_argument("--ratio_of_aug", default=0.2, type=float,
                         help="You can use color jitter to train data as many as you want, according to this ratio")
     parser.add_argument("--epoch", default=30, type=int)
-    parser.add_argument("--loss_2d", default=1, type=int)
-    parser.add_argument("--loss_3d", default=1, type=int)
+    parser.add_argument("--loss_2d", default=0, type=float)
+    parser.add_argument("--loss_3d", default=1, type=float)
+    parser.add_argument("--loss_3d_mid", default=0, type=float)
     parser.add_argument("--memo", default='None',
                         help = 'You can write down comment as you want',type=str)
     parser.add_argument("--scale", action='store_true',
@@ -359,7 +360,7 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
             parents = [-1, 0, 1, 2, 3, 0, 5, 6, 7, 0, 9, 10, 11, 0, 13, 14, 15, 0, 17, 18, 19]
             gt_3d_mid_joints = torch.ones(batch_size, 20, 3)
             for i in range(20):
-                gt_3d_mid_joints[:, i, :] =  (gt_3d_joints[:, i + 1, :] + gt_3d_joints[:, parents[i + 1], :]) /
+                gt_3d_mid_joints[:, i, :] =  (gt_3d_joints[:, i + 1, :] + gt_3d_joints[:, parents[i + 1], :]) / 2
             
             if args.scale:
                 scale = ((gt_3d_joints[:, 10,:] - gt_3d_joints[:, 9, :])**2).sum(-1).sqrt()
@@ -379,7 +380,7 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
             loss_3d = keypoint_3d_loss(criterion_keypoints, pred_3d_mid_joints, gt_3d_mid_joints)
             loss_3d_re = reconstruction_error(np.array(pred_3d_joints.detach().cpu()), np.array(gt_3d_joints.detach().cpu()))
             loss_3d_mid = keypoint_3d_loss(criterion_keypoints, pred_3d_joints, gt_3d_joints)
-            loss = args.loss_2d * loss_2d + args.loss_3d * loss_3d + loss_3d_mid
+            loss = args.loss_2d * loss_2d + args.loss_3d * loss_3d + args.loss_3d_mid * loss_3d_mid
             log_losses.update(loss.item(), batch_size)
             log_2d_losses.update(loss_2d.item(), batch_size)
             log_3d_losses.update(loss_3d.item(), batch_size)
@@ -534,16 +535,7 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
                 gt_2d_joint = gt_2d_joint.cuda()
                 gt_3d_joints = gt_3d_joints.clone().detach()
                 gt_3d_joints = torch.tensor(gt_3d_joints).cuda()
-                
-                
-                gt_3d_root = gt_3d_joints[:, 0, :]                      ## Normalize all joint by wrist joint
-                gt_3d_joints = gt_3d_joints - gt_3d_root[:, None, :]
-                
-                if args.scale:
-                    scale = ((gt_3d_joints[:, 10,:] - gt_3d_joints[:, 9, :])**2).sum(-1).sqrt()
-                    for i in range(batch_size):
-                        gt_3d_joints[i] = gt_3d_joints[i]/scale[i]
-                
+
                 if args.projection: 
                     pred_2d_joints, pred_3d_joints= Graphormer_model(images)
                     pck, threshold = PCK_3d_loss(pred_3d_joints, gt_3d_joints, T= 10)
