@@ -22,9 +22,11 @@ import torch
 
 def build_dataset(args):
 
-    path = "../../datasets/synthetic_wrist"  # wrist-view image path (about 37K)
+    # path = "../../datasets/synthetic_wrist"  # wrist-view image path (about 37K)
+    path = "../../../../../../data1/1231"
     general_path = "../../datasets/synthetic_general" # general-view image path (about 80K)
-    folder_num = os.listdir(path)
+    folder = os.listdir(path)
+    folder_num = [i for i in folder if i not in ["README.txt", "data.zip"]]
         
     if args.dataset == "interhand":
 
@@ -1134,13 +1136,13 @@ class Frei(torch.utils.data.Dataset):
 
         return trans_image, joint_2d, heatmap, anno_xyz
     
-def main():
-    path = "../../../../../../data1/1231"
-    path_dir = os.listdir(path)
-    for dir_name in path_dir:
-        if len(dir_name) < 5:
-            Json_transform(path = path, degree = dir_name)
+# def main():
+#     path = "../../../../../../data1/1231"
+#     path_dir = os.listdir(path)
+#     for dir_name in path_dir:
+#         if len(dir_name) < 5:
+#             Json_transform(path = path, degree = dir_name)
     
-if __name__ =="__main__":
-    main()
-    print("end")
+# if __name__ =="__main__":
+#     main()
+#     print("end")

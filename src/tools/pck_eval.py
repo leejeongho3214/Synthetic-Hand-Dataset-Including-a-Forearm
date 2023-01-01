@@ -39,7 +39,6 @@ def main(args, T_list, threshold):
     root_path = "final_models"
     name_list = []
     loss = []
-    other_list = ["14k_rot_color_1.0", "rot_color_0.6", "rot_color_frei"]
     norm_factor = np.trapz(np.ones_like(T_list), T_list)
     
     for models_name in os.listdir(root_path):
@@ -56,9 +55,9 @@ def main(args, T_list, threshold):
                         for aug in os.listdir(os.path.join(current_loc, kind)): name_list.append(os.path.join(os.path.join(current_loc, kind), aug))
                         
         else: 
+            other_list = os.listdir(os.path.join(root_path, models_name))
             for a in other_list:
                 name_list.append(os.path.join(os.path.join(root_path, models_name), a))
-                continue
         
     # name_list = ["final_models/ours/wrist/only_synthetic/rot_color_0.2", "final_models/ours/wrist/only_synthetic/rot_color_0.1"]
     # loo = [] 
