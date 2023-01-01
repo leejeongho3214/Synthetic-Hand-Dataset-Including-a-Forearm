@@ -53,13 +53,12 @@ def parse_args():
     parser.add_argument("--ratio_of_aug", default=0.2, type=float,
                         help="You can use color jitter to train data as many as you want, according to this ratio")
     parser.add_argument("--epoch", default=30, type=int)
-    parser.add_argument("--loss_2d", default=1, type=int)
-    parser.add_argument("--loss_3d", default=1, type=int)
+    parser.add_argument("--loss_2d", default=0, type=float)
+    parser.add_argument("--loss_3d", default=1, type=float)
+    parser.add_argument("--loss_3d_mid", default=0, type=float)
     parser.add_argument("--memo", default='None',
                         help = 'You can write down comment as you want',type=str)
-    parser.add_argument("--norm_root", action='store_true',
-                        help = "If you write down, The 3D joint coordinate would be subtracted from root joint")
-    parser.add_argument("--norm", action='store_true',
+    parser.add_argument("--scale", action='store_true',
                         help = "If you write down, The 3D joint coordinate would be normalized according to distance between 9-10 keypoint")
     parser.add_argument("--resume", action='store_true')
     parser.add_argument("--color", action='store_true',
@@ -230,8 +229,12 @@ def load_model(args):
     if not os.path.isdir(args.output_dir): mkdir(args.output_dir)
     if os.path.isfile(os.path.join(args.output_dir, "log.txt")): os.remove(os.path.join(args.output_dir, "log.txt"))
     
-    if not args.name.split('/')[1] == "output": logger = setup_logger(args.name, args.output_dir, get_rank())
-    else: logger = None
+    try:
+        if not args.output_dir.split('/')[1] == "output": logger = setup_logger(args.name, args.output_dir, get_rank())
+        else: logger = None
+    except:
+        logger = setup_logger(args.name, args.output_dir, get_rank())
+        
     args.num_gpus = int(os.environ['WORLD_SIZE']) if 'WORLD_SIZE' in os.environ else 1
     os.environ['OMP_NUM_THREADS'] = str(args.num_workers)
     args.device = torch.device(args.device)
@@ -354,11 +357,12 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
             gt_3d_joints = gt_3d_joints.clone().detach()
             gt_3d_joints = gt_3d_joints.cuda()
             
-            if args.norm_root:
-                gt_3d_root = gt_3d_joints[:, 0, :]
-                gt_3d_joints = gt_3d_joints - gt_3d_root[:, None, :]
+            parents = [-1, 0, 1, 2, 3, 0, 5, 6, 7, 0, 9, 10, 11, 0, 13, 14, 15, 0, 17, 18, 19]
+            gt_3d_mid_joints = torch.ones(batch_size, 20, 3)
+            for i in range(20):
+                gt_3d_mid_joints[:, i, :] =  (gt_3d_joints[:, i + 1, :] + gt_3d_joints[:, parents[i + 1], :]) / 2
             
-            if args.norm:
+            if args.scale:
                 scale = ((gt_3d_joints[:, 10,:] - gt_3d_joints[:, 9, :])**2).sum(-1).sqrt()
                 for i in range(batch_size):
                     gt_3d_joints[i] = gt_3d_joints[i]/scale[i]
@@ -368,15 +372,19 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
             if args.projection: pred_2d_joints, pred_3d_joints= Graphormer_model(images)
             else: pred_2d_joints= Graphormer_model(images); pred_3d_joints = torch.zeros([pred_2d_joints.size()[0], pred_2d_joints.size()[1], 3]).cuda(); args.loss_3d = 0
 
+            pred_3d_mid_joints = torch.ones(batch_size, 20, 3)
+            for i in range(20):
+                pred_3d_mid_joints[:, i, :] =  (pred_3d_joints[:, i + 1, :] + pred_3d_joints[:, parents[i + 1], :]) / 2
+            
             loss_2d= keypoint_2d_loss(criterion_2d_keypoints, pred_2d_joints, gt_2d_joint)
-            loss_3d = keypoint_3d_loss(criterion_keypoints, pred_3d_joints, gt_3d_joints)
+            loss_3d = keypoint_3d_loss(criterion_keypoints, pred_3d_mid_joints, gt_3d_mid_joints)
             loss_3d_re = reconstruction_error(np.array(pred_3d_joints.detach().cpu()), np.array(gt_3d_joints.detach().cpu()))
-            loss = args.loss_2d * loss_2d + args.loss_3d * loss_3d
+            loss_3d_mid = keypoint_3d_loss(criterion_keypoints, pred_3d_joints, gt_3d_joints)
+            loss = args.loss_2d * loss_2d + args.loss_3d * loss_3d + args.loss_3d_mid * loss_3d_mid
             log_losses.update(loss.item(), batch_size)
             log_2d_losses.update(loss_2d.item(), batch_size)
             log_3d_losses.update(loss_3d.item(), batch_size)
             log_3d_re_losses.update(loss_3d_re.item(), batch_size)
-
 
             optimizer.zero_grad()
             loss.backward()
@@ -428,6 +436,7 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
                         best_loss,
                         ctime(eta_seconds + end))
                 )
+            
                 
         return Graphormer_model, optimizer, batch_time
     
@@ -516,7 +525,7 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
     
     if args.model == "ours":
         with torch.no_grad():
-            for iteration, (images, gt_2d_joints, heatmap, gt_3d_joints) in enumerate(test_dataloader):
+            for iteration, (images, gt_2d_joints, _, gt_3d_joints) in enumerate(test_dataloader):
                 Graphormer_model.eval()
                 batch_size = images.size(0)
                 
@@ -526,10 +535,10 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
                 gt_2d_joint = gt_2d_joint.cuda()
                 gt_3d_joints = gt_3d_joints.clone().detach()
                 gt_3d_joints = torch.tensor(gt_3d_joints).cuda()
-            
+
                 if args.projection: 
                     pred_2d_joints, pred_3d_joints= Graphormer_model(images)
-                    pck, threshold = PCK_3d_loss(pred_3d_joints, gt_3d_joints, T= 10)
+                    pck, threshold = PCK_3d_loss(pred_3d_joints, gt_3d_joints, T= 1)
                     loss = reconstruction_error(np.array(pred_3d_joints.detach().cpu()), np.array(gt_3d_joints.detach().cpu()))
                     
                 else: 
