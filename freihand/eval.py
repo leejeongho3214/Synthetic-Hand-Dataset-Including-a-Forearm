@@ -363,12 +363,7 @@ if __name__ == '__main__':
                         help='Path to where prediction the submited result and the ground truth is.')
     parser.add_argument('output_dir', type=str,
                         help='Path to where the eval result should be.')
-<<<<<<< HEAD
-    # parser.add_argument('--pred_file_name', type=str, default='../../MeshGraphormer/pred1.json',
-    parser.add_argument('--pred_file_name', type=str, default='pred_only_frei_norm_root.json',
-=======
     parser.add_argument('--pred_file_name', type=str, default='pred_only_frei_mid_not_2d_scale.json',
->>>>>>> a4bf608016aee9967dd219b430f05e9c80e9ee65
                         help='Name of the eval file.')
     args = parser.parse_args()
 

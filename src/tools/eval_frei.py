@@ -33,11 +33,7 @@ def dump(pred_out_path, xyz_pred_list, verts_pred_list):
     print('Dumped %d joints and %d verts predictions to %sds' % (len(xyz_pred_list), len(verts_pred_list), pred_out_path))
 
 def main(args, T_list):
-<<<<<<< HEAD
-    name = "output/ours/general/only_frei_norm_root"
-=======
     name = "output/ours/general/only_frei_mid_not_2d_scale"
->>>>>>> a4bf608016aee9967dd219b430f05e9c80e9ee65
     args.name = os.path.join(name, "checkpoint-good/state_dict.bin")
     args.model = args.name.split('/')[1]
     if args.model == "other_dataset": args.model = "ours"
