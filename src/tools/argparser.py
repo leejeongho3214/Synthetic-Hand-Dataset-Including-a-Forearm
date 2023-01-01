@@ -538,7 +538,7 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
 
                 if args.projection: 
                     pred_2d_joints, pred_3d_joints= Graphormer_model(images)
-                    pck, threshold = PCK_3d_loss(pred_3d_joints, gt_3d_joints, T= 10)
+                    pck, threshold = PCK_3d_loss(pred_3d_joints, gt_3d_joints, T= 1)
                     loss = reconstruction_error(np.array(pred_3d_joints.detach().cpu()), np.array(gt_3d_joints.detach().cpu()))
                     
                 else: 
