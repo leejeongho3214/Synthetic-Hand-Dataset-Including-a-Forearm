@@ -220,14 +220,16 @@ def build_dataset(args):
             for iter, degree in enumerate(folder_num):
 
                 if iter == 0:
-                    train_dataset = CustomDataset(args, degree,general_path, color=args.color, ratio_of_aug=args.ratio_of_aug, ratio_of_dataset = 1)
+                    train_dataset = CustomDataset(args, degree, general_path, color=args.color, ratio_of_aug=args.ratio_of_aug, ratio_of_dataset = 1)
                 else:
-                    dataset = CustomDataset(args, degree,general_path, color=args.color, ratio_of_aug=args.ratio_of_aug, ratio_of_dataset = 1)
-                    train_dataset = ConcatDataset(train_dataset, dataset)
-            test_dataset = Frei(args)
+                    dataset = CustomDataset(args, degree, general_path, color=args.color, ratio_of_aug=args.ratio_of_aug, ratio_of_dataset = 1)
+                    train_dataset = ConcatDataset([train_dataset, dataset])
+            # test_dataset = Frei(args)
+            testset_dataset = make_hand_data_loader(
+                    args, args.val_yaml, False, is_train=False, scale_factor=args.img_scale_factor)
             # test_dataset = ConcatDataset([test_dataset_general, test_dataset])
 
-    return train_dataset, test_dataset
+    return train_dataset, testset_dataset
 
 
 class GenerateHeatmap():
