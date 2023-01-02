@@ -1,7 +1,8 @@
 import argparse
 import torchvision.models as models
+import os
 import sys
-sys.path.append("/home/jeongho/tmp/Wearable_Pose_Model")
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 from src.modeling.hrnet.config.default import update_config
 from src.modeling.hrnet.config.default import _C as cfg
 from src.modeling.bert import BertConfig, Graphormer

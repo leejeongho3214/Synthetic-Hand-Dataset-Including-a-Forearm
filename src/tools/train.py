@@ -4,8 +4,6 @@ import sys
 import os
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"  # Arrange GPU devices starting from 0
 os.environ["CUDA_VISIBLE_DEVICES"]= "0" 
-os.environ["TF_ENABLE_ONEDNN_OPTS"] = '0'
-sys.path.append("/home/jeongho/tmp/Wearable_Pose_Model") ## Set your local file location for import library
 from torch.utils import data
 
 from torch.utils.tensorboard import SummaryWriter
