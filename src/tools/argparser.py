@@ -226,11 +226,11 @@ def load_model(args):
     args.output_dir = os.path.join(args.root_path, args.name)
     if not args.resume: args.resume_checkpoint = 'None'
     else: args.resume_checkpoint = os.path.join(os.path.join(args.root_path, args.name),'checkpoint-good/state_dict.bin')
-    if not os.path.isdir(args.output_dir): mkdir(args.output_dir)
+    
     if os.path.isfile(os.path.join(args.output_dir, "log.txt")): os.remove(os.path.join(args.output_dir, "log.txt"))
     
     try:
-        if not args.output_dir.split('/')[1] == "output": logger = setup_logger(args.name, args.output_dir, get_rank())
+        if not args.output_dir.split('/')[1] == "output":  mkdir(args.output_dir); logger = setup_logger(args.name, args.output_dir, get_rank())
         else: logger = None
     except:
         logger = setup_logger(args.name, args.output_dir, get_rank())
@@ -540,8 +540,8 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
                 if args.projection: 
                     pred_2d_joints, pred_3d_joints= Graphormer_model(images)
                     pck, threshold = PCK_3d_loss(pred_3d_joints, gt_3d_joints, T= 1)
-                    # loss = reconstruction_error(np.array(pred_3d_joints.detach().cpu()), np.array(gt_3d_joints.detach().cpu()))
-                    loss = keypoint_3d_loss(criterion_keypoints, pred_3d_joints, gt_3d_joints)
+                    loss = reconstruction_error(np.array(pred_3d_joints.detach().cpu()), np.array(gt_3d_joints.detach().cpu()))
+                    # loss = keypoint_3d_loss(criterion_keypoints, pred_3d_joints, gt_3d_joints)
                     
                 else: 
                     pred_2d_joints= Graphormer_model(images); pred_3d_joints = torch.zeros([pred_2d_joints.size()[0], pred_2d_joints.size()[1], 3]).cuda(); args.loss_3d = 0
