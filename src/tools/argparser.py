@@ -1,7 +1,8 @@
 import argparse
 import torchvision.models as models
 import sys
-sys.path.append("/home/jeongho/tmp/Wearable_Pose_Model")
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 from src.modeling.hrnet.config.default import update_config
 from src.modeling.hrnet.config.default import _C as cfg
 from src.modeling.bert import BertConfig, Graphormer
@@ -380,7 +381,10 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
             loss_3d = keypoint_3d_loss(criterion_keypoints, pred_3d_mid_joints, gt_3d_mid_joints)
             loss_3d_re = reconstruction_error(np.array(pred_3d_joints.detach().cpu()), np.array(gt_3d_joints.detach().cpu()))
             loss_3d_mid = keypoint_3d_loss(criterion_keypoints, pred_3d_joints, gt_3d_joints)
-            loss = args.loss_2d * loss_2d + args.loss_3d * loss_3d + args.loss_3d_mid * loss_3d_mid
+            if args.projection:
+                loss = args.loss_2d * loss_2d + args.loss_3d * loss_3d + args.loss_3d_mid * loss_3d_mid
+            else:
+                loss = loss_2d
             log_losses.update(loss.item(), batch_size)
             log_2d_losses.update(loss_2d.item(), batch_size)
             log_3d_losses.update(loss_3d.item(), batch_size)
