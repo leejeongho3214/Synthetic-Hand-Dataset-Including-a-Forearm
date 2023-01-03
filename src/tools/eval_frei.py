@@ -1,13 +1,12 @@
 import os
 import sys
-os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"  # Arrange GPU devices starting from 0
-os.environ["CUDA_VISIBLE_DEVICES"]= "0" 
 sys.path.append("/home/jeongho/tmp/Wearable_Pose_Model")
 import numpy as np
 from matplotlib import pyplot as plt
 from torch.utils.data import ConcatDataset
 import torch
 from torch.utils import data
+torch.device('cuda')
 from argparser import load_model, parse_args
 import sys
 from dataset import *
@@ -33,7 +32,7 @@ def dump(pred_out_path, xyz_pred_list, verts_pred_list):
     print('Dumped %d joints and %d verts predictions to %s' % (len(xyz_pred_list), len(verts_pred_list), pred_out_path))
 
 def main(args, T_list):
-    name = "output/ours/general/only_frei_3d"
+    name = "output/ours/general/frei_mid_scale"
     args.name = os.path.join(name, "checkpoint-good/state_dict.bin")
     args.model = args.name.split('/')[1]
     if args.model == "other_dataset": args.model = "ours"

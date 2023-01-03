@@ -4,6 +4,10 @@ import sys
 import os
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"  # Arrange GPU devices starting from 0
 os.environ["CUDA_VISIBLE_DEVICES"]= "3" 
+<<<<<<< HEAD
+=======
+
+>>>>>>> 41be42ec447305464f23a500fdf08eca23119004
 from torch.utils import data
 
 from torch.utils.tensorboard import SummaryWriter
