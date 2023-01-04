@@ -13,7 +13,8 @@
             "console": "integratedTerminal",
             "justMyCode": true,
             "cwd": "${fileDirname}",
-            "args": ["--name", "None","--general"]
+            "args": ["--dataset", "frei"]
+            // "args": ["--name", "None","--general"]
         }
     ]
 }

@@ -11,10 +11,10 @@ from torch.utils import data
 from argparser import load_model, parse_args
 import sys
 from dataset import *
-from loss import *
+from src.utils.loss import *
 from src.utils.geometric_layers import *
 from src.utils.metric_logger import AverageMeter
-from visualize import *
+from src.utils.visualize import *
 from tqdm import tqdm
 
 

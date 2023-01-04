@@ -1,20 +1,19 @@
 import os
 import sys
-os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"  # Arrange GPU devices starting from 0
-os.environ["CUDA_VISIBLE_DEVICES"]= "1" 
-sys.path.append("/home/jeongho/tmp/Wearable_Pose_Model")
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 import numpy as np
 from matplotlib import pyplot as plt
 from torch.utils.data import ConcatDataset
 import torch
 from torch.utils import data
+torch.device('cuda')
 from argparser import load_model, parse_args
 import sys
 from dataset import *
-from loss import *
+from src.utils.loss import *
 from src.utils.geometric_layers import *
 from src.utils.metric_logger import AverageMeter
-from visualize import *
+from src.utils.visualize import *
 from tqdm import tqdm
 
 def dump(pred_out_path, xyz_pred_list):

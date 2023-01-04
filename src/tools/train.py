@@ -1,28 +1,18 @@
 import gc
-import shutil
-import sys
 import os
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"  # Arrange GPU devices starting from 0
 os.environ["CUDA_VISIBLE_DEVICES"]= "0" 
-<<<<<<< HEAD
-=======
-
->>>>>>> 41be42ec447305464f23a500fdf08eca23119004
+os.environ["TF_ENABLE_ONEDNN_OPTS"]="0"
 from torch.utils import data
 
 from torch.utils.tensorboard import SummaryWriter
 from argparser import parse_args, load_model, train, test
 from dataset import *
 
-def main(args):
+def main(args, logger):
 
-    _model, logger, best_loss, epo, count = load_model(args)
+    _model, best_loss, epo, count = load_model(args)
     train_dataset, test_dataset = build_dataset(args)
-
-    logger.info('\n \n========================================================================================================\n' 
-                + 'name = %s, model = %s,  epoch = %i, count = %i, dataset = %s, Train images = %i, \n 2d = %i , 3d = %i,  ratio of aug = %.1f, color = %s, general = %s, memo = %s'
-                + '\n========================================================================================================',
-                 args.name, args.model, args.epoch, args.count, args.dataset, len(train_dataset), args.loss_2d, args.loss_3d, args.ratio_of_aug, args.color, args.general, args.memo)
 
     trainset_loader = data.DataLoader(dataset=train_dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True)
     testset_loader = data.DataLoader(dataset=test_dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=False)
@@ -54,5 +44,5 @@ def main(args):
         torch.cuda.empty_cache()
 
 if __name__ == "__main__":
-    args = parse_args()
-    main(args)
+    args, logger = parse_args()
+    main(args, logger)

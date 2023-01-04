@@ -11,11 +11,11 @@ os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"  # Arrange GPU devices starting fro
 os.environ["CUDA_VISIBLE_DEVICES"]= "1"  #
 sys.path.append("/home/jeongho/tmp/Wearable_Pose_Model")
 from dataset import *
-from loss import *
+from src.utils.loss import *
 from src.datasets.build import make_hand_data_loader
 from src.utils.geometric_layers import *
 from src.utils.metric_logger import AverageMeter
-from visualize import *
+from src.utils.visualize import *
 import mediapipe as mp
 from src.utils.drewing_utils import *
 

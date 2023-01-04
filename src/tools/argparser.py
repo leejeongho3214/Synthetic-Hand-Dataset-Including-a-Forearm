@@ -1,45 +1,34 @@
-import argparse
-import torchvision.models as models
+
 import os
 import sys
-<<<<<<< HEAD
-=======
-import os
->>>>>>> 41be42ec447305464f23a500fdf08eca23119004
+import argparse
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 from src.modeling.hrnet.config.default import update_config
 from src.modeling.hrnet.config.default import _C as cfg
-from src.modeling.bert import BertConfig, Graphormer
-from src.modeling.bert import Graphormer_Hand_Network as Graphormer_Network
 from src.modeling.hrnet.hrnet_cls_net_gridfeat import get_pose_net as get_cls_net_gridfeat
-from src.modeling.our_hrnet import config as hrnet_config
-from src.modeling.our_hrnet.hrnet_cls_net_gridfeat import get_cls_net_gridfeat as get_cls_net_gridfeat_our
-from src.modeling.our_hrnet import update_config_our as hrnet_update_config
-from src.utils.comm import get_rank
-from src.utils.logger import setup_logger
-from src.utils.miscellaneous import mkdir
+from src.utils.pre_argparser import pre_arg
+
+from src.tools.models.our_net import get_our_net
+
 from src.modeling.simplebaseline.config import config as config_simple
 from src.modeling.simplebaseline.pose_resnet import get_pose_net
 import torch
 import os
-import gc
-from src.datasets.build import make_hand_data_loader
 import time
+from src.utils.dir import  resume_checkpoint
 import numpy as np
 from matplotlib import pyplot as plt
 import torch
-from loss import *
+from src.utils.loss import *
 from src.utils.geometric_layers import *
 from src.utils.metric_logger import AverageMeter
-from visualize import *
+from src.utils.visualize import *
 from time import ctime
 from src.modeling.hourglass.posenet import PoseNet
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    ######################################################################################
-    ## Set Hyper-parameter ##
-    ######################################################################################
+    
     parser.add_argument("--name", default='None',
                         help = 'You write down to store the directory path',type=str)
     parser.add_argument("--root_path", default=f'output', type=str, required=False,
@@ -48,8 +37,7 @@ def parse_args():
                         help="you can choose model like hrnet, simplebaseline, hourglass, ours")
     parser.add_argument("--dataset", default='ours', type=str, required=False,
                         help="you can choose dataset like ours, coco, interhand, rhd, frei, hiu, etc.")
-    parser.add_argument("--num_train_epochs", default=50, type=int,
-                        help="Total number of training epochs to perform.")
+
     parser.add_argument("--batch_size", default=32, type=int)
     parser.add_argument("--count", default=5, type=int)
     parser.add_argument("--ratio_of_our", default=0.3, type=float,
@@ -61,8 +49,6 @@ def parse_args():
     parser.add_argument("--loss_2d", default=0, type=float)
     parser.add_argument("--loss_3d", default=1, type=float)
     parser.add_argument("--loss_3d_mid", default=0, type=float)
-    parser.add_argument("--memo", default='None',
-                        help = 'You can write down comment as you want',type=str)
     parser.add_argument("--scale", action='store_true',
                         help = "If you write down, The 3D joint coordinate would be normalized according to distance between 9-10 keypoint")
     parser.add_argument("--resume", action='store_true')
@@ -73,172 +59,20 @@ def parse_args():
     parser.add_argument("--projection", action='store_true',
                         help="If you write down, The output of model would be 3d joint coordinate")
     
-    ######################################################################################
-
-    ######################################################################################
-
-    parser.add_argument("--multiscale_inference", default=False, action='store_true', )
-    parser.add_argument("--sc", default=1.0, type=float)
-    parser.add_argument("--aml_eval", default=False, action='store_true', )
-    parser.add_argument('--logging_steps', type=int, default=100,
-                        help="Log every X steps.")
-    parser.add_argument("--resume_path", default='HIU', type=str)
-    parser.add_argument('--lr', "--learning_rate", default=1e-4, type=float,
-                        help="The initial lr.")
-    parser.add_argument("--vertices_loss_weight", default=1.0, type=float)
-    parser.add_argument("--joints_loss_weight", default=1.0, type=float)
-    parser.add_argument("--vloss_w_full", default=0.5, type=float)
-    parser.add_argument("--vloss_w_sub", default=0.5, type=float)
-    parser.add_argument("--drop_out", default=0.1, type=float,
-                        help="Drop out ratio in BERT.")
-    parser.add_argument("--num_workers", default=4, type=int,
-                        help="Workers in dataloader.")
-    parser.add_argument("--img_scale_factor", default=1, type=int,
-                        help="adjust image resolution.")
-    parser.add_argument("--image_file_or_path", default='../../samples/unity/images/train/Capture0', type=str,
-                        help="test data")
-    parser.add_argument("--train_yaml", default='../../datasets/freihand/train.yaml', type=str, required=False,
-                        help="Yaml file with all data for validation.")
-    parser.add_argument("--val_yaml", default='../../datasets/freihand/test.yaml', type=str, required=False,
-                        help="Yaml file with all data for validation.")
-    parser.add_argument("--data_dir", default='datasets', type=str, required=False,
-                        help="Directory with all datasets, each in one subfolder")
-    parser.add_argument("--model_name_or_path", default='../modeling/bert/bert-base-uncased/', type=str, required=False,
-                        help="Path to pre-trained transformer model or model type.")
-    parser.add_argument("--config_name", default="", type=str,
-                        help="Pretrained config name or path if not the same as model_name.")
-    parser.add_argument('-a', '--arch', default='hrnet-w64',
-                        help='CNN backbone architecture: hrnet-w64, hrnet, resnet50')
-    parser.add_argument("--num_hidden_layers", default=4, type=int, required=False,
-                        help="Update model config if given")
-    parser.add_argument("--hidden_size", default=-1, type=int, required=False,
-                        help="Update model config if given")
-    parser.add_argument("--num_attention_heads", default=4, type=int, required=False,
-                        help="Update model config if given. Note that the division of "
-                                "hidden_size / num_attention_heads should be in integer.")
-    parser.add_argument("--intermediate_size", default=-1, type=int, required=False,
-                        help="Update model config if given.")
-    parser.add_argument("--input_feat_dim", default='2048,512,128', type=str,
-                        help="The Image Feature Dimension.")
-    parser.add_argument("--hidden_feat_dim", default='1024,256,64', type=str,
-                        help="The Image Feature Dimension.")
-    parser.add_argument("--which_gcn", default='0,0,1', type=str,
-                        help="which encoder block to have graph conv. Encoder1, Encoder2, Encoder3. Default: only Encoder3 has graph conv")
-    parser.add_argument("--mesh_type", default='hand', type=str, help="body or hand")
-    parser.add_argument("--run_eval_only", default=True, action='store_true', )
-    parser.add_argument("--device", type=str, default='cuda',
-                        help="cuda or cpu")
-    parser.add_argument('--seed', type=int, default=88,
-                        help="random seed for initialization.")
-    
     args = parser.parse_args()
-    return args
-
-def compute_similarity_transform(S1, S2):
-    """Computes a similarity transform (sR, t) that takes
-    a set of 3D points S1 (3 x N) closest to a set of 3D points S2,
-    where R is an 3x3 rotation matrix, t 3x1 translation, s scale.
-    i.e. solves the orthogonal Procrutes problem.
-    """
-    transposed = False
-    if S1.shape[0] != 3 and S1.shape[0] != 2:
-        S1 = S1.T
-        S2 = S2.T
-        transposed = True
-    assert(S2.shape[1] == S1.shape[1])
-
-    # 1. Remove mean.
-    mu1 = S1.mean(axis=1, keepdims=True)
-    mu2 = S2.mean(axis=1, keepdims=True)
-    X1 = S1 - mu1
-    X2 = S2 - mu2
-
-    # 2. Compute variance of X1 used for scale.
-    var1 = np.sum(X1**2)
-
-    # 3. The outer product of X1 and X2.
-    K = X1.dot(X2.T)
-
-    # 4. Solution that Maximizes trace(R'K) is R=U*V', where U, V are
-    # singular vectors of K.
-    U, s, Vh = np.linalg.svd(K)
-    V = Vh.T
-    # Construct Z that fixes the orientation of R to get det(R)=1.
-    Z = np.eye(U.shape[0])
-    Z[-1, -1] *= np.sign(np.linalg.det(U.dot(V.T)))
-    # Construct R.
-    R = V.dot(Z.dot(U.T))
-
-    # 5. Recover scale.
-    scale = np.trace(R.dot(K)) / var1
-
-    # 6. Recover translation.
-    t = mu2 - scale*(R.dot(mu1))
-
-    # 7. Error:
-    S1_hat = scale*R.dot(S1) + t
-
-    if transposed:
-        S1_hat = S1_hat.T
-
-    return S1_hat
-
-def compute_similarity_transform_batch(S1, S2):
-    """Batched version of compute_similarity_transform."""
-    S1_hat = np.zeros_like(S1)
-    for i in range(S1.shape[0]):
-        S1_hat[i] = compute_similarity_transform(S1[i], S2[i])
-    return S1_hat
-
-def reconstruction_error(S1, S2, reduction='mean'):
-    """Do Procrustes alignment and compute reconstruction error."""
-    S1_hat = compute_similarity_transform_batch(S1, S2)
-    re = np.sqrt( ((S1_hat - S2)** 2).sum(axis=-1)).mean(axis=-1)
-    if reduction == 'mean':
-        re = re.mean()
-    elif reduction == 'sum':
-        re = re.sum()
-    return re
-
-class HeatmapLoss(torch.nn.Module):
-    """
-    loss for detection heatmap
-    """
-    def __init__(self):
-        super(HeatmapLoss, self).__init__()
-
-    def forward(self, pred, gt):
-        l = ((pred - gt)**2)
-        l = l.mean(dim=3).mean(dim=2).mean(dim=1)
-        return l ## l of dim bsize
+    args, logger = pre_arg(args)
     
-def calc_loss(combined_hm_preds, heatmaps, args):
+    return args, logger
 
-    if args.model == "hourglass": 
-        combined_loss = []
-        for i in range(8):
-            combined_loss.append(HeatmapLoss()(combined_hm_preds[:, i], heatmaps))
-        combined_loss = torch.stack(combined_loss, dim=1)
-    else: combined_loss = HeatmapLoss()(combined_hm_preds, heatmaps)
-    
-    return combined_loss
 
 def load_model(args):
-    epo = 0
+    epoch = 0
     best_loss = np.inf
     count = 0
-    
-    args.output_dir = os.path.join(args.root_path, args.name)
+
     if not args.resume: args.resume_checkpoint = 'None'
     else: args.resume_checkpoint = os.path.join(os.path.join(args.root_path, args.name),'checkpoint-good/state_dict.bin')
-    
-    if os.path.isfile(os.path.join(args.output_dir, "log.txt")): os.remove(os.path.join(args.output_dir, "log.txt"))
-    
-    try:
-        if not args.output_dir.split('/')[1] == "output":  mkdir(args.output_dir); logger = setup_logger(args.name, args.output_dir, get_rank())
-        else: logger = None
-    except:
-        logger = setup_logger(args.name, args.output_dir, get_rank())
+
         
     args.num_gpus = int(os.environ['WORLD_SIZE']) if 'WORLD_SIZE' in os.environ else 1
     os.environ['OMP_NUM_THREADS'] = str(args.num_workers)
@@ -255,82 +89,13 @@ def load_model(args):
         _model = get_pose_net(config_simple, is_train=True)
         
     else:
-        trans_encoder = []
-        input_feat_dim = [int(item) for item in args.input_feat_dim.split(',')]
-        hidden_feat_dim = [int(item) for item in args.hidden_feat_dim.split(',')]
-        output_feat_dim = input_feat_dim[1:] + [3] ## origin => change to input_feat_dim
-
-        # which encoder block to have graph convs
-        which_blk_graph = [int(item) for item in args.which_gcn.split(',')]
-        # init three transformer-encoder blocks in a loop
-        for i in range(len(output_feat_dim)):
-            config_class, model_class = BertConfig, Graphormer
-            config = config_class.from_pretrained(args.config_name if args.config_name \
-                                                    else args.model_name_or_path)
-
-            config.output_attentions = False
-            config.hidden_dropout_prob = args.drop_out
-            config.img_feature_dim = input_feat_dim[i]
-            config.output_feature_dim = output_feat_dim[i]
-            args.hidden_size = hidden_feat_dim[i]
-            args.intermediate_size = int(args.hidden_size * 2)
-
-            if which_blk_graph[i] == 1:
-                config.graph_conv = True
-                # logger.info("Add Graph Conv")
-            else:
-                config.graph_conv = False
-
-            config.mesh_type = args.mesh_type
-
-            # update model structure if specified in arguments
-            update_params = ['num_hidden_layers', 'hidden_size', 'num_attention_heads', 'intermediate_size']
-            for idx, param in enumerate(update_params):
-                arg_param = getattr(args, param)
-                config_param = getattr(config, param)
-                if arg_param > 0 and arg_param != config_param:
-                    # logger.info("Update config parameter {}: {} -> {}".format(param, config_param, arg_param))
-                    setattr(config, param, arg_param)
-
-            # init a transformer encoder and append it to a list
-            assert config.hidden_size % config.num_attention_heads == 0
-            model = model_class(config=config)
-            trans_encoder.append(model)
-
-        # create backbone model
-        if args.arch == 'hrnet':
-            hrnet_yaml = '../../models/hrnet/cls_hrnet_w40_sgd_lr5e-2_wd1e-4_bs32_x100.yaml'
-            hrnet_checkpoint = '../../models/hrnet/hrnetv2_w40_imagenet_pretrained.pth'
-            hrnet_update_config(hrnet_config, hrnet_yaml)
-            backbone = get_cls_net_gridfeat_our(hrnet_config, pretrained=hrnet_checkpoint)
-            # logger.info('=> loading hrnet-v2-w40 model')
-        elif args.arch == 'hrnet-w64':
-            hrnet_yaml = '../../models/hrnet/cls_hrnet_w64_sgd_lr5e-2_wd1e-4_bs32_x100.yaml'
-            hrnet_checkpoint = '../../models/hrnet/hrnetv2_w64_imagenet_pretrained.pth'
-            hrnet_update_config(hrnet_config, hrnet_yaml)
-            backbone = get_cls_net_gridfeat_our(hrnet_config, pretrained=hrnet_checkpoint)
-            # logger.info('=> loading hrnet-v2-w64 model')
-        else:
-            print("=> using pre-trained model '{}'".format(args.arch))
-            backbone = models.__dict__[args.arch](pretrained=True)
-            # remove the last fc layer
-            backbone = torch.nn.Sequential(*list(backbone.children())[:-1])
-
-        trans_encoder = torch.nn.Sequential(*trans_encoder)
-        _model = Graphormer_Network(args, config, backbone, trans_encoder, token = 70)
+        _model = get_our_net(args) ## output: 21 x 2
 
     if args.resume_checkpoint != None and args.resume_checkpoint != 'None':
-        state_dict = torch.load(args.resume_checkpoint)
-        best_loss = state_dict['best_loss']
-        epo = state_dict['epoch']
-        _model.load_state_dict(state_dict['model_state_dict'], strict=False)
-        # logger.info("Resume: Loading from checkpoint {}\n".format(args.resume_checkpoint))
-        del state_dict
-        gc.collect()
-        torch.cuda.empty_cache()
-
+        best_loss, epoch, _model, count = resume_checkpoint(args, _model)
+        
     _model.to(args.device)
-    return _model, logger, best_loss, epo, count
+    return _model, best_loss, epoch, count
 
 
 
@@ -431,20 +196,35 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
                 writer.add_scalar("Loss/train", log_losses.avg, epoch)
 
             else:
-                logger.info(
-                    ' '.join(
-                        ['dataset_length: {len}', 'epoch: {ep}', 'iter: {iter}', '/{maxi},  count: {count}/{max_count}']
-                    ).format(len=data_len, ep=epoch, iter=iteration, maxi=len(train_dataloader), count= count, max_count = args.count)
-                     + ' 2d_loss: {:.8f}, 3d_loss: {:.8f} ,3d_re_loss:{:.8f} ,pck: {:.2f}%, total_loss: {:.8f}, best_loss: {:.8f}, expected_date: {}'.format(
-                        log_2d_losses.avg,
-                        log_3d_losses.avg,
-                        log_3d_re_losses.avg,
-                        pck,
-                        log_losses.avg,
-                        best_loss,
-                        ctime(eta_seconds + end))
-                )
-            
+                if iteration % args.logging_steps == 0:
+                    logger.info(
+                        ' '.join(
+                            ['dataset_length: {len}', 'epoch: {ep}', 'iter: {iter}', '/{maxi},  count: {count}/{max_count}']
+                        ).format(len=data_len, ep=epoch, iter=iteration, maxi=len(train_dataloader), count= count, max_count = args.count)
+                        + ' 2d_loss: {:.8f}, 3d_loss: {:.8f} ,3d_re_loss:{:.8f} ,pck: {:.2f}%, total_loss: {:.8f}, best_loss: {:.8f}, expected_date: {}'.format(
+                            log_2d_losses.avg,
+                            log_3d_losses.avg,
+                            log_3d_re_losses.avg,
+                            pck,
+                            log_losses.avg,
+                            best_loss,
+                            ctime(eta_seconds + end))
+                    )
+                else:
+                    logger.debug(
+                        ' '.join(
+                            ['dataset_length: {len}', 'epoch: {ep}', 'iter: {iter}', '/{maxi},  count: {count}/{max_count}']
+                        ).format(len=data_len, ep=epoch, iter=iteration, maxi=len(train_dataloader), count= count, max_count = args.count)
+                        + ' 2d_loss: {:.8f}, 3d_loss: {:.8f} ,3d_re_loss:{:.8f} ,pck: {:.2f}%, total_loss: {:.8f}, best_loss: {:.8f}, expected_date: {}'.format(
+                            log_2d_losses.avg,
+                            log_3d_losses.avg,
+                            log_3d_re_losses.avg,
+                            pck,
+                            log_losses.avg,
+                            best_loss,
+                            ctime(eta_seconds + end))
+                    )
+                
                 
         return Graphormer_model, optimizer, batch_time
     
@@ -508,16 +288,29 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
                 writer.add_scalar("Loss/train", log_losses.avg, epoch)
 
             else:
-                logger.info(
-                    ' '.join(
-                        ['model: {model}', 'dataset_length: {len}','epoch: {ep}', 'iter: {iter}', '/{maxi}, count: {count}/{max_count}']
-                    ).format(model=args.model, len=data_len,ep=epoch, iter=iteration, maxi=len(train_dataloader), count= count, max_count = args.count)
-                    + ' 2d_loss: {:.8f}, pck: {:.2f}%, best_loss: {:.8f}\n, expected_date: {}\033[0K\r'.format(
-                        log_losses.avg,
-                        pck, 
-                        best_loss,
-                        time.ctime(eta_seconds + end))
-                )
+                if iteration % 100 == 0:
+                    logger.info(
+                        ' '.join(
+                            ['model: {model}', 'dataset_length: {len}','epoch: {ep}', 'iter: {iter}', '/{maxi}, count: {count}/{max_count}']
+                        ).format(model=args.model, len=data_len,ep=epoch, iter=iteration, maxi=len(train_dataloader), count= count, max_count = args.count)
+                        + ' 2d_loss: {:.8f}, pck: {:.2f}%, best_loss: {:.8f}\n, expected_date: {}\033[0K\r'.format(
+                            log_losses.avg,
+                            pck, 
+                            best_loss,
+                            time.ctime(eta_seconds + end))
+                    )
+                else:
+                    logger.debug(
+                        ' '.join(
+                            ['model: {model}', 'dataset_length: {len}','epoch: {ep}', 'iter: {iter}', '/{maxi}, count: {count}/{max_count}']
+                        ).format(model=args.model, len=data_len,ep=epoch, iter=iteration, maxi=len(train_dataloader), count= count, max_count = args.count)
+                        + ' 2d_loss: {:.8f}, pck: {:.2f}%, best_loss: {:.8f}\n, expected_date: {}\033[0K\r'.format(
+                            log_losses.avg,
+                            pck, 
+                            best_loss,
+                            time.ctime(eta_seconds + end))
+                    )
+            
             
 
 
@@ -596,7 +389,7 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
                     writer.add_scalar("Loss/valid", log_losses.avg, epoch)
                     writer.flush()
                 else:
-                    logger.info(
+                    logger.debug(
                         ' '.join(
                             ['Test =>> epoch: {ep}', 'iter: {iter}', '/{maxi}']
                         ).format(ep=epoch, iter=iteration, maxi=len(test_dataloader))
@@ -680,7 +473,7 @@ def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss ,logge
                 writer.add_scalar("Loss/valid", log_losses.avg, epoch)
                 writer.flush()
             else:
-                logger.info(
+                logger.debug(
                     ' '.join(
                         ['Test =>> epoch: {ep}', 'iter: {iter}', '/{maxi}']
                     ).format(ep=epoch, iter=iteration, maxi=len(test_dataloader))
