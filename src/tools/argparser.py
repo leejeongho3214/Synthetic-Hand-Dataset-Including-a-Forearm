@@ -7,14 +7,13 @@ from src.modeling.hrnet.config.default import update_config
 from src.modeling.hrnet.config.default import _C as cfg
 from src.modeling.hrnet.hrnet_cls_net_gridfeat import get_pose_net as get_cls_net_gridfeat
 from src.utils.pre_argparser import pre_arg
-
 from src.tools.models.our_net import get_our_net
-
 from src.modeling.simplebaseline.config import config as config_simple
 from src.modeling.simplebaseline.pose_resnet import get_pose_net
 import torch
 import os
 import time
+from src.utils.method import Runner
 from src.utils.dir import  resume_checkpoint
 import numpy as np
 from matplotlib import pyplot as plt
@@ -108,124 +107,17 @@ def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,
 
     criterion_2d_keypoints = torch.nn.MSELoss(reduction='none').cuda(args.device)
     criterion_keypoints = torch.nn.MSELoss(reduction='none').cuda(args.device)
-    end = time.time()
-    Graphormer_model.train()
     log_losses = AverageMeter()
     log_2d_losses = AverageMeter()
     log_3d_losses = AverageMeter()
     log_3d_re_losses = AverageMeter()
     
+    end = time.time()
+    Graphormer_model.train()
+
+    Runner(args, Graphormer_model, optimizer, train_dataloader, epoch, criterion_2d_keypoints, criterion_keypoints, log_2d_losses, log_3d_losses, log_3d_re_losses, end)
     if args.model == "ours":
-        for iteration, (images, gt_2d_joints, heatmap, gt_3d_joints) in enumerate(train_dataloader):
-
-            batch_size = images.size(0)
-            adjust_learning_rate(optimizer, epoch, args)  
-            gt_2d_joints[:,:,1] = gt_2d_joints[:,:,1] / images.size(2) ## You Have to check whether weight and height is correct dimenstion
-            gt_2d_joints[:,:,0] = gt_2d_joints[:,:,0] / images.size(3)  ## 2d joint value rearrange from 0 to 1
-            gt_2d_joint = gt_2d_joints.clone().detach()
-            gt_2d_joint = gt_2d_joint.cuda()
-            gt_3d_joints = gt_3d_joints.clone().detach()
-            gt_3d_joints = gt_3d_joints.cuda()
-            
-            parents = [-1, 0, 1, 2, 3, 0, 5, 6, 7, 0, 9, 10, 11, 0, 13, 14, 15, 0, 17, 18, 19]
-            gt_3d_mid_joints = torch.ones(batch_size, 20, 3)
-            for i in range(20):
-                gt_3d_mid_joints[:, i, :] =  (gt_3d_joints[:, i + 1, :] + gt_3d_joints[:, parents[i + 1], :]) / 2
-            
-            if args.scale:
-                scale = ((gt_3d_joints[:, 10,:] - gt_3d_joints[:, 9, :])**2).sum(-1).sqrt()
-                for i in range(batch_size):
-                    gt_3d_joints[i] = gt_3d_joints[i]/scale[i]
-
-            images = images.cuda()
-            
-            if args.projection: pred_2d_joints, pred_3d_joints= Graphormer_model(images)
-            else: pred_2d_joints= Graphormer_model(images); pred_3d_joints = torch.zeros([pred_2d_joints.size()[0], pred_2d_joints.size()[1], 3]).cuda(); args.loss_3d = 0
-
-            pred_3d_mid_joints = torch.ones(batch_size, 20, 3)
-            for i in range(20):
-                pred_3d_mid_joints[:, i, :] =  (pred_3d_joints[:, i + 1, :] + pred_3d_joints[:, parents[i + 1], :]) / 2
-            
-            loss_2d= keypoint_2d_loss(criterion_2d_keypoints, pred_2d_joints, gt_2d_joint)
-            loss_3d = keypoint_3d_loss(criterion_keypoints, pred_3d_mid_joints, gt_3d_mid_joints)
-            loss_3d_re = reconstruction_error(np.array(pred_3d_joints.detach().cpu()), np.array(gt_3d_joints.detach().cpu()))
-            loss_3d_mid = keypoint_3d_loss(criterion_keypoints, pred_3d_joints, gt_3d_joints)
-            if args.projection:
-                loss = args.loss_2d * loss_2d + args.loss_3d * loss_3d + args.loss_3d_mid * loss_3d_mid
-            else:
-                loss = loss_2d
-            log_losses.update(loss.item(), batch_size)
-            log_2d_losses.update(loss_2d.item(), batch_size)
-            log_3d_losses.update(loss_3d.item(), batch_size)
-            log_3d_re_losses.update(loss_3d_re.item(), batch_size)
-
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-
-            pred_2d_joints[:,:,1] = pred_2d_joints[:,:,1] * images.size(2) ## You Have to check whether weight and height is correct dimenstion
-            pred_2d_joints[:,:,0] = pred_2d_joints[:,:,0] * images.size(3)
-            gt_2d_joint[:,:,1] = gt_2d_joint[:,:,1] * images.size(2) ## You Have to check whether weight and height is correct dimenstion
-            gt_2d_joint[:,:,0] = gt_2d_joint[:,:,0] * images.size(3) 
-            
-            if not args.projection:
-                if iteration == 0 or iteration == int(len(train_dataloader)/2) or iteration == len(train_dataloader) - 1:
-                    fig = plt.figure()
-                    visualize_gt(images, gt_2d_joint, fig, iteration)
-                    visualize_pred(images, pred_2d_joints, fig, 'train', epoch, iteration, args, None)
-                    plt.close()
-
-            batch_time.update(time.time() - end)
-            end = time.time()
-            eta_seconds = batch_time.avg * ((len_total - iteration) + (args.epoch - epoch -1) * len_total)  
-
-            if iteration == len(train_dataloader) - 1:
-                logger.info(
-                    ' '.join(
-                        ['dataset_length: {len}', 'epoch: {ep}', 'iter: {iter}', '/{maxi},  count: {count}/{max_count}']
-                    ).format(len=data_len, ep=epoch, iter=iteration, maxi=len(train_dataloader), count= count, max_count = args.count)
-                    + ' 2d_loss: {:.8f}, 3d_loss: {:.8f}, 3d_re_loss:{:.8f} ,pck: {:.2f}%, total_loss: {:.8f}, best_loss: {:.8f}, expected_date: {}\n'.format(
-                        log_2d_losses.avg,
-                        log_3d_losses.avg,
-                        log_3d_re_losses.avg,
-                        pck,
-                        log_losses.avg,
-                        best_loss,
-                        ctime(eta_seconds + end))
-                )
-                writer.add_scalar("Loss/train", log_losses.avg, epoch)
-
-            else:
-                if iteration % args.logging_steps == 0:
-                    logger.info(
-                        ' '.join(
-                            ['dataset_length: {len}', 'epoch: {ep}', 'iter: {iter}', '/{maxi},  count: {count}/{max_count}']
-                        ).format(len=data_len, ep=epoch, iter=iteration, maxi=len(train_dataloader), count= count, max_count = args.count)
-                        + ' 2d_loss: {:.8f}, 3d_loss: {:.8f} ,3d_re_loss:{:.8f} ,pck: {:.2f}%, total_loss: {:.8f}, best_loss: {:.8f}, expected_date: {}'.format(
-                            log_2d_losses.avg,
-                            log_3d_losses.avg,
-                            log_3d_re_losses.avg,
-                            pck,
-                            log_losses.avg,
-                            best_loss,
-                            ctime(eta_seconds + end))
-                    )
-                else:
-                    logger.debug(
-                        ' '.join(
-                            ['dataset_length: {len}', 'epoch: {ep}', 'iter: {iter}', '/{maxi},  count: {count}/{max_count}']
-                        ).format(len=data_len, ep=epoch, iter=iteration, maxi=len(train_dataloader), count= count, max_count = args.count)
-                        + ' 2d_loss: {:.8f}, 3d_loss: {:.8f} ,3d_re_loss:{:.8f} ,pck: {:.2f}%, total_loss: {:.8f}, best_loss: {:.8f}, expected_date: {}'.format(
-                            log_2d_losses.avg,
-                            log_3d_losses.avg,
-                            log_3d_re_losses.avg,
-                            pck,
-                            log_losses.avg,
-                            best_loss,
-                            ctime(eta_seconds + end))
-                    )
-                
-                
+    
         return Graphormer_model, optimizer, batch_time
     
     else:
