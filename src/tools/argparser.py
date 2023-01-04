@@ -95,7 +95,7 @@ def load_model(args):
         best_loss, epoch, _model, count = resume_checkpoint(args, _model)
         
     _model.to(args.device)
-    return _model, best_loss, epoch, count
+    return _model, best_loss, epoch + 1, count
 
 
 
