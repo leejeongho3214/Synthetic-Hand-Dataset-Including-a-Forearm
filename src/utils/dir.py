@@ -23,7 +23,7 @@ def add_pypath(path):
 def resume_checkpoint(args, _model):
     state_dict = torch.load(args.resume_checkpoint)
     best_loss = state_dict['best_loss']
-    epoch = state_dict['epoch']
+    epoch = state_dict['epoch'] + 1
     count = state_dict['count']
     _model.load_state_dict(state_dict['model_state_dict'], strict=False)
     del state_dict

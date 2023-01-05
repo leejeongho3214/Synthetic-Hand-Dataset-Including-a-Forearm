@@ -6,11 +6,14 @@ from time import ctime
 from src.utils.visualize import *
 from src.utils.metric_logger import AverageMeter
 from src.utils.loss import *
+from src.utils.bar import *
 
 class Runner(object):
-    def __init__(self, args, model, epoch):
+    def __init__(self, args, model, epoch, data_loader, phase):
         super(Runner, self).__init__()
         self.args = args
+        self.data = data_loader
+        self.bar = Bar(colored(str(epoch)+'_EPOCH_'+phase, color='blue'), max=len(data_loader))
         self.model = model
         self.optimizer = torch.optim.Adam(params=list(self.model.parameters()),
                                  lr=args.lr,
@@ -25,38 +28,64 @@ class Runner(object):
         self.pck_losses = AverageMeter()
         self.epe_losses = AverageMeter()
         
-    def train_log(self, dataloader,logger, data_len, iteration, count, pck , best_loss, eta_seconds, end, epoch):
-        logger.info(
-                    ' '.join(
-                        ['dataset_length: {len}', 'epoch: {ep}', 'iter: {iter}', '/{maxi},  count: {count}/{max_count}']
-                    ).format(len=data_len, ep=epoch, iter=iteration, maxi=len(dataloader), count= count, max_count = self.args.count)
-                    + ' 2d_loss: {:.8f}, 3d_loss: {:.8f}, 3d_re_loss:{:.8f} ,pck: {:.2f}%, total_loss: {:.8f}, best_loss: {:.8f}, expected_date: {}\n'.format(
-                        self.log_2d_losses.avg,
-                        self.log_3d_losses.avg,
-                        self.log_3d_re_losses.avg,
-                        pck,
-                        self.log_losses.avg,
-                        best_loss,
-                        ctime(eta_seconds + end))
-                )
+    def train_log(self, dataloader, logger, data_len, iteration, count, pck , best_loss, eta_seconds, end, epoch):
+        if iteration % self.args.logging_steps == 0:
+            logger.debug( ' '.join(
+                            ['dataset_length: {len}', 'epoch: {ep}', 'iter: {iter}', '/{maxi}, count: {count}/{max_count}']
+                        ).format(len=data_len, ep=epoch, iter=iteration, maxi=len(dataloader), count= count, max_count = self.args.count)
+                        + ' 2d_loss: {:.8f}, 3d_loss: {:.8f}, 3d_re_loss:{:.8f} ,pck: {:.2f}%, total_loss: {:.8f}, best_loss: {:.8f}, expected_date: {}'.format(
+                            self.log_2d_losses.avg,
+                            self.log_3d_losses.avg,
+                            self.log_3d_re_losses.avg,
+                            pck,
+                            self.log_losses.avg,
+                            best_loss,
+                            ctime(eta_seconds + end)))
         
-    def test_log(self, dataloader, logger, iteration, count, best_loss, eta_seconds, end, epoch):
-        logger.info(
-                    ' '.join(
-                        ['Test =>> epoch: {ep}', 'iter: {iter}', '/{maxi}']
-                    ).format(ep=epoch, iter=iteration, maxi=len(dataloader))
-                    + ' pck: {:.2f}%, epe: {:.2f}mm, count: {} / {}, total_loss: {:.8f}, best_loss: {:.8f}, expected_date: {} \n'.format(
-                        self.pck_losses.avg * 100,
-                        self.epe_losses.avg * 0.26,
-                        int(count),
-                        self.args.count,
-                        self.log_losses.avg,
-                        best_loss,
-                        ctime(eta_seconds + end))
-                    )
+        self.bar.suffix = ('({iteration}/{data_loader}) '
+                           'count: {count} | '
+                           'now_loss: {total:.8f} | '
+                           'best_loss: {best:8f} | '
+                           'best_pck: {pck:.2f} | '
+                           'exp: {exp}'
+                           ).format(count = count, max_count = self.args.count, iteration = iteration, exp = ctime(eta_seconds + end),
+                                    data_loader = len(self.data), total = self.log_losses.avg, pck = pck, best = best_loss)
+                           
+        if iteration == len(dataloader) - 1:
+            self.bar.suffix = self.bar.suffix +'\n'
+        self.bar.next()
+        
+    def test_log(self, dataloader, logger, iteration, count, best_loss, eta_seconds, end, epoch, pck):
+        if iteration % (self.args.logging_steps /10) == 0:
+            logger.debug(
+                        ''.join(
+                            ['Test =>> epoch: {ep}', 'iter: {iter}', '/{maxi}']
+                        ).format(ep=epoch, iter=iteration, maxi=len(dataloader))
+                        + ' pck: {:.2f}%, epe: {:.2f}mm, count: {} / {}, total_loss: {:.8f}, best_loss: {:.8f}, expected_date: {}'.format(
+                            self.pck_losses.avg * 100,
+                            self.epe_losses.avg * 0.26,
+                            int(count),
+                            self.args.count,
+                            self.log_losses.avg,
+                            best_loss,
+                            ctime(eta_seconds + end))
+                        )
+
+        self.bar.suffix = ('({iteration}/{data_loader}) '
+                           'count: {count} | '
+                           'now_loss: {total:.8f} | '
+                           'best_loss: {best:8f} | '
+                           'now_pck: {now_pck:.2f} | '
+                           'best_pck: {pck:.2f} | '
+                           'exp: {exp}'
+                           ).format(count = count, max_count = self.args.count, iteration = iteration, exp = ctime(eta_seconds + end),
+                                    data_loader = len(self.data), total = self.log_losses.avg,now_pck = self.pck_losses.avg * 100 ,pck = pck, best = best_loss)
+        if iteration == len(dataloader) - 1:
+            self.bar.suffix = self.bar.suffix +'\n'
+        self.bar.next()
     
     def our(self, dataloader, end, epoch, logger, data_len, len_total, count, pck, best_loss, writer, phase = 'train'):
-        if phase == 'train':
+        if phase == 'TRAIN':
             self.model.train()
             for iteration, (images, gt_2d_joints, _, gt_3d_joints) in enumerate(dataloader):
                 batch_time = AverageMeter()
@@ -121,10 +150,10 @@ class Runner(object):
                 end = time.time()
                 eta_seconds = batch_time.avg * ((len_total - iteration) + (self.args.epoch - epoch -1) * len_total)  
 
-                if iteration % self.args.logging_steps == 0:
-                    self.train_log(dataloader, logger, data_len, iteration, count, pck , best_loss, eta_seconds, end, epoch)
-                    if iteration == len(dataloader) - 1:
-                        writer.add_scalar("Loss/train", self.log_losses.avg, epoch)
+                self.train_log(dataloader, logger, data_len, iteration, count, pck , best_loss, eta_seconds, end, epoch)
+                if iteration == len(dataloader) - 1:
+                    writer.add_scalar("Loss/train", self.log_losses.avg, epoch)
+
             return self.model, self.optimizer, batch_time
             
         else:
@@ -166,17 +195,16 @@ class Runner(object):
                     end = time.time()
                     eta_seconds = batch_time.avg * ((len(dataloader) - iteration) + (self.args.epoch - epoch -1) *len_total)
 
-                    if iteration % (self.args.logging_steps / 10) == 0:
-                        self.test_log(dataloader, logger, iteration, count, best_loss, eta_seconds, end, epoch)
-                        if iteration == len(dataloader) - 1:
-                            writer.add_scalar("Loss/valid", self.log_losses.avg, epoch)
+                    self.test_log(dataloader, logger, iteration, count, best_loss, eta_seconds, end, epoch, pck)
+                    if iteration == len(dataloader) - 1:
+                        writer.add_scalar("Loss/valid", self.log_losses.avg, epoch)
 
                 return self.log_losses.avg, count, self.pck_losses.avg * 100, batch_time
                 
     def other(self, dataloader, end, epoch, logger, data_len, len_total, count, pck, best_loss, writer, phase = 'train'):
         heatmap_size, multiply = 64, 4
         if self.args.model == "hrnet": heatmap_size, multiply = 128, 2
-        if phase == "train":
+        if phase == "TRAIN":
             self.model.train()
             for iteration, (images, gt_2d_joints, gt_heatmaps, _) in enumerate(dataloader):
                 batch_time = AverageMeter()
@@ -184,7 +212,7 @@ class Runner(object):
                 adjust_learning_rate(self.optimizer, epoch, self.args)
                 images = images.cuda()
                 gt_heatmaps = gt_heatmaps.cuda()     
-                pred = self.args.model(images)
+                pred = self.model(images)
 
                 loss = torch.mean(calc_loss(pred, gt_heatmaps, self.args))
 
@@ -219,21 +247,19 @@ class Runner(object):
                 batch_time.update(time.time() - end)
                 end = time.time()
                 eta_seconds = batch_time.avg * ((len_total - iteration) + (self.args.epoch - epoch -1) * len_total)  
-                
-                if iteration % self.args.logging_steps == 0:
-                    self.train_log(dataloader, logger, data_len, iteration, count, pck , best_loss, eta_seconds, end, epoch)
-                    if iteration == len(dataloader) - 1:
-                        writer.add_scalar("Loss/train", self.log_losses.avg, epoch)
-                        
+
+                self.train_log(dataloader, logger, data_len, iteration, count, pck , best_loss, eta_seconds, end, epoch)
+                if iteration == len(dataloader) - 1:
+                    writer.add_scalar("Loss/train", self.log_losses.avg, epoch)
             return self.model, self.optimizer, batch_time
 
         else:
             self.model.eval()
-            for iteration, (images, gt_2d_joints, gt_heatmaps, _) in enumerate(self.dataloader):
+            for iteration, (images, gt_2d_joints, gt_heatmaps, _) in enumerate(dataloader):
                 batch_time = AverageMeter()
                 batch_size = images.size(0)
                 images = images.cuda()
-                gt_2d_joint = gt_2d_joint.cuda()
+                gt_2d_joint = gt_2d_joints.cuda()
                 gt_heatmaps = gt_heatmaps.cuda()    
                 
                 pred = self.model(images)
@@ -270,8 +296,8 @@ class Runner(object):
                 end = time.time()
                 eta_seconds = batch_time.avg * ((len_total - iteration) + (self.args.epoch - epoch -1) * len_total)  
 
-                if iteration % (self.args.logging_steps / 10) == 0:
-                    self.test_log(dataloader, logger, iteration, count, best_loss, eta_seconds, end, epoch)
-                    if iteration == len(dataloader) - 1:
-                        writer.add_scalar("Loss/valid", self.log_losses.avg, epoch)
+                self.test_log(dataloader, logger, iteration, count, best_loss, eta_seconds, end, epoch, pck)
+                if iteration == len(dataloader) - 1:
+                    writer.add_scalar("Loss/valid", self.log_losses.avg, epoch)
+                    
             return self.log_losses.avg, count, self.pck_losses.avg * 100, batch_time 

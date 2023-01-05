@@ -518,14 +518,14 @@ def save_checkpoint(model, args, epoch, optimizer, best_loss, count, ment, num_t
                 'best_loss': best_loss,
                 'count': count,
                 'model_state_dict': model_to_save.state_dict()}, op.join(checkpoint_dir, 'state_dict.bin'))
-            logger.info("Save checkpoint to epoch:{}_{}".format(
-                epoch, checkpoint_dir))
+            # logger.info("Save checkpoint to epoch:{}_{}".format(
+            #     epoch, checkpoint_dir))
             break
         except:
             pass
-    else:
-        logger.info(
-            "Failed to save checkpoint after {} trails.".format(num_trial))
+    # else:
+    #     logger.info(
+    #         "Failed to save checkpoint after {} trails.".format(num_trial))
     return model_to_save, checkpoint_dir
 
 

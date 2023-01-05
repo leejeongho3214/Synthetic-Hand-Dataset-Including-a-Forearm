@@ -70,7 +70,6 @@ def load_model(args):
 
     if not args.resume: args.resume_checkpoint = 'None'
     else: args.resume_checkpoint = os.path.join(os.path.join(args.root_path, args.name),'checkpoint-good/state_dict.bin')
-
         
     args.num_gpus = int(os.environ['WORLD_SIZE']) if 'WORLD_SIZE' in os.environ else 1
     os.environ['OMP_NUM_THREADS'] = str(args.num_workers)
@@ -93,27 +92,26 @@ def load_model(args):
         best_loss, epoch, _model, count = resume_checkpoint(args, _model)
         
     _model.to(args.device)
-    return _model, best_loss, epoch + 1, count
+    return _model, best_loss, epoch, count
 
 
 
 def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,logger, count, writer, pck, len_total, batch_time):
     end = time.time()
-    runner = Runner(args, Graphormer_model, epoch)
+    phase = 'TRAIN'
+    runner = Runner(args, Graphormer_model, epoch, train_dataloader, phase)
     if args.model == "ours":
-        Graphormer_model, optimizer, batch_time = runner.our(train_dataloader,end, epoch, logger, data_len, len_total, count, pck, best_loss, writer, 'train')
-        return Graphormer_model, optimizer, batch_time
+        Graphormer_model, optimizer, batch_time = runner.our(train_dataloader,end, epoch, logger, data_len, len_total, count, pck, best_loss, writer, phase)
     else:
-        Graphormer_model, optimizer, batch_time = runner.other(train_dataloader,end, epoch, logger, data_len, len_total, count, pck, best_loss, writer, 'train')
-        return Graphormer_model, optimizer, batch_time
+        Graphormer_model, optimizer, batch_time = runner.other(train_dataloader,end, epoch, logger, data_len, len_total, count, pck, best_loss, writer, phase)
+    return Graphormer_model, optimizer, batch_time
 
 def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss,  data_len ,logger, writer, batch_time, len_total, pck):
     end = time.time()
-
-    runner = Runner(args, Graphormer_model, epoch)
+    phase = 'VALID'
+    runner = Runner(args, Graphormer_model, epoch, test_dataloader, phase)
     if args.model == "ours":
-        Graphormer_model, optimizer, batch_time = runner.our(test_dataloader, end, epoch, logger, data_len, len_total, count, pck, best_loss, writer, 'test')
-        return Graphormer_model, optimizer, batch_time
+        loss, count, pck, batch_time = runner.our(test_dataloader, end, epoch, logger, data_len, len_total, count, pck, best_loss, writer, phase)
     else:
-        Graphormer_model, optimizer, batch_time = runner.other(test_dataloader, end, epoch, logger, data_len, len_total, count, pck, best_loss, writer, 'test')
-        return Graphormer_model, optimizer, batch_time
+       loss, count, pck, batch_time = runner.other(test_dataloader, end, epoch, logger, data_len, len_total, count, pck, best_loss, writer, phase)
+    return loss, count, pck, batch_time
