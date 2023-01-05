@@ -1,6 +1,6 @@
 skeletion.txt
 visualize.ipynb
 datasets
-models
+models/hrnet
 manopth
 **/.DS_Store
