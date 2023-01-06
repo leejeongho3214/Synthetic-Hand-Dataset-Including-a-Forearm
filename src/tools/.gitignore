@@ -4,6 +4,6 @@ eval_image
 eval_json
 eval_mm.txt
 eval_proportion.txt
-final_models
+final_model
 output
 tensorboard

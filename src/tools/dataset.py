@@ -22,6 +22,9 @@ import torch
 
 def build_dataset(args):
 
+    if args.eval:
+        test_dataset = Our_testset_new(args)
+        return test_dataset, test_dataset
    
     path = "../../../../../../data1/1231"
     if not os.path.isdir(path):
@@ -146,29 +149,9 @@ def build_dataset(args):
 
         trainset_dataset = make_hand_data_loader(
             args, args.train_yaml, False, is_train=True, scale_factor=args.img_scale_factor)  # RGB image
-        # testset_dataset = Frei(args)
         testset_dataset = make_hand_data_loader(
             args, args.val_yaml, False, is_train=False, scale_factor=args.img_scale_factor)
         
-        # for iter, degree in enumerate(folder_num):
-        #         ratio  = ((len(trainset_dataset) + len(testset_dataset)) * args.ratio_of_other) / 373184
-        #         dataset = CustomDataset(args, degree, path, color=args.color,
-        #                                 ratio_of_aug=args.ratio_of_aug, ratio_of_dataset= ratio)
-
-        #         if iter == 0:
-        #             train_dataset, test_dataset = random_split(
-        #                 dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
-
-        #         else:
-        #             train_dataset_other, test_dataset_other = random_split(
-        #                 dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
-        #             train_dataset = ConcatDataset(
-        #                 [train_dataset, train_dataset_other])
-        #             test_dataset = ConcatDataset(
-        #                 [test_dataset, test_dataset_other])
-                    
-        # trainset_dataset = ConcatDataset([train_dataset, trainset_dataset])
-        # testset_dataset = ConcatDataset([test_dataset, testset_dataset])
                     
         return trainset_dataset, testset_dataset
 
@@ -464,12 +447,7 @@ class CustomDataset(Dataset):
                                         transforms.ToTensor(),
                                         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
         image = trans(image)
-        #     else:
-        #         image = Image.fromarray(image)
-        #         joint_2d = torch.tensor(self.meta['images'][idx]['joint_2d'])
-        # else:
-        #     image = Image.fromarray(image)
-        #     joint_2d = torch.tensor(self.meta['images'][idx]['joint_2d'])
+
 
 
 
@@ -654,6 +632,7 @@ class Our_testset_new(Dataset):
         with open(self.anno_path, "r") as st_json:
             json_data = json.load(st_json)
             joint = json_data[f"{idx}"]['coordinates']
+            pose_type = json_data[f"{idx}"]['pose_ctgy']
             file_name = json_data[f"{idx}"]['file_name']
             visible = json_data[f"{idx}"]['visible']
             try: 
@@ -682,7 +661,7 @@ class Our_testset_new(Dataset):
         else:
             heatmap = GenerateHeatmap(64, 21)(joint_2d / 4)
 
-        return trans_image, joint_2d_v, heatmap, joint_2d_v
+        return trans_image, joint_2d_v, heatmap, pose_type
 
 
 class Our_testset_media(Dataset):

@@ -7,12 +7,13 @@ from matplotlib import pyplot as plt
 from src.utils.miscellaneous import mkdir
 from torchvision.transforms import transforms
 
-def visualize_pred(images, pred_2d_joint, fig, method = None, epoch = 0, iteration = 0, args =None, dataset_name = 'p'):
+def visualize_pred(images, pred_2d_joint, fig, method = None, epoch = 0, iteration = 0, args =None, dataset_name = None):
 
     num = iteration % images.size(0)
     image = np.moveaxis(images[num].detach().cpu().numpy(), 0, -1)
     image = ((image + abs(image.min())) / (image + abs(image.min())).max()).copy()
     parents = np.array([-1, 0, 1, 2, 3, 0, 5, 6, 7, 0, 9, 10, 11, 0, 13, 14, 15, 0, 17, 18, 19])
+
     
     for i in range(21):
         cv2.circle(image, (int(pred_2d_joint[num][i][0]), int(pred_2d_joint[num][i][1])), 2, [0, 1, 0],
@@ -28,6 +29,7 @@ def visualize_pred(images, pred_2d_joint, fig, method = None, epoch = 0, iterati
     ax1.axis("off")
     
     if method == 'evaluation':
+        dataset_name = dataset_name[num]
         if iteration == 0 and epoch == 0:
             if os.path.isdir(f'eval_image/{args.name[13:-31]}/{dataset_name}') == True:
                 shutil.rmtree(f"eval_image/{args.name[13:-31]}/{dataset_name}")

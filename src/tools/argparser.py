@@ -1,7 +1,9 @@
-
+import json
 import os
 import sys
 import argparse
+
+from tqdm import tqdm
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 from src.modeling.hrnet.config.default import update_config
 from src.modeling.hrnet.config.default import _C as cfg
@@ -12,9 +14,10 @@ from src.modeling.simplebaseline.config import config as config_simple
 from src.modeling.simplebaseline.pose_resnet import get_pose_net
 import torch
 import os
+from src.utils.metric_logger import AverageMeter
 import time
 from src.utils.method import Runner
-from src.utils.dir import  resume_checkpoint
+from src.utils.dir import  resume_checkpoint, dump
 import numpy as np
 from matplotlib import pyplot as plt
 import torch
@@ -47,8 +50,10 @@ def parse_args():
     parser.add_argument("--loss_2d", default=0, type=float)
     parser.add_argument("--loss_3d", default=1, type=float)
     parser.add_argument("--loss_3d_mid", default=0, type=float)
-    parser.add_argument("--scale", action='store_true',
-                        help = "If you write down, The 3D joint coordinate would be normalized according to distance between 9-10 keypoint")
+
+    parser.add_argument("--scale", action='store_true')
+    parser.add_argument("--plt", action='store_true')
+    parser.add_argument("--eval", action='store_true')
     parser.add_argument("--resume", action='store_true')
     parser.add_argument("--color", action='store_true',
                         help="If you write down, This dataset would be applied color jitter to train data, according to ratio of aug")
@@ -99,19 +104,104 @@ def load_model(args):
 def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,logger, count, writer, pck, len_total, batch_time):
     end = time.time()
     phase = 'TRAIN'
-    runner = Runner(args, Graphormer_model, epoch, train_dataloader, phase)
+    runner = Runner(args, Graphormer_model, epoch, train_dataloader, phase, batch_time)
+    
     if args.model == "ours":
         Graphormer_model, optimizer, batch_time = runner.our(train_dataloader,end, epoch, logger, data_len, len_total, count, pck, best_loss, writer, phase)
     else:
         Graphormer_model, optimizer, batch_time = runner.other(train_dataloader,end, epoch, logger, data_len, len_total, count, pck, best_loss, writer, phase)
+        
     return Graphormer_model, optimizer, batch_time
 
-def test(args, test_dataloader, Graphormer_model, epoch, count, best_loss,  data_len ,logger, writer, batch_time, len_total, pck):
+def valid(args, test_dataloader, Graphormer_model, epoch, count, best_loss,  data_len ,logger, writer, batch_time, len_total, pck):
     end = time.time()
     phase = 'VALID'
-    runner = Runner(args, Graphormer_model, epoch, test_dataloader, phase)
+    runner = Runner(args, Graphormer_model, epoch, test_dataloader, phase, batch_time)
+    
     if args.model == "ours":
         loss, count, pck, batch_time = runner.our(test_dataloader, end, epoch, logger, data_len, len_total, count, pck, best_loss, writer, phase)
     else:
        loss, count, pck, batch_time = runner.other(test_dataloader, end, epoch, logger, data_len, len_total, count, pck, best_loss, writer, phase)
+       
     return loss, count, pck, batch_time
+
+def pred_store(args, dataloader, model):
+
+    xy_list, p_list, gt_list = [], [], []
+    with torch.no_grad():
+        for (images, gt_2d_joints, _, anno) in dataloader:
+            images = images.cuda()
+            gt_2d_joint = gt_2d_joints.cuda()
+            pred_2d_joints = model(images)
+            pred_2d_joints[:, :, 1] = pred_2d_joints[:, :, 1] * images.size(2) ## You Have to check whether weight and height is correct dimenstion
+            pred_2d_joints[:, :, 0] = pred_2d_joints[:, :, 0] * images.size(3)
+            if args.plt:
+                for i in range(images.size(0)):
+                    fig = plt.figure()
+                    visualize_gt(images, gt_2d_joint, fig, 0)
+                    visualize_pred(images, pred_2d_joints, fig, 'evaluation', 0, i, args, anno)
+                    plt.close()
+            gt_list.append(gt_2d_joints.tolist())
+            xy_list.append(pred_2d_joints.tolist())
+            p_list.append(anno)
+    # dump(os.path.join(args.output_dir, "gt.json"), gt_list)
+    dump(os.path.join(args.output_dir, "pred.json"), xy_list)
+    # dump(os.path.join(args.output_dir, "pred_p.json"), p_list)
+
+    
+def pred_eval(args, T_list, Threshold_type):
+
+    gt_path = os.path.join("output/gt.json")
+    pred_path = os.path.join(args.output_dir, "pred.json")
+    pose_path = os.path.join("output/pred_p.json")
+    
+    with open(gt_path, 'r') as fi:
+        gt_json = json.load(fi)
+    with open(pred_path, 'r') as fi:
+        pred_json = json.load(fi)
+    with open(pose_path, 'r') as fi:
+        pose_json = json.load(fi)
+        
+    pred = [x for i in range(len(pred_json[0])) for x in pred_json[0][i]]
+    pose = [x for i in range(len(pose_json[0])) for x in pose_json[0][i]]
+    gt = [x for i in range(len(gt_json[0])) for x in gt_json[0][i]]
+    thresholds_list = np.linspace(T_list[0], T_list[-1], 100)
+    thresholds = np.array(thresholds_list)
+    norm_factor = np.trapz(np.ones_like(thresholds), thresholds)
+    
+    pck_list = {'Standard':{}, 'Occlusion_by_Pinky': {}, 'Occlusion_by_Thumb': {}, 'Occlusion_by_Both': {}}
+    epe_list = {'Standard':[], 'Occlusion_by_Pinky': [], 'Occlusion_by_Thumb': [], 'Occlusion_by_Both': []}
+
+    for p_type in pck_list: 
+        pck_list[f'{p_type}']['total'] = []
+        for T in T_list: 
+            pck_list[f'{p_type}'][f'{T:.2f}'] = []
+            
+    for (pred_joint, p_type, gt_joint) in zip(pred, pose, gt):
+        
+        gt_joint = torch.tensor(gt_joint)[None, :]
+        pred_joint = torch.tensor(pred_joint)[None, :]
+        pck_t = list()
+        for T in T_list:     
+            pck = PCK_2d_loss_visible(pred_joint, gt_joint, T, Threshold_type)
+            if T == T_list[0]:
+                epe, _ = EPE(pred_joint, gt_joint)
+                epe_list[f'{p_type}'].append(epe[0]/epe[1])
+            pck_list[f'{p_type}'][f'{T:.2f}'].append(pck)
+        for th in thresholds_list:
+            pck = PCK_2d_loss_visible(pred_joint, gt_joint, th, Threshold_type)
+            pck_t.append(pck * 100)
+        
+        pck_t = np.array(pck_t)
+        auc = np.trapz(pck_t, thresholds)
+        auc /= norm_factor
+        pck_list[f'{p_type}']['total'].append(auc)
+    
+    for j in pck_list:
+        for i in pck_list[j]:
+            pck_list[j][i] = np.array(pck_list[j][i]).mean()
+    for i in epe_list:
+        epe_list[i] = np.array(epe_list[i]).mean()
+        
+        
+    return pck_list, epe_list

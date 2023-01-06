@@ -64,7 +64,7 @@ class Config:
 cfg = Config()
 
 sys.path.insert(0, osp.join(cfg.root_dir, 'common'))
-from .dir import add_pypath, make_folder
+from .dir import add_pypath
 add_pypath(osp.join(cfg.data_dir))
 add_pypath(osp.join(cfg.data_dir, cfg.dataset))
 # make_folder(cfg.model_dir)

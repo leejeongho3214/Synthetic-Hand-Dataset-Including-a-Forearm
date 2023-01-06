@@ -13,8 +13,8 @@
             "console": "integratedTerminal",
             "justMyCode": true,
             "cwd": "${fileDirname}",
-            "args": ["--dataset", "frei", "--model", "hrnet"]
-            // "args": ["--name", "None","--general"]
+            // "args": ["--dataset", "frei", "--model", "hrnet"]
+            "args": ["--eval"]
         }
     ]
 }
