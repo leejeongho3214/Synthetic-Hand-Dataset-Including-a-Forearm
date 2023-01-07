@@ -660,8 +660,11 @@ class Our_testset_new(Dataset):
             heatmap = GenerateHeatmap(128, 21)(joint_2d / 2)
         else:
             heatmap = GenerateHeatmap(64, 21)(joint_2d / 4)
-
-        return trans_image, joint_2d_v, heatmap, pose_type
+            
+        if self.args.eval:
+            return trans_image, joint_2d_v, heatmap, pose_type
+        else:
+            return trans_image, joint_2d_v, heatmap, joint_2d_v
 
 
 class Our_testset_media(Dataset):
