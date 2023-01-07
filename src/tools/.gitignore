@@ -1,6 +1,6 @@
 eval_image
 eval_json
-final_models
+final_model
 output
 tensorboard
 *.txt
