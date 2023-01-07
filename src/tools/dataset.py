@@ -151,7 +151,7 @@ def build_dataset(args):
             args, args.train_yaml, False, is_train=True, scale_factor=args.img_scale_factor)  # RGB image
         testset_dataset = make_hand_data_loader(
             args, args.val_yaml, False, is_train=False, scale_factor=args.img_scale_factor)
-        
+
                     
         return trainset_dataset, testset_dataset
 
