@@ -101,27 +101,27 @@ def load_model(args):
 
 
 
-def train(args, train_dataloader, Graphormer_model, epoch, best_loss, data_len ,logger, count, writer, pck, len_total, batch_time):
+def train(args, train_dataloader, testset_loader, Graphormer_model, epoch, best_loss, data_len ,logger, count, writer, pck, len_total, batch_time):
     end = time.time()
     phase = 'TRAIN'
     runner = Runner(args, Graphormer_model, epoch, train_dataloader, phase, batch_time)
     
     if args.model == "ours":
-        Graphormer_model, optimizer, batch_time = runner.our(train_dataloader,end, epoch, logger, data_len, len_total, count, pck, best_loss, writer, phase)
+        Graphormer_model, optimizer, batch_time = runner.our(train_dataloader,testset_loader, end, epoch, logger, data_len, len_total, count, pck, best_loss, writer, phase)
     else:
-        Graphormer_model, optimizer, batch_time = runner.other(train_dataloader,end, epoch, logger, data_len, len_total, count, pck, best_loss, writer, phase)
+        Graphormer_model, optimizer, batch_time = runner.other(train_dataloader,testset_loader, end, epoch, logger, data_len, len_total, count, pck, best_loss, writer, phase)
         
     return Graphormer_model, optimizer, batch_time
 
-def valid(args, test_dataloader, Graphormer_model, epoch, count, best_loss,  data_len ,logger, writer, batch_time, len_total, pck):
+def valid(args, train_dataloader, test_dataloader, Graphormer_model, epoch, count, best_loss,  data_len ,logger, writer, batch_time, len_total, pck):
     end = time.time()
     phase = 'VALID'
     runner = Runner(args, Graphormer_model, epoch, test_dataloader, phase, batch_time)
     
     if args.model == "ours":
-        loss, count, pck, batch_time = runner.our(test_dataloader, end, epoch, logger, data_len, len_total, count, pck, best_loss, writer, phase)
+        loss, count, pck, batch_time = runner.our(train_dataloader, test_dataloader, end, epoch, logger, data_len, len_total, count, pck, best_loss, writer, phase)
     else:
-       loss, count, pck, batch_time = runner.other(test_dataloader, end, epoch, logger, data_len, len_total, count, pck, best_loss, writer, phase)
+       loss, count, pck, batch_time = runner.other(train_dataloader, test_dataloader, end, epoch, logger, data_len, len_total, count, pck, best_loss, writer, phase)
        
     return loss, count, pck, batch_time
 

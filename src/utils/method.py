@@ -86,10 +86,10 @@ class Runner(object):
             self.bar.suffix = self.bar.suffix +'\n'
         self.bar.next()
     
-    def our(self, dataloader, end, epoch, logger, data_len, len_total, count, pck, best_loss, writer, phase = 'train'):
+    def our(self, dataloader_t, dataloader_v, end, epoch, logger, data_len, len_total, count, pck, best_loss, writer, phase = 'TRAIN'):
         if phase == 'TRAIN':
             self.model.train()
-            for iteration, (images, gt_2d_joints, _, gt_3d_joints) in enumerate(dataloader):
+            for iteration, (images, gt_2d_joints, _, gt_3d_joints) in enumerate(dataloader_t):
                 batch_size = images.size(0)
                 adjust_learning_rate(self.optimizer, self.epoch, self.args)  
                 gt_2d_joints[:,:,1] = gt_2d_joints[:,:,1] / images.size(2) ## You Have to check whether weight and height is correct dimenstion
@@ -141,7 +141,7 @@ class Runner(object):
                 gt_2d_joint[:,:,0] = gt_2d_joint[:,:,0] * images.size(3) 
                 
                 if not self.args.projection:
-                    if iteration == 0 or iteration == int(len(dataloader)/2) or iteration == len(dataloader) - 1:
+                    if iteration == 0 or iteration == int(len(dataloader_t)/2) or iteration == len(dataloader_t) - 1:
                         fig = plt.figure()
                         visualize_gt(images, gt_2d_joint, fig, iteration)
                         visualize_pred(images, pred_2d_joints, fig, 'train', self.epoch, iteration, self.args, None)
@@ -151,8 +151,10 @@ class Runner(object):
                 end = time.time()
                 eta_seconds = self.batch_time.avg * ((len_total - iteration) + (self.args.epoch - epoch -1) * len_total)  
 
-                self.train_log(dataloader, logger, data_len, iteration, count, pck , best_loss, eta_seconds, end, epoch)
-                if iteration == len(dataloader) - 1:
+                self.train_log(dataloader_t, logger, data_len, iteration, count, pck , best_loss, eta_seconds, end, epoch)
+                if iteration % 1000 == 990:
+                    valid_our(self.args, self.model, dataloader_v, self.criterion_keypoints, writer, iteration)
+                if iteration == len(dataloader_t) - 1:
                     writer.add_scalar("Loss/train", self.log_losses.avg, epoch)
 
             return self.model, self.optimizer, self.batch_time
@@ -160,7 +162,7 @@ class Runner(object):
         else:
             self.model.eval()
             with torch.no_grad():
-                for iteration, (images, gt_2d_joints, _, gt_3d_joints) in enumerate(dataloader):
+                for iteration, (images, gt_2d_joints, _, gt_3d_joints) in enumerate(dataloader_v):
                     batch_size = images.size(0)
                     
                     images = images.cuda()
@@ -169,7 +171,7 @@ class Runner(object):
 
                     if self.args.projection: 
                         pred_2d_joints, pred_3d_joints= self.model(images)
-                        pck, _ = PCK_3d_loss(pred_3d_joints, gt_3d_joints, T= 10)
+                        pck, _ = PCK_3d_loss(pred_3d_joints, gt_3d_joints, T= 0.1)
                         loss = reconstruction_error(np.array(pred_3d_joints.detach().cpu()), np.array(gt_3d_joints.detach().cpu()))
                         
                     else: 
@@ -186,7 +188,7 @@ class Runner(object):
                     self.log_losses.update(loss.item(), batch_size)
                     
                     if not self.args.projection:
-                        if iteration == 0 or iteration == int(len(dataloader)/2) or iteration == len(dataloader) - 1:
+                        if iteration == 0 or iteration == int(len(dataloader_v)/2) or iteration == len(dataloader_v) - 1:
                             fig = plt.figure()
                             visualize_gt(images, gt_2d_joint, fig, iteration)
                             visualize_pred(images, pred_2d_joints, fig, 'test', epoch, iteration, self.args,None)
@@ -194,22 +196,22 @@ class Runner(object):
                             
                     self.batch_time.update(time.time() - end)
                     end = time.time()
-                    eta_seconds = self.batch_time.avg * ((len(dataloader) - iteration) + (self.args.epoch - epoch -1) *len_total)
+                    eta_seconds = self.batch_time.avg * ((len(dataloader_v) - iteration) + (self.args.epoch - epoch -1) *len_total)
 
-                    self.test_log(dataloader, logger, iteration, count, best_loss, eta_seconds, end, epoch, pck)
-                    if iteration == len(dataloader) - 1:
+                    self.test_log(dataloader_v, logger, iteration, count, best_loss, eta_seconds, end, epoch, pck)
+                    if iteration == len(dataloader_v) - 1:
                         writer.add_scalar("Loss/valid", self.log_losses.avg, epoch)
 
                 return self.log_losses.avg, count, self.pck_losses.avg * 100, self.batch_time
 
             
                 
-    def other(self, dataloader, end, epoch, logger, data_len, len_total, count, pck, best_loss, writer, phase = 'train'):
+    def other(self, dataloader_t, dataloader_v, end, epoch, logger, data_len, len_total, count, pck, best_loss, writer, phase = 'VALID'):
         heatmap_size, multiply = 64, 4
         if self.args.model == "hrnet": heatmap_size, multiply = 128, 2
         if phase == "TRAIN":
             self.model.train()
-            for iteration, (images, gt_2d_joints, gt_heatmaps, _) in enumerate(dataloader):
+            for iteration, (images, gt_2d_joints, gt_heatmaps, _) in enumerate(dataloader_t):
                 batch_size = images.size(0)
                 adjust_learning_rate(self.optimizer, epoch, self.args)
                 images = images.cuda()
@@ -240,7 +242,7 @@ class Runner(object):
                 self.optimizer.step()
 
                 if not self.args.projection:
-                    if iteration == 0 or iteration == int(len(dataloader)/2) or iteration == len(dataloader) - 1:
+                    if iteration == 0 or iteration == int(len(dataloader_t)/2) or iteration == len(dataloader_t) - 1:
                         fig = plt.figure()
                         visualize_gt(images, gt_2d_joints, fig, iteration)
                         visualize_pred(images, pred_joint, fig, 'train', epoch, iteration, self.args,None)
@@ -250,14 +252,14 @@ class Runner(object):
                 end = time.time()
                 eta_seconds = self.batch_time.avg * ((len_total - iteration) + (self.args.epoch - epoch -1) * len_total)  
 
-                self.train_log(dataloader, logger, data_len, iteration, count, pck , best_loss, eta_seconds, end, epoch)
-                if iteration == len(dataloader) - 1:
+                self.train_log(dataloader_t, logger, data_len, iteration, count, pck , best_loss, eta_seconds, end, epoch)
+                if iteration == len(dataloader_t) - 1:
                     writer.add_scalar("Loss/train", self.log_losses.avg, epoch)
             return self.model, self.optimizer, self.batch_time
 
         else:
             self.model.eval()
-            for iteration, (images, gt_2d_joints, gt_heatmaps, _) in enumerate(dataloader):
+            for iteration, (images, gt_2d_joints, gt_heatmaps, _) in enumerate(dataloader_v):
                 batch_size = images.size(0)
                 images = images.cuda()
                 gt_2d_joint = gt_2d_joints.cuda()
@@ -287,7 +289,7 @@ class Runner(object):
                 self.epe_losses.update_p(epe_loss[0], epe_loss[1])
                 
                 if not self.args.projection:
-                    if iteration == 0 or iteration == int(len(dataloader)/2) or iteration == len(dataloader) - 1:
+                    if iteration == 0 or iteration == int(len(dataloader_v)/2) or iteration == len(dataloader_v) - 1:
                         fig = plt.figure()
                         visualize_gt(images, gt_2d_joints, fig, iteration)
                         visualize_pred(images, pred_2d_joints, fig, 'test', epoch, iteration, self.args, None)
@@ -297,8 +299,38 @@ class Runner(object):
                 end = time.time()
                 eta_seconds = self.batch_time.avg * ((len_total - iteration) + (self.args.epoch - epoch -1) * len_total)  
 
-                self.test_log(dataloader, logger, iteration, count, best_loss, eta_seconds, end, epoch, pck)
-                if iteration == len(dataloader) - 1:
+                self.test_log(dataloader_v, logger, iteration, count, best_loss, eta_seconds, end, epoch, pck)
+                if iteration == len(dataloader_v) - 1:
                     writer.add_scalar("Loss/valid", self.log_losses.avg, epoch)
                     
             return self.log_losses.avg, count, self.pck_losses.avg * 100, self.batch_time 
+        
+        
+        
+def valid_our(args, model, dataloader, criterion_keypoints, writer, iter):
+    model.eval()
+    log_losses = AverageMeter()
+    with torch.no_grad():
+        for iteration, (images, gt_2d_joints, _, gt_3d_joints) in enumerate(dataloader):
+            batch_size = images.size(0)
+            
+            images = images.cuda()
+            gt_2d_joint = gt_2d_joints.cuda()
+            gt_3d_joints = torch.tensor(gt_3d_joints).cuda()
+
+            if args.projection: 
+                pred_2d_joints, pred_3d_joints= model(images)
+                pck, _ = PCK_3d_loss(pred_3d_joints, gt_3d_joints, T= 0.1)
+                loss = reconstruction_error(np.array(pred_3d_joints.detach().cpu()), np.array(gt_3d_joints.detach().cpu()))
+                
+            else: 
+                pred_2d_joints= model(images); pred_3d_joints = torch.zeros([pred_2d_joints.size()[0], pred_2d_joints.size()[1], 3]).cuda(); .args.loss_3d = 0
+                pred_2d_joints[:,:,1] = pred_2d_joints[:,:,1] * images.size(2) ## You Have to check whether weight and height is correct dimenstion
+                pred_2d_joints[:,:,0] = pred_2d_joints[:,:,0] * images.size(3)
+                pck = PCK_2d_loss_visible(pred_2d_joints, gt_2d_joint, T= 0.05, threshold = 'proportion')
+                loss = keypoint_2d_loss(criterion_keypoints, pred_2d_joints, gt_2d_joint)
+
+            log_losses.update(loss.item(), batch_size)
+            if iteration == len(dataloader) - 1:
+                writer.add_scalar("Loss/iter", log_losses.avg, iter)
+
