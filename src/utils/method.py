@@ -324,7 +324,7 @@ def valid_our(args, model, dataloader, criterion_keypoints, writer, iter):
                 loss = reconstruction_error(np.array(pred_3d_joints.detach().cpu()), np.array(gt_3d_joints.detach().cpu()))
                 
             else: 
-                pred_2d_joints= model(images); pred_3d_joints = torch.zeros([pred_2d_joints.size()[0], pred_2d_joints.size()[1], 3]).cuda(); .args.loss_3d = 0
+                pred_2d_joints= model(images); pred_3d_joints = torch.zeros([pred_2d_joints.size()[0], pred_2d_joints.size()[1], 3]).cuda(); args.loss_3d = 0
                 pred_2d_joints[:,:,1] = pred_2d_joints[:,:,1] * images.size(2) ## You Have to check whether weight and height is correct dimenstion
                 pred_2d_joints[:,:,0] = pred_2d_joints[:,:,0] * images.size(3)
                 pck = PCK_2d_loss_visible(pred_2d_joints, gt_2d_joint, T= 0.05, threshold = 'proportion')
