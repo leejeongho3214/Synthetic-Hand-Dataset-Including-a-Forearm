@@ -100,14 +100,8 @@ class Runner(object):
             self.bar.suffix = self.bar.suffix +'\n'
         self.bar.next()
     
-<<<<<<< HEAD
-    def our(self, dataloader_t, dataloader_v, end, epoch, logger, data_len, len_total, count, pck, best_loss, writer, phase = 'TRAIN'):
-        iter_loss = np.inf
-        if phase == 'TRAIN':
-=======
     def our(self, end):
         if self.phase == 'TRAIN':
->>>>>>> 319286e91a6a276aa458823ad72d26ae43b8ef05
             self.model.train()
             for iteration, (images, gt_2d_joints, _, gt_3d_joints) in enumerate(self.train_loader):
                 batch_size = images.size(0)
@@ -171,20 +165,12 @@ class Runner(object):
                 end = time.time()
                 eta_seconds = self.batch_time.avg * ((self.len_total - iteration) + (self.args.epoch - self.epoch -1) * self.len_total)  
 
-<<<<<<< HEAD
-                self.train_log(dataloader_t, logger, data_len, iteration, count, pck , best_loss, eta_seconds, end, epoch)
-                if iteration % 130000 == 129999:
-                    iter_loss = valid_our(self.args, self.model, dataloader_v, self.criterion_keypoints, writer, iteration, self.epoch, iter_loss)
+                self.train_log(iteration,  pck ,  eta_seconds, end)
+                # if iteration % 130000 == 129999:
+                iter_loss = valid_our(self.args, self.model,  self.criterion_keypoints, iteration, self.epoch, iter_loss)
                     
-                if iteration == len(dataloader_t) - 1:
-                    writer.add_scalar("Loss/train", self.log_losses.avg, epoch)
-=======
-                self.train_log(iteration, eta_seconds, end)
-                if iteration % 1000 == 990:
-                    valid_our(self.args, self.model, self.valid_loader, self.criterion_keypoints, self.writer, iteration)
                 if iteration == len(self.train_loader) - 1:
                     self.writer.add_scalar("Loss/train", self.log_losses.avg, self.epoch)
->>>>>>> 319286e91a6a276aa458823ad72d26ae43b8ef05
 
             return self.model, self.optimizer, self.batch_time
             
