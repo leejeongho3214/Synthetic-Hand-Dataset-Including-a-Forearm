@@ -1121,7 +1121,7 @@ class Frei(torch.utils.data.Dataset):
         else:
             heatmap = GenerateHeatmap(64, 21)(joint_2d/4)
 
-        return trans_image, joint_2d, heatmap, 
+        return trans_image, joint_2d, heatmap, anno_xyz
     
 # def main():
 #     path = "../../../../../../data1/1231"
