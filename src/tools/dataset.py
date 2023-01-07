@@ -149,8 +149,10 @@ def build_dataset(args):
 
         trainset_dataset = make_hand_data_loader(
             args, args.train_yaml, False, is_train=True, scale_factor=args.img_scale_factor)  # RGB image
+        
         testset_dataset = make_hand_data_loader(
             args, args.val_yaml, False, is_train=False, scale_factor=args.img_scale_factor)
+
 
                     
         return trainset_dataset, testset_dataset
@@ -481,6 +483,7 @@ class AverageMeter(object):
 
 
 def save_checkpoint(model, args, epoch, optimizer, best_loss, count, ment, num_trial=10, logger=None):
+    if ment == 'iter': ment = os.path.join(ment, f'{epoch}')
     checkpoint_dir = op.join(args.output_dir, 'checkpoint-{}'.format(
         ment))
     if not is_main_process():

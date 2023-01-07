@@ -1,4 +1,5 @@
 import torch
+from src.tools.dataset import save_checkpoint
 from src.utils.loss import adjust_learning_rate
 import numpy as np
 import time 
@@ -101,6 +102,8 @@ class Runner(object):
         self.bar.next()
     
     def our(self, end):
+        unit_i = 1300000/ self.args.batch_size
+        iter_loss = np.inf
         if self.phase == 'TRAIN':
             self.model.train()
             for iteration, (images, gt_2d_joints, _, gt_3d_joints) in enumerate(self.train_loader):
@@ -165,13 +168,13 @@ class Runner(object):
                 end = time.time()
                 eta_seconds = self.batch_time.avg * ((self.len_total - iteration) + (self.args.epoch - self.epoch -1) * self.len_total)  
 
-                self.train_log(iteration,  pck ,  eta_seconds, end)
-                # if iteration % 130000 == 129999:
-                iter_loss = valid_our(self.args, self.model,  self.criterion_keypoints, iteration, self.epoch, iter_loss)
+                self.train_log(iteration, eta_seconds, end)
+                if iteration % unit_i == unit_i - 1:
+                    iter_loss = valid_our(self.args, self.valid_loader, self.model,  self.criterion_keypoints, iteration, self.epoch, iter_loss, self.writer, self.optimizer, self.logger)
                     
                 if iteration == len(self.train_loader) - 1:
                     self.writer.add_scalar("Loss/train", self.log_losses.avg, self.epoch)
-
+                    
             return self.model, self.optimizer, self.batch_time
             
         else:
@@ -182,7 +185,7 @@ class Runner(object):
                     
                     images = images.cuda()
                     gt_2d_joint = gt_2d_joints.cuda()
-                    gt_3d_joints = torch.tensor(gt_3d_joints).cuda()
+                    gt_3d_joints = gt_3d_joints.cuda()
 
                     if self.args.projection: 
                         pred_2d_joints, pred_3d_joints= self.model(images)
@@ -321,7 +324,7 @@ class Runner(object):
         
         
         
-def valid_our(args, model, dataloader, criterion_keypoints, writer, iter, epoch, iter_loss):
+def valid_our(args,dataloader, model, criterion_keypoints, iter, epoch, iter_loss, writer, optimizer, logger):
     model.eval()
     log_losses = AverageMeter()
     with torch.no_grad():
@@ -330,7 +333,7 @@ def valid_our(args, model, dataloader, criterion_keypoints, writer, iter, epoch,
             
             images = images.cuda()
             gt_2d_joint = gt_2d_joints.cuda()
-            gt_3d_joints = torch.tensor(gt_3d_joints).cuda()
+            gt_3d_joints = gt_3d_joints.cuda()
 
             if args.projection: 
                 pred_2d_joints, pred_3d_joints= model(images)
@@ -348,6 +351,8 @@ def valid_our(args, model, dataloader, criterion_keypoints, writer, iter, epoch,
                 writer.add_scalar(f"Loss/{epoch}_epoch/iter", log_losses.avg, iter)
                 
         loss = float(log_losses.avg)
-        if loss < iter_loss: iter_loss = loss
+        if loss < iter_loss: 
+            iter_loss = loss
+            save_checkpoint(model, args, epoch, optimizer, iter_loss, None,  'iter', logger=logger)
     return iter_loss
 
