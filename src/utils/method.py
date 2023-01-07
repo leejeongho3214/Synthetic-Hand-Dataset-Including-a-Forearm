@@ -87,6 +87,7 @@ class Runner(object):
         self.bar.next()
     
     def our(self, dataloader_t, dataloader_v, end, epoch, logger, data_len, len_total, count, pck, best_loss, writer, phase = 'TRAIN'):
+        iter_loss = np.inf
         if phase == 'TRAIN':
             self.model.train()
             for iteration, (images, gt_2d_joints, _, gt_3d_joints) in enumerate(dataloader_t):
@@ -152,8 +153,9 @@ class Runner(object):
                 eta_seconds = self.batch_time.avg * ((len_total - iteration) + (self.args.epoch - epoch -1) * len_total)  
 
                 self.train_log(dataloader_t, logger, data_len, iteration, count, pck , best_loss, eta_seconds, end, epoch)
-                if iteration % 1000 == 990:
-                    valid_our(self.args, self.model, dataloader_v, self.criterion_keypoints, writer, iteration)
+                if iteration % 130000 == 129999:
+                    iter_loss = valid_our(self.args, self.model, dataloader_v, self.criterion_keypoints, writer, iteration, self.epoch, iter_loss)
+                    
                 if iteration == len(dataloader_t) - 1:
                     writer.add_scalar("Loss/train", self.log_losses.avg, epoch)
 
@@ -307,7 +309,7 @@ class Runner(object):
         
         
         
-def valid_our(args, model, dataloader, criterion_keypoints, writer, iter):
+def valid_our(args, model, dataloader, criterion_keypoints, writer, iter, epoch, iter_loss):
     model.eval()
     log_losses = AverageMeter()
     with torch.no_grad():
@@ -320,17 +322,20 @@ def valid_our(args, model, dataloader, criterion_keypoints, writer, iter):
 
             if args.projection: 
                 pred_2d_joints, pred_3d_joints= model(images)
-                pck, _ = PCK_3d_loss(pred_3d_joints, gt_3d_joints, T= 0.1)
+                # pck, _ = PCK_3d_loss(pred_3d_joints, gt_3d_joints, T= 0.1)
                 loss = reconstruction_error(np.array(pred_3d_joints.detach().cpu()), np.array(gt_3d_joints.detach().cpu()))
                 
             else: 
                 pred_2d_joints= model(images); pred_3d_joints = torch.zeros([pred_2d_joints.size()[0], pred_2d_joints.size()[1], 3]).cuda(); args.loss_3d = 0
                 pred_2d_joints[:,:,1] = pred_2d_joints[:,:,1] * images.size(2) ## You Have to check whether weight and height is correct dimenstion
                 pred_2d_joints[:,:,0] = pred_2d_joints[:,:,0] * images.size(3)
-                pck = PCK_2d_loss_visible(pred_2d_joints, gt_2d_joint, T= 0.05, threshold = 'proportion')
+                # pck = PCK_2d_loss_visible(pred_2d_joints, gt_2d_joint, T= 0.05, threshold = 'proportion')
                 loss = keypoint_2d_loss(criterion_keypoints, pred_2d_joints, gt_2d_joint)
-
             log_losses.update(loss.item(), batch_size)
             if iteration == len(dataloader) - 1:
-                writer.add_scalar("Loss/iter", log_losses.avg, iter)
+                writer.add_scalar(f"Loss/{epoch}_epoch/iter", log_losses.avg, iter)
+                
+        loss = float(log_losses.avg)
+        if loss < iter_loss: iter_loss = loss
+    return iter_loss
 
