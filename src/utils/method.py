@@ -39,10 +39,13 @@ class Runner(object):
         self.log_3d_re_losses = AverageMeter()
         self.pck_losses = AverageMeter()
         self.epe_losses = AverageMeter()
+        self.type = "3D" if self.args.projection else "2D"
         
     def train_log(self, iteration, eta_seconds, end):
         tt = ' '.join(ctime(eta_seconds + end).split(' ')[1:-1])
+            
         if iteration % self.args.logging_steps == 0:
+
             self.logger.debug( 
                          ' '.join(
                             ['dataset_length: {len}', 'epoch: {ep}', 'iter: {iter}', '/{maxi}, count: {count}/{max_count}']
@@ -58,14 +61,15 @@ class Runner(object):
         
         self.bar.suffix = ('({iteration}/{data_loader}) '
                            'name: {name} | '
-                           'loss: {total:.8f} | '
-                           'max_epoch: {epoch} | '
-                           'type: {d_type} | '
                            'count: {count} | '
-                           'best_pck: {pck:.2f} | '
-                           'exp: {exp}'
+                           'loss: {total:.6f}'
+                        #    'max_epoch: {epoch} | '
+                        #    'type: {d_type} | '
+
+                        #    'best_pck: {pck:.2f} | '
+                        #    'exp: {exp}'
                            ).format(name= self.args.name.split('/')[-1], count = self.count, max_count = self.args.count, iteration = iteration, exp = tt,
-                                    epoch = self.args.epoch, data_loader = len(self.now_loader), total = self.log_losses.avg, pck = self.pck, d_type = "3D" if self.args.projection else "2D")
+                                    epoch = self.args.epoch, data_loader = len(self.now_loader), total = self.log_losses.avg, pck = self.pck, d_type = self.type)
 
         self.bar.next()
         
@@ -88,18 +92,20 @@ class Runner(object):
 
         self.bar.suffix = ('({iteration}/{data_loader}) '
                            'name: {name} | '
-                           'loss: {total:.8f} | '
-                           'max_epoch: {epoch} | '
-                           'type: {d_type} | '
-                           'count: {count} | '
-                           'pck: {now_pck:.2f} | '
-                           'best_pck: {pck:.2f} | '
-                           'exp: {exp}'
+                           'loss: {total:.6f} | '
+                            'count: {count} | '
+                        #    'max_epoch: {epoch} | '
+                        #    'type: {d_type} | '
+
+                           'pck: {now_pck:.2f}'
+                        #    'best_pck: {pck:.2f} | '
+                        #    'exp: {exp}'
                            ).format(name= self.args.name.split('/')[-1], count = self.count, max_count = self.args.count, iteration = iteration, exp = tt,
-                                    epoch=self.args.epoch, data_loader = len(self.now_loader), total = self.log_losses.avg,now_pck = self.pck_losses.avg * 100 ,pck = self.pck * 100, d_type = "3D" if self.args.projection else "2D")
+                                    epoch=self.args.epoch, data_loader = len(self.now_loader), total = self.log_losses.avg,now_pck = self.pck_losses.avg * 100 ,pck = self.pck * 100, d_type = self.type)
         if iteration == len(self.now_loader) - 1:
             self.bar.suffix = self.bar.suffix +'\n'
         self.bar.next()
+    
     
     def our(self, end):
         if self.phase == 'TRAIN':
@@ -117,11 +123,6 @@ class Runner(object):
                 for i in range(20):
                     gt_3d_mid_joints[:, i, :] =  (gt_3d_joints[:, i + 1, :] + gt_3d_joints[:, parents[i + 1], :]) / 2
                 
-                if self.args.scale:
-                    scale = ((gt_3d_joints[:, 10,:] - gt_3d_joints[:, 9, :])**2).sum(-1).sqrt()
-                    for i in range(batch_size):
-                        gt_3d_joints[i] = gt_3d_joints[i]/scale[i]
-
                 images = images.cuda()
                 
                 if self.args.projection: pred_2d_joints, pred_3d_joints= self.model(images)
@@ -132,9 +133,9 @@ class Runner(object):
                     pred_3d_mid_joints[:, i, :] =  (pred_3d_joints[:, i + 1, :] + pred_3d_joints[:, parents[i + 1], :]) / 2
                 
                 loss_2d = keypoint_2d_loss(self.criterion_keypoints, pred_2d_joints, gt_2d_joint)
-                loss_3d = keypoint_3d_loss(self.criterion_keypoints, pred_3d_mid_joints, gt_3d_mid_joints)
+                loss_3d_mid = keypoint_3d_loss(self.criterion_keypoints, pred_3d_mid_joints, gt_3d_mid_joints)
                 loss_3d_re = reconstruction_error(np.array(pred_3d_joints.detach().cpu()), np.array(gt_3d_joints.detach().cpu()))
-                loss_3d_mid = keypoint_3d_loss(self.criterion_keypoints, pred_3d_joints, gt_3d_joints)
+                loss_3d = keypoint_3d_loss(self.criterion_keypoints, pred_3d_joints, gt_3d_joints)
                 
                 if self.args.projection:
                     loss = self.args.loss_2d * loss_2d + self.args.loss_3d * loss_3d + self.args.loss_3d_mid * loss_3d_mid
@@ -187,8 +188,9 @@ class Runner(object):
 
                     if self.args.projection: 
                         pred_2d_joints, pred_3d_joints= self.model(images)
-                        pck, _ = PCK_3d_loss(pred_3d_joints, gt_3d_joints, T= 0.1)
-                        loss = reconstruction_error(np.array(pred_3d_joints.detach().cpu()), np.array(gt_3d_joints.detach().cpu()))
+                        pck, _ = PCK_3d_loss(pred_3d_joints, gt_3d_joints, T= 0.01)
+                        loss = keypoint_3d_loss(self.criterion_keypoints, pred_3d_joints, gt_3d_joints)
+                        # loss = reconstruction_error(np.array(pred_3d_joints.detach().cpu()), np.array(gt_3d_joints.detach().cpu()))
                         
                     else: 
                         pred_2d_joints= self.model(images); pred_3d_joints = torch.zeros([pred_2d_joints.size()[0], pred_2d_joints.size()[1], 3]).cuda(); self.args.loss_3d = 0
@@ -196,21 +198,18 @@ class Runner(object):
                         pred_2d_joints[:,:,0] = pred_2d_joints[:,:,0] * images.size(3)
                         pck = PCK_2d_loss(pred_2d_joints, gt_2d_joint, T= 0.05, threshold = 'proportion')
                         loss = keypoint_2d_loss(self.criterion_keypoints, pred_2d_joints, gt_2d_joint)
-                        
-                    epe_loss, _ = EPE_train(pred_2d_joints, gt_2d_joint)  ## consider invisible joint
-
-                    self.pck_losses.update(pck, batch_size)
-                    self.epe_losses.update_p(epe_loss[0], epe_loss[1])
-                    self.log_losses.update(loss.item(), batch_size)
-                    
-                    if not self.args.projection:
+                        epe_loss, _ = EPE_train(pred_2d_joints, gt_2d_joint)  ## consider invisible joint
+                        self.epe_losses.update_p(epe_loss[0], epe_loss[1])
                         if iteration == 0 or iteration == int(len(self.valid_loader)/2) or iteration == len(self.valid_loader) - 1:
                             fig = plt.figure()
                             visualize_gt(images, gt_2d_joint, fig, iteration)
                             visualize_pred(images, pred_2d_joints, fig, 'test', self.epoch, iteration, self.args,None)
                             plt.close()
-                            
+                        
+                    self.pck_losses.update(pck, batch_size)
+                    self.log_losses.update(loss.item(), batch_size)
                     self.batch_time.update(time.time() - end)
+                    
                     end = time.time()
                     eta_seconds = self.batch_time.avg * ((len(self.valid_loader) - iteration) + (self.args.epoch - self.epoch -1) * self.len_total)
 

@@ -86,13 +86,12 @@ def setup_logger(name, save_dir, distributed_rank, filename="log.txt"):
     if distributed_rank > 0:
         return logger
     ch = logging.StreamHandler(stream=sys.stdout)
-    ch.terminator = ''
+    # ch.terminator = ''
     ch.setLevel(logging.INFO)
-    formatter = logging.Formatter('\r\033[95m'+"%(asctime)s\033[0m %(name)s %(levelname)s: %(message)s")
+    formatter = logging.Formatter('\r\033[95m'+"%(asctime)s\033[0m  %(message)s") ## Remove "%(name)s %(levelname)s:"
     ch.setFormatter(formatter)
     logger.propagate = False
     logger.addHandler(ch)
-
     if save_dir:
         fh = FileHandler(os.path.join(save_dir, filename))
         fh.setLevel(logging.DEBUG)
