@@ -29,7 +29,7 @@ def main(args, logger):
         d_type = "3D" if args.projection else "2D"
         for epoch in range(epo, args.epoch):
             if epoch == epo: 
-                logger.info( f"Path: {args.output_dir} | Count: {count}/{args.count} | Dataset_len: {len(train_dataset)} | Epoch: {args.epoch} | Type: {d_type}}")
+                logger.info( f"Path: {args.output_dir} | Count: {count}/{args.count} | Dataset_len: {len(train_dataset)} | Epoch: {args.epoch} | Type: {d_type}")
             Graphormer_model, optimizer, batch_time, best_loss = train(args, trainset_loader, testset_loader, _model, epoch, best_loss, len(train_dataset),logger, count, writer, pck_l, len(trainset_loader)+len(testset_loader), batch_time)
             loss, count, pck, batch_time = valid(args, trainset_loader, testset_loader, Graphormer_model, epoch, count, best_loss, len(train_dataset), logger, writer, batch_time, len(trainset_loader)+len(testset_loader), pck_l)
             

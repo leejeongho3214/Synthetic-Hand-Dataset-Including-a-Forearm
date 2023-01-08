@@ -14,7 +14,8 @@
             "justMyCode": true,
             "cwd": "${fileDirname}",
             // "args": ["--dataset", "frei", "--model", "hrnet"]
-            "args": ["--general", "--projection"]
+            // "args": ["--general", "--projection"]
+            // "args": []
         }
     ]
 }

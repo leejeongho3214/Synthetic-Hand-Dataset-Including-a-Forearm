@@ -321,7 +321,7 @@ class val_set(CustomDataset):
         self.ratio_of_dataset = 1
         with open(os.path.join(self.path, "evaluation_data_update.json"), "r") as st_json:
             self.meta = json.load(st_json)
-        self.root = self.path
+        self.root = "/".join(self.path.split('/')[:-2]) +"/images/evaluation"
 
 class eval_set(Dataset):
     def __init__(self, args):

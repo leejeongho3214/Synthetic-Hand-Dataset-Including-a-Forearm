@@ -40,14 +40,14 @@ def visualize_pred(images, pred_2d_joint, fig, method = None, epoch = 0, iterati
         epoch_path = os.path.join(root, f"{epoch}_epoch")
         if iteration == 0 and epoch == 0:
             reset_folder(root)
-            reset_folder(root)
+            reset_folder("/".join(root.split('/')[:-1]) + "/test_image")
         if not os.path.isdir(epoch_path): mkdir(epoch_path)
-        plt.savefig(epoch_path)
+        plt.savefig(os.path.join(epoch_path, f'iter_{iteration}.jpg'))
 
     elif method == 'test':
-        root = f'{args.output_dir}/test_image/{epoch}_epoch'
-        epoch_path = os.path.join(root, f"{epoch}_epoch")
-        plt.savefig(epoch_path)
+        epoch_path = f'{args.output_dir}/test_image/{epoch}_epoch'
+        if not os.path.isdir(epoch_path): mkdir(epoch_path)
+        plt.savefig(os.path.join(epoch_path, f'iter_{iteration}.jpg'))
 
     else:
         assert False, "method is the wrong name"
