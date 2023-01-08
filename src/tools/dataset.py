@@ -1,7 +1,7 @@
 import sys
 from tqdm import tqdm
 import os
-from src.utils.dataset_other import Coco, Dataset_interhand, HIU_Dataset, Panoptic, Rhd, GenerateHeatmap
+from src.utils.dataset_other import Coco, Dataset_interhand, HIU_Dataset, Panoptic, Rhd, GenerateHeatmap, add_our
 from src.utils.miscellaneous import mkdir
 from src.utils.comm import is_main_process
 from src.datasets.build import make_hand_data_loader
@@ -38,155 +38,38 @@ def build_dataset(args):
         folder_num = [i for i in folder if i not in ["README.txt", "data.zip"]]
         
     if args.dataset == "interhand":
-
-        dataset = Dataset_interhand(transforms.ToTensor(), "train", args)
-        trainset_dataset, testset_dataset = random_split(
-            dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
-        
-        for iter, degree in enumerate(folder_num):
-            ratio  = ((len(trainset_dataset) + len(testset_dataset)) * args.ratio_of_other) / 373184
-            dataset = CustomDataset(args, degree, path, color=args.color,
-                                    ratio_of_aug=args.ratio_of_aug, ratio_of_dataset= ratio)
-
-            if iter == 0:
-                train_dataset, test_dataset = random_split(
-                    dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
-
-            else:
-                train_dataset_other, test_dataset_other = random_split(
-                    dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
-                train_dataset = ConcatDataset(
-                    [train_dataset, train_dataset_other])
-                test_dataset = ConcatDataset(
-                    [test_dataset, test_dataset_other])
-                    
-        trainset_dataset = ConcatDataset([train_dataset, trainset_dataset])
-        testset_dataset = ConcatDataset([test_dataset, testset_dataset])
-                    
+        dataset = Dataset_interhand(transforms.ToTensor(), "train", args)     
+        trainset_dataset, test_dataset = add_our(args, dataset, folder_num, path)
         return trainset_dataset, testset_dataset
 
     if args.dataset == "hiu":
 
         dataset = HIU_Dataset(args)
-        trainset_dataset, testset_dataset = random_split(
-            dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
-        
-        for iter, degree in enumerate(folder_num):
-            ratio  = ((len(trainset_dataset) + len(testset_dataset)) * args.ratio_of_other) / 373184
-            dataset = CustomDataset(args, degree, path, color=args.color,
-                                    ratio_of_aug=args.ratio_of_aug, ratio_of_dataset= ratio)
-
-            if iter == 0:
-                train_dataset, test_dataset = random_split(
-                    dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
-
-            else:
-                train_dataset_other, test_dataset_other = random_split(
-                    dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
-                train_dataset = ConcatDataset(
-                    [train_dataset, train_dataset_other])
-                test_dataset = ConcatDataset(
-                    [test_dataset, test_dataset_other])
-                    
-        trainset_dataset = ConcatDataset([train_dataset, trainset_dataset])
-        testset_dataset = ConcatDataset([test_dataset, testset_dataset])
-                    
+        trainset_dataset, test_dataset = add_our(args, dataset, folder_num, path)                 
         return trainset_dataset, testset_dataset
 
     if args.dataset == "panoptic":
 
         dataset = Panoptic(args)
-        trainset_dataset, testset_dataset = random_split(
-            dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
-        
-        for iter, degree in enumerate(folder_num):
-            ratio  = ((len(trainset_dataset) + len(testset_dataset)) * args.ratio_of_other) / 373184
-            dataset = CustomDataset(args, degree, path, color=args.color,
-                                    ratio_of_aug=args.ratio_of_aug, ratio_of_dataset= ratio)
-
-            if iter == 0:
-                train_dataset, test_dataset = random_split(
-                    dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
-
-            else:
-                train_dataset_other, test_dataset_other = random_split(
-                    dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
-                train_dataset = ConcatDataset(
-                    [train_dataset, train_dataset_other])
-                test_dataset = ConcatDataset(
-                    [test_dataset, test_dataset_other])
-                    
-        trainset_dataset = ConcatDataset([train_dataset, trainset_dataset])
-        testset_dataset = ConcatDataset([test_dataset, testset_dataset])
-                    
+        trainset_dataset, test_dataset = add_our(args, dataset, folder_num, path)                            
         return trainset_dataset, testset_dataset
 
     if args.dataset == "coco":
 
         dataset = Coco(args)
-        trainset_dataset, testset_dataset = random_split(
-            dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
-        
-        for iter, degree in enumerate(folder_num):
-            ratio  = ((len(trainset_dataset) + len(testset_dataset)) *args.ratio_of_other) / 373184
-            dataset = CustomDataset(args, degree, path, color=args.color,
-                                    ratio_of_aug=args.ratio_of_aug, ratio_of_dataset= ratio)
-
-            if iter == 0:
-                train_dataset, test_dataset = random_split(
-                    dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
-
-            else:
-                train_dataset_other, test_dataset_other = random_split(
-                    dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
-                train_dataset = ConcatDataset(
-                    [train_dataset, train_dataset_other])
-                test_dataset = ConcatDataset(
-                    [test_dataset, test_dataset_other])
-                    
-        trainset_dataset = ConcatDataset([train_dataset, trainset_dataset])
-        testset_dataset = ConcatDataset([test_dataset, testset_dataset])
-                    
+        trainset_dataset, test_dataset = add_our(args, dataset, folder_num, path)                    
         return trainset_dataset, testset_dataset
 
     if args.dataset == "frei":
-
         trainset_dataset = make_hand_data_loader(
             args, args.train_yaml, False, is_train=True, scale_factor=args.img_scale_factor)  # RGB image
-        
         testset_dataset = make_hand_data_loader(
-            args, args.val_yaml, False, is_train=False, scale_factor=args.img_scale_factor)
-
-
-                    
+            args, args.val_yaml, False, is_train=False, scale_factor=args.img_scale_factor)        
         return trainset_dataset, testset_dataset
 
     if args.dataset == "rhd":
-
         dataset = Rhd(args)
-        trainset_dataset, testset_dataset = random_split(
-            dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
-        
-        for iter, degree in enumerate(folder_num):
-            ratio  = ((len(trainset_dataset) + len(testset_dataset)) * args.ratio_of_other) / 373184
-            dataset = CustomDataset(args, degree, path, color=args.color,
-                                    ratio_of_aug=args.ratio_of_aug, ratio_of_dataset= ratio)
-
-            if iter == 0:
-                train_dataset, test_dataset = random_split(
-                    dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
-
-            else:
-                train_dataset_other, test_dataset_other = random_split(
-                    dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
-                train_dataset = ConcatDataset(
-                    [train_dataset, train_dataset_other])
-                test_dataset = ConcatDataset(
-                    [test_dataset, test_dataset_other])
-                    
-        trainset_dataset = ConcatDataset([train_dataset, trainset_dataset])
-        testset_dataset = ConcatDataset([test_dataset, testset_dataset])
-                    
+        trainset_dataset, test_dataset = add_our(args, dataset, folder_num, path)                 
         return trainset_dataset, testset_dataset
 
     else:
@@ -194,10 +77,15 @@ def build_dataset(args):
             eval_path = "/".join(path.split('/')[:-1]) + "/annotations/evaluation"
             test_dataset = val_set(args , 0, eval_path, args.color,
                                         args.ratio_of_aug, args.ratio_of_our)
+            
+            train_dataset = CustomDataset(args, degree, path, color=args.color,
+                                        ratio_of_aug=args.ratio_of_aug, ratio_of_dataset= args.ratio_of_our)
+                
+            
             for iter, degree in enumerate(folder_num):
 
                 if iter == 0 :
-                    train_dataset = CustomDataset(args, degree, path, color=args.color,
+                    train_dataset = CustomDataset(args, folder_num, path, color=args.color,
                                         ratio_of_aug=args.ratio_of_aug, ratio_of_dataset= args.ratio_of_our)
                 
                 else:
@@ -213,10 +101,10 @@ def build_dataset(args):
     return train_dataset, test_dataset
 
 class CustomDataset(Dataset):
-    def __init__(self, args, degree, path, color=False, ratio_of_aug=0.2, ratio_of_dataset=1):
+    def __init__(self, args, folder_num, path, color=False, ratio_of_aug=0.2, ratio_of_dataset=1):
         self.args = args
         self.color = color
-        self.degree = degree
+        self.degree = folder_num
         self.path = path
         self.ratio_of_aug = ratio_of_aug
         self.ratio_of_dataset = ratio_of_dataset
@@ -225,7 +113,7 @@ class CustomDataset(Dataset):
                 self.meta = json.load(st_json)
         except:
             self.meta = None
-        self.root = f'{self.path}/{self.degree}/images/train'
+        self.img_path = f'{self.path}/{self.degree}/images/train'
     
     def __len__(self):
         return int(len(self.meta['images']) * self.ratio_of_dataset)
@@ -234,7 +122,7 @@ class CustomDataset(Dataset):
         name = self.meta['images'][idx]['file_name']
         move = self.meta['images'][idx]['move']
         degrees = self.meta['images'][idx]['degree']
-        image = cv2.imread(os.path.join(self.root, name))  # PIL image
+        image = cv2.imread(os.path.join(self.img_path, name))  # PIL image
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
         if not self.args.model == "ours":
@@ -321,7 +209,7 @@ class val_set(CustomDataset):
         self.ratio_of_dataset = 1
         with open(os.path.join(self.path, "evaluation_data_update.json"), "r") as st_json:
             self.meta = json.load(st_json)
-        self.root = "/".join(self.path.split('/')[:-2]) +"/images/evaluation"
+        self.img_path = "/".join(self.path.split('/')[:-2]) +"/images/evaluation"
 
 class eval_set(Dataset):
     def __init__(self, args):

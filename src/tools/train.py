@@ -15,7 +15,6 @@ from dataset import *
 
 def main(args, logger):
 
-
     train_dataset, test_dataset = build_dataset(args)
 
     trainset_loader = data.DataLoader(dataset=train_dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True)

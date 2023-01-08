@@ -10,6 +10,8 @@ from PIL import Image
 from torchvision import transforms
 import torch
 import os.path as op
+from torch.utils.data import random_split, ConcatDataset
+from src.tools.dataset import CustomDataset
 
 class GenerateHeatmap():
     def __init__(self, output_res, num_parts):
@@ -505,3 +507,29 @@ class Coco(Dataset):
         img = trans(img)
 
         return img, joint.float(), heatmap, torch.ones(21, 3)
+    
+def add_our(args, dataset, folder_num, path):
+    trainset_dataset, testset_dataset = random_split(
+        dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
+    
+    for iter, degree in enumerate(folder_num):
+        ratio  = ((len(trainset_dataset) + len(testset_dataset)) * args.ratio_of_other) / 373184
+        dataset = CustomDataset(args, degree, path, color=args.color,
+                                ratio_of_aug=args.ratio_of_aug, ratio_of_dataset= ratio)
+
+        if iter == 0:
+            train_dataset, test_dataset = random_split(
+                dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
+
+        else:
+            train_dataset_other, test_dataset_other = random_split(
+                dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
+            train_dataset = ConcatDataset(
+                [train_dataset, train_dataset_other])
+            test_dataset = ConcatDataset(
+                [test_dataset, test_dataset_other])
+                
+    trainset_dataset = ConcatDataset([train_dataset, trainset_dataset])
+    testset_dataset = ConcatDataset([test_dataset, testset_dataset])
+    
+    return trainset_dataset, test_dataset
