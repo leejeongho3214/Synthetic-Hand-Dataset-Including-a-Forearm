@@ -1,5 +1,6 @@
 import sys
 from pycocotools.coco import COCO
+from tqdm import tqdm
 sys.path.append("/home/jeongho/tmp/Wearable_Pose_Model")
 from src.utils.preprocessing import load_skeleton, process_bbox
 from src.utils.miscellaneous import mkdir
@@ -23,15 +24,14 @@ import torch
 def build_dataset(args):
 
     if args.eval:
-        test_dataset = Our_testset_new(args)
+        test_dataset = eval_set(args)
         return test_dataset, test_dataset
    
-    path = "../../../../../../data1/1231"
-    # if not os.path.isdir(path):
-    #     path = "../../datasets/synthetic_wrist"  # wrist-view image path (about 37K)
-    general_path = "../../../../../../data1/" # general-view image path (about 80K)
-    folder = os.listdir(path)
-    folder_num = [i for i in folder if i not in ["README.txt", "data.zip"]]
+    path = "../../../../../../data1/ArmoHand/training"
+    general_path = "../../../../../../data1/general_2M" # general-view image path (about 80K)
+    if not args.general:
+        folder = os.listdir(path)
+        folder_num = [i for i in folder if i not in ["README.txt", "data.zip"]]
         
     if args.dataset == "interhand":
 
@@ -187,7 +187,8 @@ def build_dataset(args):
 
     else:
         if not args.general:
-            test_dataset = Our_testset_new(args)
+            test_dataset = val_set(args = args, degree = 0, path ='../../../../../../data1/ArmoHand/training', color=args.color,
+                                        ratio_of_aug=args.ratio_of_aug, ratio_of_dataset= args.ratio_of_our)
             for iter, degree in enumerate(folder_num):
 
                 if iter == 0 :
@@ -283,10 +284,15 @@ class Json_transform(Dataset):
             self.joint = json.load(st_json)
         with open(f"{path}/{degree}/annotations/train/CISLAB_train_data.json", "r") as st_json:
             self.meta = json.load(st_json)
+        self.root = f'{self.path}/{self.degree}/images/train'
+        self.store_path = f'{self.path}/{self.degree}/annotations/train/CISLAB_train_data_update.json'
 
+    def get_json(self):
         meta_list = self.meta['images'].copy()
         index = []
+        pbar = tqdm(total = len(meta_list))
         for idx, j in enumerate(meta_list):
+            pbar.update(1)
             if j['camera'] == '0':
                 index.append(idx)
                 continue
@@ -295,13 +301,12 @@ class Json_transform(Dataset):
             id = self.meta['images'][idx]['frame_idx']
 
             joint = torch.tensor(self.joint['0'][f'{id}']['world_coord'][:21])
-            # only one scalar (later u need x,y focal_length)
             focal_length = self.camera['0']['focal'][f'{camera}'][0]
             translation = self.camera['0']['campos'][f'{camera}']
             rot = self.camera['0']['camrot'][f'{camera}']
             flag = False
             name = j['file_name']
-            ori_image = cv2.imread(f'{path}/{self.degree}/images/train/{name}')
+            ori_image = cv2.imread(os.path.join(self.root, name))
             ori_image = cv2.cvtColor(ori_image, cv2.COLOR_BGR2RGB)
 
             degrees = random.uniform(-20, 20)
@@ -372,33 +377,15 @@ class Json_transform(Dataset):
             del self.meta['images'][w-count]
             count += 1
 
-        with open(f"{path}/{degree}/annotations/train/CISLAB_train_data_update.json", 'w') as f:
+        with open(self.store_path, 'w') as f:
             json.dump(self.meta, f)
 
         print(
-            f"Done ===> {path}/{degree}/annotations/train/CISLAB_train_data_update.json")
-        # assert False, "finish"
-
-    def __len__(self):
-        return len(self.meta['images'])
-
-    def __getitem__(self, idx):
-
-        trans = transforms.Compose([transforms.Resize((224, 224)),
-                                    transforms.ToTensor(),
-                                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
-        image = np.array(self.meta['images'][idx]['image'])
-        image = trans(image)
-        joint_2d = self.meta['images'][idx]['joint_2d']
-        joint_3d = self.meta['images'][idx]['joint_3d']
-
-        return image, joint_2d, joint_3d
-
+            f"Done ===> {self.store_path}")
 
 class CustomDataset(Dataset):
-    def __init__(self, args, degree, path, rotation=False, color=False, ratio_of_aug=0.2, ratio_of_dataset=1):
+    def __init__(self, args, degree, path,color=False, ratio_of_aug=0.2, ratio_of_dataset=1):
         self.args = args
-        self.rotation = rotation
         self.color = color
         self.degree = degree
         self.path = path
@@ -406,6 +393,7 @@ class CustomDataset(Dataset):
         self.ratio_of_dataset = ratio_of_dataset
         with open(f"{path}/{degree}/annotations/train/CISLAB_train_data_update.json", "r") as st_json:
             self.meta = json.load(st_json)
+        self.root = f'{self.path}/{self.degree}/images/train'
 
     def __len__(self):
         return int(len(self.meta['images']) * self.ratio_of_dataset)
@@ -415,8 +403,7 @@ class CustomDataset(Dataset):
         name = self.meta['images'][idx]['file_name']
         move = self.meta['images'][idx]['move']
         degrees = self.meta['images'][idx]['degree']
-        image = cv2.imread(
-            f'{self.path}/{self.degree}/images/train/{name}')  # PIL image
+        image = cv2.imread(os.path.join(self.root, name))  # PIL image
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
         if not self.args.model == "ours":
@@ -440,7 +427,6 @@ class CustomDataset(Dataset):
         
         if idx < len(self.meta['images']) * self.ratio_of_aug:
 
-            # if self.rotation:
             trans = transforms.Compose([trans_option[i] for i in trans_option])
 
             
@@ -483,7 +469,7 @@ class AverageMeter(object):
 
 
 def save_checkpoint(model, args, epoch, optimizer, best_loss, count, ment, num_trial=10, logger=None):
-    if ment == 'iter': ment = os.path.join(ment, f'{epoch}')
+
     checkpoint_dir = op.join(args.output_dir, 'checkpoint-{}'.format(
         ment))
     if not is_main_process():
@@ -559,64 +545,16 @@ class HIU_Dataset(Dataset):
 
         return trans_image, joint_2d, heatmap, torch.ones(21, 3)
 
+class val_set(CustomDataset):
+    def __init__(self,  **kwargs):
+        super().__init__(**kwargs)
+        self.ratio_of_aug = 0
+        self.ratio_of_dataset = 1
+        with open(f"../../../../../../data1/ArmoHand/annotations/evaluation/evaluation_data_update.json", "r") as st_json:
+            self.meta = json.load(st_json)
+        self.root = f'../../../../../../data1/ArmoHand/images/evaluation'
 
-class Our_testset(Dataset):
-    def __init__(self, path, folder_name, model):
-
-        self.image_path = f'{path}/{folder_name}/rgb'
-        self.anno_path = f'{path}/{folder_name}/annotations'
-        self.list = os.listdir(self.image_path)
-        self.model = model
-
-    def __len__(self):
-        return len(os.listdir(self.image_path))
-
-    def __getitem__(self, idx):
-        if not self.model == "ours":
-            size = 256
-        else:
-            size = 224
-            
-        image = Image.open(os.path.join(self.image_path, self.list[idx]))
-        scale_x = size / image.width
-        scale_y = size / image.height
-
-        with open(os.path.join(self.anno_path, self.list[idx])[:-3]+"json", "r") as st_json:
-            json_data = json.load(st_json)
-            joint_total = json_data['annotations']
-            joint = {}
-            joint_2d = []
-
-            for j in joint_total:
-                if j['label'] != 'Pose':
-                    if len(j['metadata']['system']['attributes']) > 0:
-                        # Change 'z' to 'indicator function'
-                        # Ex. 0 means visible joint, 1 means invisible joint
-                        j['coordinates']['z'] = 0
-                        joint[f"{int(j['label'])}"] = j['coordinates']
-                    else:
-                        j['coordinates']['z'] = 1
-                        joint[f"{int(j['label'])}"] = j['coordinates']
-
-            if len(joint) < 21:
-                assert f"This {idx}.json is not correct"
-
-            for h in range(0, 21):
-                joint_2d.append(
-                    [joint[f'{h}']['x'], joint[f'{h}']['y'], joint[f'{h}']['z']])
-
-        trans = transforms.Compose([transforms.Resize((size, size)),
-                                    transforms.ToTensor(),
-                                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
-
-        trans_image = trans(image)
-        joint_2d = torch.tensor(joint_2d)
-        joint_2d[:, 0] = joint_2d[:, 0] * scale_x
-        joint_2d[:, 1] = joint_2d[:, 1] * scale_y
-
-        return trans_image, joint_2d
-
-class Our_testset_new(Dataset):
+class eval_set(Dataset):
     def __init__(self, args):
         self.args = args
         self.image_path = f'../../datasets/test/rgb'
@@ -1126,12 +1064,23 @@ class Frei(torch.utils.data.Dataset):
 
         return trans_image, joint_2d, heatmap, anno_xyz
     
+class Json_e(Json_transform):
+    def __init__(self):
+        with open(f"../../../../../../data1/ArmoHand/annotations/evaluation/evaluation_camera.json", "r") as st_json:
+            self.camera = json.load(st_json)
+        with open(f"../../../../../../data1/ArmoHand/annotations/evaluation/evaluation_joint_3d.json", "r") as st_json:
+            self.joint = json.load(st_json)
+        with open(f"../../../../../../data1/ArmoHand/annotations/evaluation/evaluation_data.json", "r") as st_json:
+            self.meta = json.load(st_json)
+        self.root = "../../../../../../data1/ArmoHand/images/evaluation"
+        self.store_path = "../../../../../../data1/ArmoHand/annotations/evaluation/evaluation_data_update.json"
+        
+        
+    
 # def main():
-#     path = "../../../../../../data1/1231"
-#     path_dir = os.listdir(path)
-#     for dir_name in path_dir:
-#         if len(dir_name) < 5:
-#             Json_transform(path = path, degree = dir_name)
+
+#     a = Json_e()
+#     a.get_json()
     
 # if __name__ =="__main__":
 #     main()
