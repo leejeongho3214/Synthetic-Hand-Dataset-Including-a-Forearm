@@ -65,8 +65,8 @@ def visualize_gt(images, gt_2d_joint, fig, iteration):
                     thickness=-1)
         if i != 0:
             cv2.line(image, (int(gt_2d_joint[num][i][0]), int(gt_2d_joint[num][i][1])),
-                     (int(gt_2d_joint[num][parents[i]][0]), int(gt_2d_joint[num][parents[i]][1])),
-                     [0, 0, 1], 1)
+                        (int(gt_2d_joint[num][parents[i]][0]), int(gt_2d_joint[num][parents[i]][1])),
+                        [0, 0, 1], 1)
 
     ax1 = fig.add_subplot(1, 2, 1)
     ax1.imshow(image)
