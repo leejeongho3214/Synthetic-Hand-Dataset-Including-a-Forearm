@@ -27,9 +27,9 @@ def build_dataset(args):
         return test_dataset, test_dataset
    
     path = "../../../../../../data1/1231"
-    if not os.path.isdir(path):
-        path = "../../datasets/synthetic_wrist"  # wrist-view image path (about 37K)
-    general_path = "../../datasets/synthetic_general" # general-view image path (about 80K)
+    # if not os.path.isdir(path):
+    #     path = "../../datasets/synthetic_wrist"  # wrist-view image path (about 37K)
+    general_path = "../../../../../../data1/" # general-view image path (about 80K)
     folder = os.listdir(path)
     folder_num = [i for i in folder if i not in ["README.txt", "data.zip"]]
         
