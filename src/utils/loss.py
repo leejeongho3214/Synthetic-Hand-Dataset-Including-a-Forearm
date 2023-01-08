@@ -1,3 +1,4 @@
+import sys
 from cv2 import threshold
 import numpy as np
 import torch
@@ -218,7 +219,7 @@ def compute_similarity_transform(S1, S2):
     R = V.dot(Z.dot(U.T))
 
     # 5. Recover scale.
-    scale = np.trace(R.dot(K)) / var1
+    scale = np.trace(R.dot(K)) / (var1 + sys.float_info.epsilon) ## original code don't have epsilon
 
     # 6. Recover translation.
     t = mu2 - scale*(R.dot(mu1))

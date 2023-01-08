@@ -39,10 +39,13 @@ class Runner(object):
         self.log_3d_re_losses = AverageMeter()
         self.pck_losses = AverageMeter()
         self.epe_losses = AverageMeter()
+        self.type = "3D" if self.args.projection else "2D"
         
     def train_log(self, iteration, eta_seconds, end):
         tt = ' '.join(ctime(eta_seconds + end).split(' ')[1:-1])
+            
         if iteration % self.args.logging_steps == 0:
+
             self.logger.debug( 
                          ' '.join(
                             ['dataset_length: {len}', 'epoch: {ep}', 'iter: {iter}', '/{maxi}, count: {count}/{max_count}']
@@ -58,14 +61,15 @@ class Runner(object):
         
         self.bar.suffix = ('({iteration}/{data_loader}) '
                            'name: {name} | '
-                           'loss: {total:.8f} | '
-                           'max_epoch: {epoch} | '
-                           'type: {d_type} | '
                            'count: {count} | '
-                           'best_pck: {pck:.2f} | '
-                           'exp: {exp}'
+                           'loss: {total:.6f}'
+                        #    'max_epoch: {epoch} | '
+                        #    'type: {d_type} | '
+
+                        #    'best_pck: {pck:.2f} | '
+                        #    'exp: {exp}'
                            ).format(name= self.args.name.split('/')[-1], count = self.count, max_count = self.args.count, iteration = iteration, exp = tt,
-                                    epoch = self.args.epoch, data_loader = len(self.now_loader), total = self.log_losses.avg, pck = self.pck, d_type = "3D" if self.args.projection else "2D")
+                                    epoch = self.args.epoch, data_loader = len(self.now_loader), total = self.log_losses.avg, pck = self.pck, d_type = self.type)
 
         self.bar.next()
         
@@ -88,15 +92,16 @@ class Runner(object):
 
         self.bar.suffix = ('({iteration}/{data_loader}) '
                            'name: {name} | '
-                           'loss: {total:.8f} | '
-                           'max_epoch: {epoch} | '
-                           'type: {d_type} | '
-                           'count: {count} | '
-                           'pck: {now_pck:.2f} | '
-                           'best_pck: {pck:.2f} | '
-                           'exp: {exp}'
+                           'loss: {total:.6f} | '
+                            'count: {count} | '
+                        #    'max_epoch: {epoch} | '
+                        #    'type: {d_type} | '
+
+                           'pck: {now_pck:.2f}'
+                        #    'best_pck: {pck:.2f} | '
+                        #    'exp: {exp}'
                            ).format(name= self.args.name.split('/')[-1], count = self.count, max_count = self.args.count, iteration = iteration, exp = tt,
-                                    epoch=self.args.epoch, data_loader = len(self.now_loader), total = self.log_losses.avg,now_pck = self.pck_losses.avg * 100 ,pck = self.pck * 100, d_type = "3D" if self.args.projection else "2D")
+                                    epoch=self.args.epoch, data_loader = len(self.now_loader), total = self.log_losses.avg,now_pck = self.pck_losses.avg * 100 ,pck = self.pck * 100, d_type = self.type)
         if iteration == len(self.now_loader) - 1:
             self.bar.suffix = self.bar.suffix +'\n'
         self.bar.next()

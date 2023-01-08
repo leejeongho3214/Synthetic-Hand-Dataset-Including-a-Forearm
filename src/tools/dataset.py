@@ -26,8 +26,10 @@ def build_dataset(args):
     if args.eval:
         test_dataset = eval_set(args)
         return test_dataset, test_dataset
-   
+    
     path = "../../../../../../data1/ArmoHand/training"
+    if not os.path.isdir(path):
+        path = "../../datasets/ArmoHand/training"
     general_path = "../../../../../../data1/general_2M" # general-view image path (about 80K)
     if not args.general:
         folder = os.listdir(path)
