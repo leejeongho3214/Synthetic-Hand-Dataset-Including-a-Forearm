@@ -14,7 +14,7 @@
             "justMyCode": true,
             "cwd": "${fileDirname}",
             // "args": ["--dataset", "frei", "--model", "hrnet"]
-            "args": ["--dataset", "frei",]
+            // "args": ["--dataset", "frei",]
         }
     ]
 }

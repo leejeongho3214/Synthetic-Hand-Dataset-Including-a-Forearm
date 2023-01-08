@@ -27,7 +27,7 @@ def main(args, logger):
         writer = SummaryWriter(log_dir); pck_l = 0; batch_time = AverageMeter()
 
         for epoch in range(epo, args.epoch):
-            Graphormer_model, optimizer, batch_time = train(args, trainset_loader, testset_loader, _model, epoch, best_loss, len(train_dataset),logger, count, writer, pck_l, len(trainset_loader)+len(testset_loader), batch_time)
+            Graphormer_model, optimizer, batch_time, best_loss = train(args, trainset_loader, testset_loader, _model, epoch, best_loss, len(train_dataset),logger, count, writer, pck_l, len(trainset_loader)+len(testset_loader), batch_time)
             loss, count, pck, batch_time = valid(args, trainset_loader, testset_loader, Graphormer_model, epoch, count, best_loss, len(train_dataset), logger, writer, batch_time, len(trainset_loader)+len(testset_loader), pck_l)
             
             pck_l = max(pck, pck_l)

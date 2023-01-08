@@ -5,7 +5,7 @@ import cv2
 import numpy as np
 from matplotlib import pyplot as plt
 from src.utils.miscellaneous import mkdir
-from torchvision.transforms import transforms
+from src.utils.dir import reset_folder
 
 def visualize_pred(images, pred_2d_joint, fig, method = None, epoch = 0, iteration = 0, args =None, dataset_name = None):
 
@@ -29,37 +29,25 @@ def visualize_pred(images, pred_2d_joint, fig, method = None, epoch = 0, iterati
     ax1.axis("off")
     
     if method == 'evaluation':
-        dataset_name = dataset_name[num]
-        if iteration == 0 and epoch == 0:
-            if os.path.isdir(f'eval_image/{args.name[13:-31]}/{dataset_name}') == True:
-                shutil.rmtree(f"eval_image/{args.name[13:-31]}/{dataset_name}")
-        if os.path.isdir(f'eval_image/{args.name[13:-31]}/{dataset_name}') == False:
-            mkdir(f'eval_image/{args.name[13:-31]}/{dataset_name}')
-        plt.savefig(f"eval_image/{args.name[13:-31]}/{dataset_name}/{iteration}.jpg")
-
-    elif method == 'mediapipe':
-        if iteration == 0 and epoch == 0:
-            if os.path.isdir(f"eval_image/mediapipe"):
-                shutil.rmtree(f"eval_image")
-        if os.path.isdir('eval_image/mediapipe') == False:
-            mkdir('eval_image/mediapipe')
-        plt.savefig(f"eval_image/mediapipe/{iteration}.jpg")
+        print("Please modify code in visulize.py")
+        # dataset_name = dataset_name[num]
+        # if iteration == 0 and epoch == 0:
+        #     reset_folder(f'eval_image/{args.name[13:-31]}/{dataset_name}')
+        # plt.savefig(f"eval_image/{args.name[13:-31]}/{dataset_name}/{iteration}.jpg")
 
     elif method == 'train':
+        root = f"{args.output_dir}/train_image"
+        epoch_path = os.path.join(root, f"{epoch}_epoch")
         if iteration == 0 and epoch == 0:
-            if os.path.isdir(f"{args.output_dir}/train_image"):
-                shutil.rmtree(f"{args.output_dir}/train_image")
-        if os.path.isdir(f'{args.output_dir}/train_image/{epoch}_epoch') == False:
-            mkdir(f'{args.output_dir}/train_image/{epoch}_epoch')
-        plt.savefig(f"{args.output_dir}/train_image/{epoch}_epoch/{iteration}_iter.jpg")
+            reset_folder(root)
+            reset_folder(root)
+        if not os.path.isdir(epoch_path): mkdir(epoch_path)
+        plt.savefig(epoch_path)
 
     elif method == 'test':
-        if iteration == 0 and epoch == 0:
-            if os.path.isdir(f"{args.output_dir}/test_image"):
-                shutil.rmtree(f"{args.output_dir}/test_image")
-        if os.path.isdir(f'{args.output_dir}/test_image/{epoch}_epoch') == False:
-            mkdir(f'{args.output_dir}/test_image/{epoch}_epoch')
-        plt.savefig(f"{args.output_dir}/test_image/{epoch}_epoch/{iteration}_iter.jpg")
+        root = f'{args.output_dir}/test_image/{epoch}_epoch'
+        epoch_path = os.path.join(root, f"{epoch}_epoch")
+        plt.savefig(epoch_path)
 
     else:
         assert False, "method is the wrong name"
