@@ -15,7 +15,7 @@
             "cwd": "${fileDirname}",
             // "args": ["--dataset", "frei", "--model", "hrnet"]
             // "args": ["--general", "--projection"]
-            // "args": []
+            "args": ["--ratio_of_our" , "0.1"]
         }
     ]
 }

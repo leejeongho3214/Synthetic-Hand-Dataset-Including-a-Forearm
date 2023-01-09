@@ -1,13 +1,13 @@
 import sys
 from tqdm import tqdm
 import os
-from src.utils.dataset_other import Coco, Dataset_interhand, HIU_Dataset, Panoptic, Rhd, GenerateHeatmap, add_our
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 from src.utils.miscellaneous import mkdir
 from src.utils.comm import is_main_process
 from src.datasets.build import make_hand_data_loader
 import json
 import math
-
+from src.utils.dataset_other import Coco, Dataset_interhand, HIU_Dataset, Panoptic, Rhd, GenerateHeatmap, add_our
 import os.path as op
 import random
 import cv2
@@ -35,7 +35,7 @@ def build_dataset(args):
         
     if not args.general:
         folder = os.listdir(path)
-        folder_num = [i for i in folder if i not in ["README.txt", "data.zip"]]
+        folder_num = [i for i in folder if i not in ["README.txt", "data.zip", "total_data.json"]]
         
     if args.dataset == "interhand":
         dataset = Dataset_interhand(transforms.ToTensor(), "train", args)     
@@ -78,21 +78,9 @@ def build_dataset(args):
             test_dataset = val_set(args , 0, eval_path, args.color,
                                         args.ratio_of_aug, args.ratio_of_our)
             
-            train_dataset = CustomDataset(args, degree, path, color=args.color,
+            train_dataset = CustomDataset(args,  path, color=args.color,
                                         ratio_of_aug=args.ratio_of_aug, ratio_of_dataset= args.ratio_of_our)
                 
-            
-            for iter, degree in enumerate(folder_num):
-
-                if iter == 0 :
-                    train_dataset = CustomDataset(args, folder_num, path, color=args.color,
-                                        ratio_of_aug=args.ratio_of_aug, ratio_of_dataset= args.ratio_of_our)
-                
-                else:
-                    train_dataset_other = CustomDataset(args, degree, path, color=args.color,
-                                        ratio_of_aug=args.ratio_of_aug, ratio_of_dataset= args.ratio_of_our)
-                    train_dataset = ConcatDataset(
-                        [train_dataset, train_dataset_other])
 
         else:
             dataset = CustomDataset_g(args, general_path)
@@ -101,28 +89,41 @@ def build_dataset(args):
     return train_dataset, test_dataset
 
 class CustomDataset(Dataset):
-    def __init__(self, args, folder_num, path, color=False, ratio_of_aug=0.2, ratio_of_dataset=1):
+    def __init__(self, args, degree, path, color=False, ratio_of_aug=0.2, ratio_of_dataset=1):
         self.args = args
         self.color = color
-        self.degree = folder_num
+        self.degree = degree
         self.path = path
+        self.len_d = {}
         self.ratio_of_aug = ratio_of_aug
         self.ratio_of_dataset = ratio_of_dataset
         try:
-            with open(f"{path}/{degree}/annotations/train/CISLAB_train_data_update.json", "r") as st_json:
+            with open(f"{path}/total_data.json", "r") as st_json:
                 self.meta = json.load(st_json)
+                len_p = 0 
+                for degree in self.meta:
+                    self.len_d[degree] = [len_p, int(self.meta[degree]["images"] * ratio_of_dataset + len_p) - 1]
+                    len_p += self.meta[degree]["images"] * ratio_of_dataset     
         except:
             self.meta = None
-        self.img_path = f'{self.path}/{self.degree}/images/train'
     
     def __len__(self):
-        return int(len(self.meta['images']) * self.ratio_of_dataset)
+        len_t = 0
+        for degree in self.meta:
+            len_t += self.meta[degree]["images"] * self.ratio_of_dataset
+        return int(len_t)
 
     def __getitem__(self, idx):
+        for i in self.len_d:
+            if self.len_d[i][0] <= idx <= self.len_d[1]: 
+                idx = idx - self.len_d[i][1]
+                degree = i
+                break
+        img_path = f'{self.path}/{degree}/images/train'
         name = self.meta['images'][idx]['file_name']
         move = self.meta['images'][idx]['move']
         degrees = self.meta['images'][idx]['degree']
-        image = cv2.imread(os.path.join(self.img_path, name))  # PIL image
+        image = cv2.imread(os.path.join(img_path, name))  # PIL image
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
         if not self.args.model == "ours":
@@ -504,9 +505,18 @@ class Json_e(Json_transform):
     
 # def main():
 
-#     a = Json_e()
-#     a.get_json()
+#     path = "../../../../../../data1/ArmoHand/training"
+#     dir_n = os.listdir(path)
+#     dir_n = [i for i in dir_n if i not in ["README.txt", "data.zip"]]
+#     total_list = {}
+#     for n in dir_n:
+#         with open(os.path.join(path, n, "annotations/train/CISLAB_train_data_update.json"), "r") as st_json:
+#             file_n = json.load(st_json)
+#         total_list[f"{n}"] = file_n
+        
+#     with open(os.path.join(path, "total_data.json"), "w") as new_file:
+#         json.dump(total_list, new_file)  
     
-# if __name__ =="__main__":
-#     main()
-#     print("end")
+if __name__ =="__main__":
+    main()
+

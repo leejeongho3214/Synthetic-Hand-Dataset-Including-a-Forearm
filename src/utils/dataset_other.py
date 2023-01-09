@@ -11,7 +11,7 @@ from torchvision import transforms
 import torch
 import os.path as op
 from torch.utils.data import random_split, ConcatDataset
-from src.tools.dataset import CustomDataset
+
 
 class GenerateHeatmap():
     def __init__(self, output_res, num_parts):
@@ -509,6 +509,7 @@ class Coco(Dataset):
         return img, joint.float(), heatmap, torch.ones(21, 3)
     
 def add_our(args, dataset, folder_num, path):
+    from src.tools.dataset import CustomDataset
     trainset_dataset, testset_dataset = random_split(
         dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
     
