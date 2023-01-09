@@ -1,13 +1,16 @@
 import sys
 from tqdm import tqdm
 import os
-from src.utils.dataset_loader import Coco, Dataset_interhand, HIU_Dataset, Panoptic, Rhd, GenerateHeatmap, add_our, CustomDataset
+
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+from src.utils.dataset_loader import CustomDataset
 from src.utils.miscellaneous import mkdir
 from src.utils.comm import is_main_process
 from src.datasets.build import make_hand_data_loader
 import json
 import math
-
+from src.utils.dataset_loader import Coco, Dataset_interhand, HIU_Dataset, Panoptic, Rhd, GenerateHeatmap, add_our
 import os.path as op
 import random
 import cv2
@@ -78,10 +81,6 @@ def build_dataset(args):
             test_dataset = val_set(args , 0, eval_path, args.color,
                                         args.ratio_of_aug, args.ratio_of_our)
             
-            train_dataset = CustomDataset(args, degree, path, color=args.color,
-                                        ratio_of_aug=args.ratio_of_aug, ratio_of_dataset= args.ratio_of_our)
-                
-            
             for iter, degree in enumerate(folder_num):
 
                 if iter == 0 :
@@ -101,6 +100,71 @@ def build_dataset(args):
     return train_dataset, test_dataset
 
 
+
+class CustomDataset(Dataset):
+    def __init__(self, args, degree, path, color=False, ratio_of_aug=0.2, ratio_of_dataset=1):
+        self.args = args
+        self.color = color
+        self.degree = degree
+        self.path = path
+        self.ratio_of_aug = ratio_of_aug
+        self.ratio_of_dataset = ratio_of_dataset
+        try:
+            with open(f"{path}/{degree}/annotations/train/CISLAB_train_data_update.json", "r") as st_json:
+                self.meta = json.load(st_json)
+        except:
+            self.meta = None
+        self.img_path = f'{self.path}/{self.degree}/images/train'
+    
+    def __len__(self):
+        return int(len(self.meta['images']) * self.ratio_of_dataset)
+
+    def __getitem__(self, idx):
+        name = self.meta['images'][idx]['file_name']
+        move = self.meta['images'][idx]['move']
+        degrees = self.meta['images'][idx]['degree']
+        image = cv2.imread(os.path.join(self.img_path, name))  # PIL image
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+        if not self.args.model == "ours":
+            image_size = 256
+        else:
+            image_size = 224
+
+        trans_option = {
+            'resize': transforms.Resize((image_size, image_size)),
+            'to_tensor': transforms.ToTensor(),
+            'color': transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5),
+            'norm': transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        }
+        
+        if not self.color:
+            del trans_option['color']
+        
+        image = i_rotate(image, degrees, 0, move)
+        image = Image.fromarray(image)
+        joint_2d = torch.tensor(self.meta['images'][idx]['rot_joint_2d'])
+        
+        if idx < len(self.meta['images']) * self.ratio_of_aug:
+
+            trans = transforms.Compose([trans_option[i] for i in trans_option])
+
+            
+        else:
+            trans = transforms.Compose([transforms.Resize((image_size, image_size)),
+                                        transforms.ToTensor(),
+                                        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+        image = trans(image)
+        
+        if self.args.model == "hrnet":
+            heatmap = GenerateHeatmap(128, 21)(joint_2d/2)
+        else:
+            heatmap = GenerateHeatmap(64, 21)(joint_2d/4)
+            
+        joint_3d = torch.tensor(self.meta['images'][idx]['joint_3d'])
+
+
+        return image, joint_2d, heatmap, joint_3d
 
 
 class CustomDataset_g(Dataset):
@@ -437,12 +501,3 @@ class Json_e(Json_transform):
         self.store_path = "../../../../../../data1/ArmoHand/annotations/evaluation/evaluation_data_update.json"
         
         
-    
-# def main():
-
-#     a = Json_e()
-#     a.get_json()
-    
-# if __name__ =="__main__":
-#     main()
-#     print("end")
