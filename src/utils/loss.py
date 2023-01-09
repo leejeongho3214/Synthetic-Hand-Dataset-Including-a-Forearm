@@ -175,11 +175,7 @@ def keypoint_3d_loss(criterion_keypoints, pred_keypoints_3d, gt_keypoints_3d):
     # conf = conf[has_pose_3d == 1]
     # pred_keypoints_3d = pred_keypoints_3d[has_pose_3d == 1]
     if len(gt_keypoints_3d) > 0:
-        gt_root = gt_keypoints_3d[:, 0, :]
-        gt_keypoints_3d = gt_keypoints_3d - gt_root[:, None, :]
-        pred_root = pred_keypoints_3d[:, 0, :]
-        pred_keypoints_3d = pred_keypoints_3d - pred_root[:, None, :]
-        return (criterion_keypoints(pred_keypoints_3d, gt_keypoints_3d)).mean(2).mean(1).sum()
+        return (criterion_keypoints(pred_keypoints_3d, gt_keypoints_3d)).mean()
     else:
         assert False, "gt_3d_keypoint No"
         
@@ -272,3 +268,5 @@ def reconstruction_error(S1, S2, reduction='mean'):
     elif reduction == 'sum':
         re = re.sum()
     return re
+
+

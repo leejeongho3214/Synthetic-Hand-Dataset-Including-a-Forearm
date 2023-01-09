@@ -1,8 +1,11 @@
 from __future__ import print_function, unicode_literals
 import matplotlib
 matplotlib.use('Agg')
-import matplotlib.pyplot as plt
 
+import matplotlib.pyplot as plt
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import pip
 import argparse
 import json
@@ -33,8 +36,8 @@ try:
     from utils.eval_util import EvalUtil
 
 except:
-    from fh_utils import *
-    from eval_util import EvalUtil
+    from freihand.utils.fh_utils import *
+    from freihand.utils.eval_util import EvalUtil
 
 
 # def verts2pcd(verts, color=None):
@@ -188,6 +191,9 @@ def main(gt_path, pred_path, output_dir, pred_file_name=None, set_name=None):
     xyz_list, verts_list = json_load(os.path.join(gt_path, '%s_xyz.json' % set_name)), json_load(os.path.join(gt_path, '%s_verts.json' % set_name))
 
     # load predicted values
+    print()
+    print(pred_file_name)
+    print(args.output_dir)
     pred_file = _search_pred_file(pred_path, pred_file_name)
     print('Loading predictions from %s' % pred_file)
     with open(pred_file, 'r') as fi:
@@ -359,18 +365,18 @@ def main(gt_path, pred_path, output_dir, pred_file_name=None, set_name=None):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Show some samples from the dataset.')
-    parser.add_argument('input_dir', type=str,
+    parser.add_argument('--input_dir', type=str, default="../../datasets/frei_test", required=False,
                         help='Path to where prediction the submited result and the ground truth is.')
-    parser.add_argument('output_dir', type=str,
+    parser.add_argument('--output_dir', type=str, default="../../freihand", required=False,
                         help='Path to where the eval result should be.')
-    parser.add_argument('--pred_file_name', type=str, default='pred_frei_mid_scale.json',
+    parser.add_argument('--pred_file_name', type=str,
                         help='Name of the eval file.')
     args = parser.parse_args()
 
     # call eval
     main(
         args.input_dir,
-        ".",
+        "",
         args.output_dir,
         args.pred_file_name,
         set_name='evaluation'
