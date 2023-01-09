@@ -1,13 +1,16 @@
 import sys
 from tqdm import tqdm
 import os
+
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+from src.utils.dataset_loader import CustomDataset
 from src.utils.miscellaneous import mkdir
 from src.utils.comm import is_main_process
 from src.datasets.build import make_hand_data_loader
 import json
 import math
-from src.utils.dataset_other import Coco, Dataset_interhand, HIU_Dataset, Panoptic, Rhd, GenerateHeatmap, add_our
+from src.utils.dataset_loader import Coco, Dataset_interhand, HIU_Dataset, Panoptic, Rhd, GenerateHeatmap, add_our
 import os.path as op
 import random
 import cv2
@@ -78,7 +81,10 @@ def build_dataset(args):
             test_dataset = val_set(args , 0, eval_path, args.color,
                                         args.ratio_of_aug, args.ratio_of_our)
             
-            train_dataset = CustomDataset(args,  path, color=args.color,
+            for iter, degree in enumerate(folder_num):
+
+                if iter == 0 :
+                    train_dataset = CustomDataset(args, folder_num, path, color=args.color,
                                         ratio_of_aug=args.ratio_of_aug, ratio_of_dataset= args.ratio_of_our)
                 
 
@@ -87,6 +93,8 @@ def build_dataset(args):
             train_dataset, test_dataset = random_split(dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
 
     return train_dataset, test_dataset
+
+
 
 class CustomDataset(Dataset):
     def __init__(self, args, degree, path, color=False, ratio_of_aug=0.2, ratio_of_dataset=1):
@@ -165,7 +173,6 @@ class CustomDataset(Dataset):
 
 
         return image, joint_2d, heatmap, joint_3d
-
 
 
 class CustomDataset_g(Dataset):
@@ -502,21 +509,3 @@ class Json_e(Json_transform):
         self.store_path = "../../../../../../data1/ArmoHand/annotations/evaluation/evaluation_data_update.json"
         
         
-    
-# def main():
-
-#     path = "../../../../../../data1/ArmoHand/training"
-#     dir_n = os.listdir(path)
-#     dir_n = [i for i in dir_n if i not in ["README.txt", "data.zip"]]
-#     total_list = {}
-#     for n in dir_n:
-#         with open(os.path.join(path, n, "annotations/train/CISLAB_train_data_update.json"), "r") as st_json:
-#             file_n = json.load(st_json)
-#         total_list[f"{n}"] = file_n
-        
-#     with open(os.path.join(path, "total_data.json"), "w") as new_file:
-#         json.dump(total_list, new_file)  
-    
-if __name__ =="__main__":
-    main()
-

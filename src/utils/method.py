@@ -173,6 +173,7 @@ class Runner(object):
                     self.writer.add_scalar(f"Loss/train/{self.epoch}_epoch", self.log_losses.avg, iteration)
                 elif iteration == len(self.train_loader) - 1:
                     self.writer.add_scalar("Loss/train", self.log_losses.avg, self.epoch)
+
             return self.model, self.optimizer, self.batch_time
             
         else:
@@ -188,8 +189,8 @@ class Runner(object):
                     if self.args.projection: 
                         pred_2d_joints, pred_3d_joints= self.model(images)
                         pck, _ = PCK_3d_loss(pred_3d_joints, gt_3d_joints, T= 0.01)
-                        loss = keypoint_3d_loss(self.criterion_keypoints, pred_3d_joints, gt_3d_joints)
-                        # loss = reconstruction_error(np.array(pred_3d_joints.detach().cpu()), np.array(gt_3d_joints.detach().cpu()))
+                        # loss = keypoint_3d_loss(self.criterion_keypoints, pred_3d_joints, gt_3d_joints)
+                        loss = reconstruction_error(np.array(pred_3d_joints.detach().cpu()), np.array(gt_3d_joints.detach().cpu()))
                         
                     else: 
                         pred_2d_joints= self.model(images); pred_3d_joints = torch.zeros([pred_2d_joints.size()[0], pred_2d_joints.size()[1], 3]).cuda(); self.args.loss_3d = 0
