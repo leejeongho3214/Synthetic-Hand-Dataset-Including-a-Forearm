@@ -10,7 +10,6 @@ import sys
 from dataset import *
 from src.utils.loss import *
 from src.utils.geometric_layers import *
-from src.utils.metric_logger import AverageMeter
 from src.utils.visualize import *
 from src.utils.dataset_loader import Frei
 from tqdm import tqdm    

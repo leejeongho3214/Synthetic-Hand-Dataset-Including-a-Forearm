@@ -1,10 +1,7 @@
 import sys
 from tqdm import tqdm
 import os
-
-
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
-from src.utils.dataset_loader import CustomDataset
 from src.utils.miscellaneous import mkdir
 from src.utils.comm import is_main_process
 from src.datasets.build import make_hand_data_loader
