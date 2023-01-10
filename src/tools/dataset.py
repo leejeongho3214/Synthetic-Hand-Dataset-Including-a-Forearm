@@ -1,16 +1,13 @@
 import sys
 from tqdm import tqdm
 import os
-
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
-from src.utils.dataset_loader import CustomDataset
 from src.utils.miscellaneous import mkdir
 from src.utils.comm import is_main_process
 from src.datasets.build import make_hand_data_loader
 import json
 import math
-from src.utils.dataset_loader import Coco, Dataset_interhand, HIU_Dataset, Panoptic, Rhd, GenerateHeatmap, add_our
+import torch
+from src.utils.dataset_loader import Coco, Dataset_interhand, HIU_Dataset, Panoptic, Rhd, GenerateHeatmap, add_our, our_cat
 import os.path as op
 import random
 import cv2
@@ -19,7 +16,6 @@ from torch.utils.data import Dataset
 from PIL import Image
 from torchvision import transforms
 from torch.utils.data import random_split, ConcatDataset
-import torch
 
 
 def build_dataset(args):
@@ -38,7 +34,7 @@ def build_dataset(args):
         
     if not args.general:
         folder = os.listdir(path)
-        folder_num = [i for i in folder if i not in ["README.txt", "data.zip", "total_data.json"]]
+        folder_num = [i for i in folder if i not in ["README.txt", "data.zip"]]
         
     if args.dataset == "interhand":
         dataset = Dataset_interhand(transforms.ToTensor(), "train", args)     
@@ -80,14 +76,7 @@ def build_dataset(args):
             eval_path = "/".join(path.split('/')[:-1]) + "/annotations/evaluation"
             test_dataset = val_set(args , 0, eval_path, args.color,
                                         args.ratio_of_aug, args.ratio_of_our)
-            
-            for iter, degree in enumerate(folder_num):
-
-                if iter == 0 :
-                    train_dataset = CustomDataset(args, folder_num, path, color=args.color,
-                                        ratio_of_aug=args.ratio_of_aug, ratio_of_dataset= args.ratio_of_our)
-                
-
+            train_dataset = our_cat(args,folder_num, path)
         else:
             dataset = CustomDataset_g(args, general_path)
             train_dataset, test_dataset = random_split(dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
@@ -102,36 +91,23 @@ class CustomDataset(Dataset):
         self.color = color
         self.degree = degree
         self.path = path
-        self.len_d = {}
         self.ratio_of_aug = ratio_of_aug
         self.ratio_of_dataset = ratio_of_dataset
         try:
-            with open(f"{path}/total_data.json", "r") as st_json:
+            with open(f"{path}/{degree}/annotations/train/CISLAB_train_data_update.json", "r") as st_json:
                 self.meta = json.load(st_json)
-                len_p = 0 
-                for degree in self.meta:
-                    self.len_d[degree] = [len_p, int(self.meta[degree]["images"] * ratio_of_dataset + len_p) - 1]
-                    len_p += self.meta[degree]["images"] * ratio_of_dataset     
         except:
             self.meta = None
+        self.img_path = f'{self.path}/{self.degree}/images/train'
     
     def __len__(self):
-        len_t = 0
-        for degree in self.meta:
-            len_t += self.meta[degree]["images"] * self.ratio_of_dataset
-        return int(len_t)
+        return int(len(self.meta['images']) * self.ratio_of_dataset)
 
     def __getitem__(self, idx):
-        for i in self.len_d:
-            if self.len_d[i][0] <= idx <= self.len_d[1]: 
-                idx = idx - self.len_d[i][1]
-                degree = i
-                break
-        img_path = f'{self.path}/{degree}/images/train'
         name = self.meta['images'][idx]['file_name']
         move = self.meta['images'][idx]['move']
         degrees = self.meta['images'][idx]['degree']
-        image = cv2.imread(os.path.join(img_path, name))  # PIL image
+        image = cv2.imread(os.path.join(self.img_path, name))  # PIL image
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
         if not self.args.model == "ours":

@@ -13,9 +13,8 @@
             "console": "integratedTerminal",
             "justMyCode": true,
             "cwd": "${fileDirname}",
-            "args": ["--dataset", "frei"]
+            // "args": ["--dataset", "frei"]
             // "args": ["--general", "--projection"]
-            "args": ["--ratio_of_our" , "0.1"]
         }
     ]
 }

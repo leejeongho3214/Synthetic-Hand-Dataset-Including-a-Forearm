@@ -2,9 +2,6 @@ import json
 import os
 import sys
 import argparse
-
-from tqdm import tqdm
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 from src.modeling.hrnet.config.default import update_config
 from src.modeling.hrnet.config.default import _C as cfg
 from src.modeling.hrnet.hrnet_cls_net_gridfeat import get_pose_net as get_cls_net_gridfeat
@@ -13,18 +10,14 @@ from src.tools.models.our_net import get_our_net
 from src.modeling.simplebaseline.config import config as config_simple
 from src.modeling.simplebaseline.pose_resnet import get_pose_net
 import torch
-import os
-from src.utils.metric_logger import AverageMeter
 import time
 from src.utils.method import Runner
 from src.utils.dir import  resume_checkpoint, dump
 import numpy as np
 from matplotlib import pyplot as plt
-import torch
 from src.utils.loss import *
 from src.utils.geometric_layers import *
 from src.utils.visualize import *
-from time import ctime
 from src.modeling.hourglass.posenet import PoseNet
 
 def parse_args():
