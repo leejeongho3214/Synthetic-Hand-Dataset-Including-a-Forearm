@@ -19,7 +19,15 @@ from torchvision import transforms
 from torch.utils.data import random_split
 
 def build_dataset(args):
+    assert args.name.split("/")[0] in ["simplebaseline", "hourglass", "hrnet", "ours"], "Your name of model is the wrong => %s" % args.name.split("/")[0]
+    assert args.name.split("/")[1] in ["wrist", "general"] , "Your name of view is the wrong %s" % args.name.split("/")[1] 
+    assert args.name.split("/")[2] in ["rhd", "coco", "frei", "panoptic", "hiu", "interhand", "ours"], "Your name of dataset is the wrong => %s" % args.name.split("/")[2]
 
+    if "3d" in args.name.split("/")[3].split("_"): args.D3 = True
+    args.dataset = args.name.split("/")[2]
+    args.view = args.name.split("/")[1]
+    args.model = args.name.split("/")[0]
+    
     if args.eval:
         test_dataset = eval_set(args)
         return test_dataset, test_dataset
@@ -32,7 +40,7 @@ def build_dataset(args):
     if not os.path.isdir(general_path):
         general_path = "../../datasets/general_2M"
         
-    if not args.general:
+    if args.name.split("/")[1] == "wrist":
         folder = os.listdir(path)
         folder_num = [i for i in folder if i not in ["README.txt", "data.zip"]]
         
@@ -41,7 +49,7 @@ def build_dataset(args):
         trainset_dataset, test_dataset = add_our(args, dataset, folder_num, path)
         return trainset_dataset, testset_dataset
 
-    if args.dataset == "hiu":
+    if args.dataset  == "hiu":
 
         dataset = HIU_Dataset(args)
         trainset_dataset, test_dataset = add_our(args, dataset, folder_num, path)                 
@@ -70,15 +78,15 @@ def build_dataset(args):
         dataset = Rhd(args)
         trainset_dataset, test_dataset = add_our(args, dataset, folder_num, path)                 
         return trainset_dataset, testset_dataset
-
+    
     else:
-        if not args.general:
+        if args.view == "wrist":
             eval_path = "/".join(path.split('/')[:-1]) + "/annotations/evaluation"
             test_dataset = val_set(args , 0, eval_path, args.color,
                                         args.ratio_of_aug, args.ratio_of_our)
             train_dataset = our_cat(args,folder_num, path)
         else:
-            if args.r:
+            if "rot" in args.name.split("/")[3].split("_"):
                 dataset = CustomDataset(args, None, general_path,
                                 ratio_of_aug=args.ratio_of_aug, ratio_of_dataset= args.ratio_of_our)
             else:

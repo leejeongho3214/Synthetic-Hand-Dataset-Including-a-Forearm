@@ -27,11 +27,9 @@ def parse_args():
                         help = 'You write down to store the directory path',type=str)
     parser.add_argument("--root_path", default=f'output', type=str, required=False,
                         help="The root directory to save location which you want")
-    parser.add_argument("--model", default='ours', type=str, required=False,
-                        help="you can choose model like hrnet, simplebaseline, hourglass, ours")
-    parser.add_argument("--dataset", default='ours', type=str, required=False,
-                        help="you can choose dataset like ours, coco, interhand, rhd, frei, hiu, etc.")
-
+    parser.add_argument("--model", default='ours', type=str, required=False)
+    parser.add_argument("--dataset", default='ours', type=str, required=False)
+    parser.add_argument("--view", default='wrist', type=str, required=False)
     parser.add_argument("--batch_size", default=32, type=int)
     parser.add_argument("--count", default=5, type=int)
     parser.add_argument("--ratio_of_our", default=0.3, type=float,
@@ -40,20 +38,17 @@ def parse_args():
     parser.add_argument("--ratio_of_aug", default=0.2, type=float,
                         help="You can use color jitter to train data as many as you want, according to this ratio")
     parser.add_argument("--epoch", default=30, type=int)
+    
     parser.add_argument("--loss_2d", default=0, type=float)
     parser.add_argument("--loss_3d", default=1, type=float)
     parser.add_argument("--loss_3d_mid", default=0, type=float)
-
-    parser.add_argument("--r", action='store_true')
     parser.add_argument("--scale", action='store_true')
     parser.add_argument("--plt", action='store_true')
     parser.add_argument("--eval", action='store_true')
-    parser.add_argument("--resume", action='store_true')
+    parser.add_argument("--reset", action='store_false')
     parser.add_argument("--color", action='store_true',
                         help="If you write down, This dataset would be applied color jitter to train data, according to ratio of aug")
-    parser.add_argument("--general", action='store_true', 
-                        help="If you write down, This dataset would be view of the general")
-    parser.add_argument("--projection", action='store_true',
+    parser.add_argument("--D3", action='store_true',
                         help="If you write down, The output of model would be 3d joint coordinate")
     
     args = parser.parse_args()
@@ -66,10 +61,6 @@ def load_model(args):
     epoch = 0
     best_loss = np.inf
     count = 0
-
-    if not args.resume: args.resume_checkpoint = 'None'
-    else: args.resume_checkpoint = os.path.join(os.path.join(args.root_path, args.name),'checkpoint-good/state_dict.bin')
-        
     args.num_gpus = int(os.environ['WORLD_SIZE']) if 'WORLD_SIZE' in os.environ else 1
     os.environ['OMP_NUM_THREADS'] = str(args.num_workers)
     args.device = torch.device(args.device)
@@ -87,8 +78,8 @@ def load_model(args):
     else:
         _model = get_our_net(args) ## output: 21 x 2
 
-    if args.resume_checkpoint != None and args.resume_checkpoint != 'None':
-        best_loss, epoch, _model, count = resume_checkpoint(args, _model)
+    if os.path.isfile(os.path.join(args.root_path, args.name,'checkpoint-good/state_dict.bin')):
+        best_loss, epoch, _model, count = resume_checkpoint(args, _model, os.path.join(args.root_path, args.name,'checkpoint-good/state_dict.bin'))
         
     _model.to(args.device)
     return _model, best_loss, epoch, count

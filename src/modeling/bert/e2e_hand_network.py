@@ -28,13 +28,13 @@ class Graphormer_Hand_Network(torch.nn.Module):
     End-to-end Graphormer network for hand pose and mesh reconstruction from a single image.
     '''
 
-    def __init__(self, args, config, backbone, trans_encoder, token, projection=False):
+    def __init__(self, args, config, backbone, trans_encoder, token):
         super(Graphormer_Hand_Network, self).__init__()
         self.config = config
         self.token = token
-        self.projection = True if args.projection else False
+        self.D3 = True if args.D3 else False
         self.backbone = backbone
-        if self.projection:
+        if self.D3:
             self.cam_param_fc = torch.nn.Linear(3, 1)    
             self.cam_param_fc2 = torch.nn.Linear(21, 3)
         self.trans_encoder = trans_encoder
@@ -69,7 +69,7 @@ class Graphormer_Hand_Network(torch.nn.Module):
         else:
             features = self.trans_encoder(features)
 
-        if self.projection:
+        if self.D3:
             pred_3d_joints = features[:, :21, :]  # B x 21 x 3
             x = self.cam_param_fc(pred_3d_joints)
             x = x.transpose(1, 2)

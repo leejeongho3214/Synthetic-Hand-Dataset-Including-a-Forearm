@@ -39,7 +39,7 @@ class Runner(object):
         self.log_3d_re_losses = AverageMeter()
         self.pck_losses = AverageMeter()
         self.epe_losses = AverageMeter()
-        self.type = "3D" if self.args.projection else "2D"
+        self.type = "3D" if self.args.D3 else "2D"
         
     def train_log(self, iteration, eta_seconds, end):
         tt = ' '.join(ctime(eta_seconds + end).split(' ')[1:-1])
@@ -125,7 +125,7 @@ class Runner(object):
                 
                 images = images.cuda()
                 
-                if self.args.projection: pred_2d_joints, pred_3d_joints= self.model(images)
+                if self.args.D3: pred_2d_joints, pred_3d_joints= self.model(images)
                 else: pred_2d_joints= self.model(images); pred_3d_joints = torch.zeros([pred_2d_joints.size()[0], pred_2d_joints.size()[1], 3]).cuda(); self.args.loss_3d = 0
 
                 pred_3d_mid_joints = torch.ones(batch_size, 20, 3)
@@ -137,7 +137,7 @@ class Runner(object):
                 loss_3d_re = reconstruction_error(np.array(pred_3d_joints.detach().cpu()), np.array(gt_3d_joints.detach().cpu()))
                 loss_3d = keypoint_3d_loss(self.criterion_keypoints, pred_3d_joints, gt_3d_joints)
                 
-                if self.args.projection:
+                if self.args.D3:
                     loss = self.args.loss_2d * loss_2d + self.args.loss_3d * loss_3d + self.args.loss_3d_mid * loss_3d_mid
                 else:
                     loss = loss_2d
@@ -156,7 +156,7 @@ class Runner(object):
                 gt_2d_joint[:,:,1] = gt_2d_joint[:,:,1] * images.size(2) ## You Have to check whether weight and height is correct dimenstion
                 gt_2d_joint[:,:,0] = gt_2d_joint[:,:,0] * images.size(3) 
                 
-                if not self.args.projection:
+                if not self.args.D3:
                     if iteration == 0 or iteration == int(len(self.train_loader)/2) or iteration == len(self.train_loader) - 1:
                         fig = plt.figure()
                         visualize_gt(images, gt_2d_joint, fig, iteration)
@@ -186,7 +186,7 @@ class Runner(object):
                     gt_2d_joint = gt_2d_joints.cuda()
                     gt_3d_joints = gt_3d_joints.cuda()
 
-                    if self.args.projection: 
+                    if self.args.D3: 
                         pred_2d_joints, pred_3d_joints= self.model(images)
                         pck, _ = PCK_3d_loss(pred_3d_joints, gt_3d_joints, T= 0.0)
                         # loss = keypoint_3d_loss(self.criterion_keypoints, pred_3d_joints, gt_3d_joints)
@@ -255,7 +255,7 @@ class Runner(object):
                 loss.backward()
                 self.optimizer.step()
 
-                if not self.args.projection:
+                if not self.args.D3:
                     if iteration == 0 or iteration == int(len(self.train_loader)/2) or iteration == len(self.train_loader) - 1:
                         fig = plt.figure()
                         visualize_gt(images, gt_2d_joints, fig, iteration)
@@ -306,7 +306,7 @@ class Runner(object):
                 self.pck_losses.update(pck, batch_size)
                 self.epe_losses.update_p(epe_loss[0], epe_loss[1])
                 
-                if not self.args.projection:
+                if not self.args.D3:
                     if iteration == 0 or iteration == int(len(self.valid_loader)/2) or iteration == len(self.valid_loader) - 1:
                         fig = plt.figure()
                         visualize_gt(images, gt_2d_joints, fig, iteration)

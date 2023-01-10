@@ -35,8 +35,8 @@ def add_pypath(path):
     if path not in sys.path:
         sys.path.insert(0, path)
         
-def resume_checkpoint(args, _model):
-    state_dict = torch.load(args.resume_checkpoint)
+def resume_checkpoint(args, _model, path):
+    state_dict = torch.load(path)
     best_loss = state_dict['best_loss']
     epoch = state_dict['epoch'] + 1
     count = state_dict['count']
