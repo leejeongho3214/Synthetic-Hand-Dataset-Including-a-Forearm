@@ -188,7 +188,7 @@ class Runner(object):
 
                     if self.args.projection: 
                         pred_2d_joints, pred_3d_joints= self.model(images)
-                        pck, _ = PCK_3d_loss(pred_3d_joints, gt_3d_joints, T= 0.01)
+                        pck, _ = PCK_3d_loss(pred_3d_joints, gt_3d_joints, T= 0.0)
                         # loss = keypoint_3d_loss(self.criterion_keypoints, pred_3d_joints, gt_3d_joints)
                         loss = reconstruction_error(np.array(pred_3d_joints.detach().cpu()), np.array(gt_3d_joints.detach().cpu()))
                         

@@ -1,6 +1,7 @@
 import sys
 from tqdm import tqdm
 import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 from src.utils.miscellaneous import mkdir
 from src.utils.comm import is_main_process
 from src.datasets.build import make_hand_data_loader
@@ -15,8 +16,7 @@ import numpy as np
 from torch.utils.data import Dataset
 from PIL import Image
 from torchvision import transforms
-from torch.utils.data import random_split, ConcatDataset
-
+from torch.utils.data import random_split
 
 def build_dataset(args):
 
@@ -28,7 +28,7 @@ def build_dataset(args):
     if not os.path.isdir(path):
         path = "../../datasets/ArmoHand/training"
         
-    general_path = "../../../../../../data1/general_2M" # general-view image path (about 80K)
+    general_path = "../../../../../../data1/general_2M" # general-view image path (about 2M)
     if not os.path.isdir(general_path):
         general_path = "../../datasets/general_2M"
         
@@ -61,7 +61,7 @@ def build_dataset(args):
 
     if args.dataset == "frei":
         trainset_dataset = make_hand_data_loader(
-            args, args.train_yaml, False, is_train=True, scale_factor=args.img_scale_factor)  # RGB image
+            args, args.train_yaml, False, is_train=True, scale_factor=args.img_scale_factor) 
         testset_dataset = make_hand_data_loader(
             args, args.val_yaml, False, is_train=False, scale_factor=args.img_scale_factor)        
         return trainset_dataset, testset_dataset
@@ -78,7 +78,11 @@ def build_dataset(args):
                                         args.ratio_of_aug, args.ratio_of_our)
             train_dataset = our_cat(args,folder_num, path)
         else:
-            dataset = CustomDataset_g(args, general_path)
+            if args.r:
+                dataset = CustomDataset(args, None, general_path,
+                                ratio_of_aug=args.ratio_of_aug, ratio_of_dataset= args.ratio_of_our)
+            else:
+                dataset = CustomDataset_g(args, general_path)
             train_dataset, test_dataset = random_split(dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
 
     return train_dataset, test_dataset
@@ -93,21 +97,27 @@ class CustomDataset(Dataset):
         self.path = path
         self.ratio_of_aug = ratio_of_aug
         self.ratio_of_dataset = ratio_of_dataset
+        self.img_path = f'{path}/{degree}/images/train'
         try:
-            with open(f"{path}/{degree}/annotations/train/CISLAB_train_data_update.json", "r") as st_json:
-                self.meta = json.load(st_json)
+            if degree == None:
+                with open(f"{path}/annotations/train/CISLAB_train_data_update.json", "r") as st_json:   ## When it has only one json file
+                    self.meta = json.load(st_json)
+                    self.img_path = f'{path}/images/train'
+            else:
+                with open(f"{path}/{degree}/annotations/train/CISLAB_train_data_update.json", "r") as st_json:
+                    self.meta = json.load(st_json)              
         except:
-            self.meta = None
-        self.img_path = f'{self.path}/{self.degree}/images/train'
+            self.meta = None           ## When it calls eval_set inheritng parent's class
+        
     
     def __len__(self):
-        return int(len(self.meta['images']) * self.ratio_of_dataset)
+        return int(len(self.meta['images']) * self.ratio_of_dataset)     
 
     def __getitem__(self, idx):
         name = self.meta['images'][idx]['file_name']
         move = self.meta['images'][idx]['move']
         degrees = self.meta['images'][idx]['degree']
-        image = cv2.imread(os.path.join(self.img_path, name))  # PIL image
+        image = cv2.imread(os.path.join(self.img_path, name))   ## Color order of cv2 is BGR
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
         if not self.args.model == "ours":
@@ -382,11 +392,16 @@ class Json_transform(Dataset):
                     break
             if flag:
                 continue
+                    
+            rot_image = i_rotate(ori_image, degrees, 0, move_y + move_y2)
+            rot_image = Image.fromarray(rot_image)
+            
             j['joint_2d'] = d.tolist()
             j['joint_3d'] = joint.tolist()
             j['rot_joint_2d'] = joint_2d.tolist()
             j['degree'] = degrees
             j['move'] = move_y + move_y2
+            j["rot_images"] = rot_image
 
         count = 0
         for w in index:
@@ -417,14 +432,11 @@ def save_checkpoint(model, args, epoch, optimizer, best_loss, count, ment, num_t
                 'best_loss': best_loss,
                 'count': count,
                 'model_state_dict': model_to_save.state_dict()}, op.join(checkpoint_dir, 'state_dict.bin'))
-            # logger.info("Save checkpoint to epoch:{}_{}".format(
-            #     epoch, checkpoint_dir))
+
             break
         except:
             pass
-    # else:
-    #     logger.info(
-    #         "Failed to save checkpoint after {} trails.".format(num_trial))
+
     return model_to_save, checkpoint_dir
 
 
@@ -474,14 +486,48 @@ class Our_testset_media(Dataset):
 
     
 class Json_e(Json_transform):
-    def __init__(self):
-        with open(f"../../../../../../data1/ArmoHand/annotations/evaluation/evaluation_camera.json", "r") as st_json:
-            self.camera = json.load(st_json)
-        with open(f"../../../../../../data1/ArmoHand/annotations/evaluation/evaluation_joint_3d.json", "r") as st_json:
-            self.joint = json.load(st_json)
-        with open(f"../../../../../../data1/ArmoHand/annotations/evaluation/evaluation_data.json", "r") as st_json:
-            self.meta = json.load(st_json)
-        self.root = "../../../../../../data1/ArmoHand/images/evaluation"
-        self.store_path = "../../../../../../data1/ArmoHand/annotations/evaluation/evaluation_data_update.json"
-        
+    def __init__(self, phase):
+        root = "../../../../../../data1/ArmoHand"
+        if phase == 'eval':
+            try:
+                with open(os.path.join(root, "annotations/evaluation/evaluation_camera.json"), "r") as st_json:
+                    self.camera = json.load(st_json)       
+                with open(os.path.join(root, "annotations/evaluation/evaluation_joint_3d.json"), "r") as st_json:
+                    self.joint = json.load(st_json)
+                with open(os.path.join(root, "annotations/evaluation/evaluation_data.json"), "r") as st_json:
+                    self.meta = json.load(st_json)
+                    
+                self.root = os.path.join(root, "images/evaluation")
+                self.store_path = os.path.join(root, "annotations/evaluation/evaluation_data_update.json")
+            except:
+                root = "../../datasets/ArmoHand"
+                with open(os.path.join(root, "annotations/evaluation/evaluation_camera.json"), "r") as st_json:
+                    self.camera = json.load(st_json)   
+                with open(os.path.join(root, "annotations/evaluation/evaluation_joint_3d.json"), "r") as st_json:
+                    self.joint = json.load(st_json)
+                with open(os.path.join(root, "annotations/evaluation/evaluation_data.json"), "r") as st_json:
+                    self.meta = json.load(st_json)
+                    
+                self.root = os.path.join(root, "images/evaluation")
+                self.store_path = os.path.join(root, "annotations/evaluation/evaluation_data_update.json")
+            
+        else:
+            root = "../../datasets/general_2M"
+            with open(os.path.join(root, "annotations/train/CISLAB_train_camera.json"), "r") as st_json:
+                self.camera = json.load(st_json)
+            with open(os.path.join(root, "annotations/train/CISLAB_train_joint_3d.json"), "r") as st_json:
+                self.joint = json.load(st_json)
+            with open(os.path.join(root, "annotations/train/CISLAB_train_data.json"), "r") as st_json:
+                self.meta = json.load(st_json)
+                
+            self.root = os.path.join(root, "images/train")
+            self.store_path = os.path.join(root, "annotations/train/CISLAB_train_data_update.json")
+    
+# def main():
+#     Json_e(phase = 'train').get_json()
+#     print("ENDDDDDD")
+    
+# if __name__ == '__main__':
+#     main()
+    
         

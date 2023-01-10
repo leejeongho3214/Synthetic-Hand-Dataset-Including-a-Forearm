@@ -13,7 +13,7 @@
             "console": "integratedTerminal",
             "justMyCode": true,
             "cwd": "${fileDirname}",
-            // "args": ["--dataset", "frei"]
+            "args": ["--name", "ours/general/our_3d_rot_re", "--projection", "--r", "--general"]
             // "args": ["--general", "--projection"]
         }
     ]
