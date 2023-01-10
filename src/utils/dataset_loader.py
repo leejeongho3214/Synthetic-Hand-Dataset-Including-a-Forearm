@@ -535,3 +535,16 @@ def add_our(args, dataset, folder_num, path):
     testset_dataset = ConcatDataset([test_dataset, testset_dataset])
     
     return trainset_dataset, test_dataset
+
+def our_cat(args, folder_num, path):
+    from src.tools.dataset import CustomDataset
+    for iter, degree in enumerate(folder_num):
+        if iter == 0 :
+            train_dataset = CustomDataset(args, degree, path,
+                                ratio_of_aug=args.ratio_of_aug, ratio_of_dataset= args.ratio_of_our)
+        else:
+            train_dataset_other = CustomDataset(args, degree, path, 
+                                ratio_of_aug=args.ratio_of_aug, ratio_of_dataset= args.ratio_of_our)
+            train_dataset = ConcatDataset(
+                [train_dataset, train_dataset_other])
+    return train_dataset

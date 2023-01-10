@@ -76,7 +76,7 @@ def keypoint_2d_loss(criterion_keypoints, pred_keypoints_2d, gt_keypoints_2d):
         loss = (conf * criterion_keypoints(pred_keypoints_2d, gt_keypoints_2d[:, : ,:2])) * gt_keypoints_2d[:, : ,2][:, :, None]      ## It consider to calculate only the visible joint  
         return loss[loss>0].mean()
     else:
-        loss = (conf * criterion_keypoints(pred_keypoints_2d, gt_keypoints_2d[:, : ,:2])).mean(2).mean(1).sum()
+        loss = (conf * criterion_keypoints(pred_keypoints_2d, gt_keypoints_2d)).mean()
         return loss
     
 

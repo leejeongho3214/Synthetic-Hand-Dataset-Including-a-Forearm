@@ -1,13 +1,13 @@
 import sys
 from tqdm import tqdm
 import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 from src.utils.miscellaneous import mkdir
 from src.utils.comm import is_main_process
 from src.datasets.build import make_hand_data_loader
 import json
 import math
-from src.utils.dataset_loader import Coco, Dataset_interhand, HIU_Dataset, Panoptic, Rhd, GenerateHeatmap, add_our
+import torch
+from src.utils.dataset_loader import Coco, Dataset_interhand, HIU_Dataset, Panoptic, Rhd, GenerateHeatmap, add_our, our_cat
 import os.path as op
 import random
 import cv2
@@ -16,7 +16,6 @@ from torch.utils.data import Dataset
 from PIL import Image
 from torchvision import transforms
 from torch.utils.data import random_split, ConcatDataset
-import torch
 
 
 def build_dataset(args):
@@ -77,19 +76,7 @@ def build_dataset(args):
             eval_path = "/".join(path.split('/')[:-1]) + "/annotations/evaluation"
             test_dataset = val_set(args , 0, eval_path, args.color,
                                         args.ratio_of_aug, args.ratio_of_our)
-            
-            for iter, degree in enumerate(folder_num):
-
-                if iter == 0 :
-                    train_dataset = CustomDataset(args, folder_num, path, color=args.color,
-                                        ratio_of_aug=args.ratio_of_aug, ratio_of_dataset= args.ratio_of_our)
-                
-                else:
-                    train_dataset_other = CustomDataset(args, degree, path, color=args.color,
-                                        ratio_of_aug=args.ratio_of_aug, ratio_of_dataset= args.ratio_of_our)
-                    train_dataset = ConcatDataset(
-                        [train_dataset, train_dataset_other])
-
+            train_dataset = our_cat(args,folder_num, path)
         else:
             dataset = CustomDataset_g(args, general_path)
             train_dataset, test_dataset = random_split(dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])

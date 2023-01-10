@@ -196,7 +196,7 @@ class Runner(object):
                         pred_2d_joints= self.model(images); pred_3d_joints = torch.zeros([pred_2d_joints.size()[0], pred_2d_joints.size()[1], 3]).cuda(); self.args.loss_3d = 0
                         pred_2d_joints[:,:,1] = pred_2d_joints[:,:,1] * images.size(2) ## You Have to check whether weight and height is correct dimenstion
                         pred_2d_joints[:,:,0] = pred_2d_joints[:,:,0] * images.size(3)
-                        pck = PCK_2d_loss(pred_2d_joints, gt_2d_joint, T= 0.05, threshold = 'proportion')
+                        pck = PCK_2d_loss(pred_2d_joints, gt_2d_joint, T= 0.02, threshold = 'proportion')
                         loss = keypoint_2d_loss(self.criterion_keypoints, pred_2d_joints, gt_2d_joint)
                         epe_loss, _ = EPE_train(pred_2d_joints, gt_2d_joint)  ## consider invisible joint
                         self.epe_losses.update_p(epe_loss[0], epe_loss[1])
