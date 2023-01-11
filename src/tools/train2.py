@@ -15,7 +15,6 @@ from dataset import *
 
 def main(args, logger):
 
-
     train_dataset, test_dataset = build_dataset(args)
 
     trainset_loader = data.DataLoader(dataset=train_dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True)
@@ -24,12 +23,13 @@ def main(args, logger):
     if not args.eval:
         _model, best_loss, epo, count = load_model(args)
         log_dir = f'tensorboard/{args.name}'
-        if not args.resume: reset_folder(log_dir)
+        if args.reset: reset_folder(log_dir); reset_folder(os.path.join(args.root_path, args.name)); args.reset = "New"
+        else: args.reset = "Not new"
         writer = SummaryWriter(log_dir); pck_l = 0; batch_time = AverageMeter()
-        d_type = "3D" if args.projection else "2D"
+        d_type = "3D" if args.D3 else "2D"
         for epoch in range(epo, args.epoch):
             if epoch == epo: 
-                logger.info( f"Path: {args.output_dir} | Dataset_len: {len(train_dataset)} | Epoch: {args.epoch} | Type: {d_type} | View: {args.view} | Dataset: {args.dataset} | Model: {args.model} | Status: {args.reset} | 2D_loss: {args.loss_2d} | 3D_loss: {args.loss_3d} | 3D_mid_loss: {args.loss_3d_mid}")
+                logger.info( f"Path: {args.output_dir} | Dataset_len: {len(train_dataset)} | Type: {d_type} | View: {args.view} | Dataset: {args.dataset} | Model: {args.model} | Status: {args.reset} | 2D_loss: {args.loss_2d} | 3D_loss: {args.loss_3d} | 3D_mid_loss: {args.loss_3d_mid} | color: {(args.ratio_of_aug * 100):.0f}%")
             Graphormer_model, optimizer, batch_time, best_loss = train(args, trainset_loader, testset_loader, _model, epoch, best_loss, len(train_dataset),logger, count, writer, pck_l, len(trainset_loader)+len(testset_loader), batch_time)
             loss, count, pck, batch_time = valid(args, trainset_loader, testset_loader, Graphormer_model, epoch, count, best_loss, len(train_dataset), logger, writer, batch_time, len(trainset_loader)+len(testset_loader), pck_l)
             
@@ -47,7 +47,6 @@ def main(args, logger):
                 count += 1
                 if count == args.count:
                     break
-
             gc.collect()
             torch.cuda.empty_cache()
     else:

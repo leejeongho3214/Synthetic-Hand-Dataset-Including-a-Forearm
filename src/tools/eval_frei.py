@@ -30,11 +30,11 @@ def dump(pred_out_path, xyz_pred_list, verts_pred_list):
     print('Dumped %d joints and %d verts predictions to %s' % (len(xyz_pred_list), len(verts_pred_list), pred_out_path))
 
 def main(args):
-    name = "output/ours/general/frei_3d_re"
+    name = "output/ours/general/our_3d"
     args.name = os.path.join(name, "checkpoint-good/state_dict.bin")
     args.model = args.name.split('/')[1]
     if args.model == "other_dataset": args.model = "ours"
-    args.projection = True
+    args.D3 = True
     _model, _, _,_ = load_model(args)
     state_dict = torch.load(args.name)
     _model.load_state_dict(state_dict['model_state_dict'], strict=False)
@@ -63,7 +63,7 @@ def main(args):
         pbar.update(1)
     pbar.close()
     dump(pred_out_path, xyz_list, verts_list)
-    os.system(f"python ../../freihand/eval.py --pred_file_name ../../freihand/{pred_out_path.split('/')[-1]}")
+    os.system("python ../../freihand/eval.py --pred_file_name %s" %pred_out_path)
             
 
 if __name__ == "__main__":
