@@ -39,9 +39,8 @@ def main(args):
     state_dict = torch.load(args.name)
     _model.load_state_dict(state_dict['model_state_dict'], strict=False)
     _model.cuda()
-    pred_out = "../../freihand"
     pred_name = name.split("/")[-1]
-    pred_out_path = os.path.join(pred_out, f"pred_{pred_name}.json")
+    pred_out_path = os.path.join(name, f"pred_{pred_name}.json")
     
     test_dataset = Frei(args)
     testset_loader = data.DataLoader(dataset=test_dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=False)
