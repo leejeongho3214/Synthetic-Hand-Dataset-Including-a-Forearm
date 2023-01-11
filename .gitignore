@@ -3,4 +3,5 @@ visualize.ipynb
 datasets
 models/hrnet
 manopth
-**/.DS_Store
+.DS_Store/
+__pycache__/
