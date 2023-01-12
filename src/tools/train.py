@@ -13,7 +13,7 @@ from torch.utils.tensorboard import SummaryWriter
 from argparser import parse_args, load_model, train, valid, pred_store, pred_eval
 from dataset import *
 
-def main(args, logger):
+def main(args):
 
     train_dataset, test_dataset = build_dataset(args)
 
@@ -29,9 +29,9 @@ def main(args, logger):
         d_type = "3D" if args.D3 else "2D"
         for epoch in range(epo, args.epoch):
             if epoch == epo: 
-                logger.info( f"Path: {args.output_dir} | Dataset_len: {len(train_dataset)} | Type: {d_type} | View: {args.view} | Dataset: {args.dataset} | Model: {args.model} | Status: {args.reset} | 2D_loss: {args.loss_2d} | 3D_loss: {args.loss_3d} | 3D_mid_loss: {args.loss_3d_mid} | color: {(args.ratio_of_aug * 100):.0f}%")
-            Graphormer_model, optimizer, batch_time, best_loss = train(args, trainset_loader, testset_loader, _model, epoch, best_loss, len(train_dataset),logger, count, writer, pck_l, len(trainset_loader)+len(testset_loader), batch_time)
-            loss, count, pck, batch_time = valid(args, trainset_loader, testset_loader, Graphormer_model, epoch, count, best_loss, len(train_dataset), logger, writer, batch_time, len(trainset_loader)+len(testset_loader), pck_l)
+                args.logger.info( f"Path: {args.output_dir} | Dataset_len: {len(train_dataset)} | Type: {d_type} | View: {args.view} | Dataset: {args.dataset} | Model: {args.model} | Status: {args.reset} | 2D_loss: {args.loss_2d} | 3D_loss: {args.loss_3d} | 3D_mid_loss: {args.loss_3d_mid} | color: {(args.ratio_of_aug * 100):.0f}%")
+            Graphormer_model, optimizer, batch_time, best_loss = train(args, trainset_loader, testset_loader, _model, epoch, best_loss, len(train_dataset),args.logger, count, writer, pck_l, len(trainset_loader)+len(testset_loader), batch_time)
+            loss, count, pck, batch_time = valid(args, trainset_loader, testset_loader, Graphormer_model, epoch, count, best_loss, len(train_dataset), args.logger, writer, batch_time, len(trainset_loader)+len(testset_loader), pck_l)
             
             pck_l = max(pck, pck_l)
             is_best = loss < best_loss
@@ -40,7 +40,7 @@ def main(args, logger):
             if is_best:
                 count = 0
                 _model = Graphormer_model
-                save_checkpoint(Graphormer_model, args, epoch, optimizer, best_loss, count,  'good',logger=logger)
+                save_checkpoint(Graphormer_model, args, epoch, optimizer, best_loss, count,  'good',logger= args.logger)
                 del Graphormer_model
 
             else:
@@ -84,5 +84,5 @@ def main(args, logger):
         f.close()
 
 if __name__ == "__main__":
-    args, logger = parse_args()
-    main(args, logger)
+    args= parse_args()
+    main(args)
