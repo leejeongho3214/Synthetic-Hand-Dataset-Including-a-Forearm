@@ -15,7 +15,7 @@
             "justMyCode": true,
             "cwd": "${fileDirname}",
             // "args": ["--name", "ours/general/our_3d_rot_re", "--projection", "--r", "--general"]
-            "args": ["--name","ours/general/ours/3d_color"]
+            "args": ["ours/wrist/ours/2d_color_0.4_37k"]
         }
     ]
 }
