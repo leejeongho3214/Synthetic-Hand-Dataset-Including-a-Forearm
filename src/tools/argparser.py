@@ -45,6 +45,7 @@ def parse_args():
     parser.add_argument("--scale", action='store_true')
     parser.add_argument("--plt", action='store_true')
     parser.add_argument("--eval", action='store_true')
+    parser.add_argument("--logger", action='store_true')
     parser.add_argument("--reset", action='store_true')
     parser.add_argument("--rot", action='store_true')
     parser.add_argument("--color", action='store_true',
@@ -54,8 +55,9 @@ def parse_args():
     
     args = parser.parse_args()
     args, logger = pre_arg(args)
+    args.logger = logger
     
-    return args, logger
+    return args
 
 
 def load_model(args):
@@ -80,7 +82,8 @@ def load_model(args):
         _model = get_our_net(args) ## output: 21 x 2
 
     if os.path.isfile(os.path.join(args.root_path, args.name,'checkpoint-good/state_dict.bin')):
-        best_loss, epoch, _model, count = resume_checkpoint(args, _model, os.path.join(args.root_path, args.name,'checkpoint-good/state_dict.bin'))
+        best_loss, epoch, _model, count = resume_checkpoint(_model, os.path.join(args.root_path, args.name,'checkpoint-good/state_dict.bin'))
+        args.logger.info("Loading.... %s" % os.path.join(args.root_path, args.name))
     _model.to(args.device)
     
     return _model, best_loss, epoch, count
