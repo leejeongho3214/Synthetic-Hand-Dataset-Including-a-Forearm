@@ -44,7 +44,7 @@ class Runner(object):
     def train_log(self, iteration, eta_seconds, end):
         tt = ' '.join(ctime(eta_seconds + end).split(' ')[1:-1])
             
-        if iteration % self.args.logging_steps == 0:
+        if iteration % (self.args.logging_steps * 5) == 0:
 
             self.logger.debug( 
                          ' '.join(
@@ -75,7 +75,7 @@ class Runner(object):
         
     def test_log(self, iteration, eta_seconds, end):
         tt = ' '.join(ctime(eta_seconds + end).split(' ')[1:-1])
-        if iteration % (self.args.logging_steps /10) == 0:
+        if iteration % (self.args.logging_steps / 2) == 0:
             self.logger.debug(
                         ' '.join(
                             ['Test =>> epoch: {ep}', 'iter: {iter}', '/{maxi}']
@@ -93,17 +93,20 @@ class Runner(object):
         self.bar.suffix = ('({iteration}/{data_loader}) '
                            'name: {name} | '
                            'loss: {total:.6f} | '
-                            'count: {count} | '
-                        #    'max_epoch: {epoch} | '
-                        #    'type: {d_type} | '
-
+                           'count: {count} | '
                            'pck: {now_pck:.2f}'
-                        #    'best_pck: {pck:.2f} | '
-                        #    'exp: {exp}'
                            ).format(name= self.args.name.split('/')[-1], count = self.count, max_count = self.args.count, iteration = iteration, exp = tt,
-                                    epoch=self.args.epoch, data_loader = len(self.now_loader), total = self.log_losses.avg,now_pck = self.pck_losses.avg * 100 ,pck = self.pck * 100, d_type = self.type)
+                                    epoch=self.args.epoch, data_loader = len(self.now_loader), total = self.log_losses.avg, now_pck = self.pck_losses.avg * 100 ,pck = self.pck * 100, d_type = self.type)
         if iteration == len(self.now_loader) - 1:
-            self.bar.suffix = self.bar.suffix +'\n'
+            self.bar.suffix = ('({iteration}/{data_loader}) '
+                           'name: {name} | '
+                            'count: {count} | '
+                           'loss: {total:.6f} | '
+                           'best_loss: {best_loss:.6f} | '
+                           'pck: {now_pck:.2f} '
+                            'best_pock: {pck:.2f} \n'
+                           ).format(name= self.args.name.split('/')[-1], count = self.count, max_count = self.args.count, iteration = iteration, exp = tt, best_loss = self.best_loss,
+                                    epoch=self.args.epoch, data_loader = len(self.now_loader), total = self.log_losses.avg, now_pck = self.pck_losses.avg * 100 ,pck = self.pck * 100, d_type = self.type)
         self.bar.next()
     
     

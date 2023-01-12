@@ -9,10 +9,6 @@
             "name": "Python: 현재 파일",
             "type": "python",
             "request": "launch",
-            "terminal.integrated.env.linux": {
-                "DISPLAY": "localhost:10.0",
-              },
-            "python.defaultInterpreterPath": "~/miniconda3/envs/Pose/bin/python",
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": true,

@@ -387,20 +387,18 @@ class Json_transform(Dataset):
                 continue
             
             center_j = d.mean(0)
-            noise = random.uniform(-20, 20)
-            move_x = 112 - center_j[0] + noise
-            move_y = 112 - center_j[1] + noise
-            tran_image = i_rotate(ori_image, 0, move_x, move_y)
-            tran_image = Image.fromarray(tran_image)
-            
-            plt.imshow(tran_image)
-            plt.show()
+            move_x = 112 - center_j[0]
+            move_y = 112 - center_j[1]
+            # tran_image = i_rotate(ori_image, 0, move_x, move_y)
+            image = Image.fromarray(ori_image)
+
+
             j['joint_2d'] = d.tolist()
             j['joint_3d'] = joint.tolist()
             j['rot_joint_2d'] = joint_2d.tolist()
             j['move_x'] = move_x
             j['move_y'] = move_y
-            j['tran_image'] = tran_image
+            # j['tran_image'] = tran_image
 
         count = 0
         for w in index:
