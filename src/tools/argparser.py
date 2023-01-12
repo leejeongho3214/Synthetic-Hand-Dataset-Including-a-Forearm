@@ -46,6 +46,7 @@ def parse_args():
     parser.add_argument("--plt", action='store_true')
     parser.add_argument("--eval", action='store_true')
     parser.add_argument("--reset", action='store_false')
+    parser.add_argument("--rot", action='store_true')
     parser.add_argument("--color", action='store_true',
                         help="If you write down, This dataset would be applied color jitter to train data, according to ratio of aug")
     parser.add_argument("--D3", action='store_true',
@@ -80,8 +81,8 @@ def load_model(args):
 
     if os.path.isfile(os.path.join(args.root_path, args.name,'checkpoint-good/state_dict.bin')):
         best_loss, epoch, _model, count = resume_checkpoint(args, _model, os.path.join(args.root_path, args.name,'checkpoint-good/state_dict.bin'))
-        
     _model.to(args.device)
+    
     return _model, best_loss, epoch, count
 
 

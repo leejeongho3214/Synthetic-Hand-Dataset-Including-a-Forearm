@@ -9,12 +9,13 @@
             "name": "Python: 현재 파일",
             "type": "python",
             "request": "launch",
+            "python.defaultInterpreterPath": "~/miniconda3/envs/Pose/bin/python",
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": true,
             "cwd": "${fileDirname}",
             // "args": ["--name", "ours/general/our_3d_rot_re", "--projection", "--r", "--general"]
-            "args": ["--dataset", "frei", "--general", "--projection"]
+            "args": ["--name","ours/general/ours/3d_color"]
         }
     ]
 }

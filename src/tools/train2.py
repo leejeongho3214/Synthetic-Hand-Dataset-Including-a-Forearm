@@ -23,8 +23,8 @@ def main(args, logger):
     if not args.eval:
         _model, best_loss, epo, count = load_model(args)
         log_dir = f'tensorboard/{args.name}'
-        if args.reset: reset_folder(log_dir); reset_folder(os.path.join(args.root_path, args.name)); args.reset = "New"
-        else: args.reset = "Not new"
+        if args.reset: reset_folder(log_dir); reset_folder(os.path.join(args.root_path, args.name)); args.reset = "Init"
+        else: args.reset = "Resume"
         writer = SummaryWriter(log_dir); pck_l = 0; batch_time = AverageMeter()
         d_type = "3D" if args.D3 else "2D"
         for epoch in range(epo, args.epoch):

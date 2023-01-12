@@ -24,6 +24,8 @@ def build_dataset(args):
     assert args.name.split("/")[2] in ["rhd", "coco", "frei", "panoptic", "hiu", "interhand", "ours"], "Your name of dataset is the wrong => %s" % args.name.split("/")[2]
 
     if "3d" in args.name.split("/")[3].split("_"): args.D3 = True
+    if "rot" in args.name.split("/")[3].split("_"): args.rot = True
+    if "color" in args.name.split("/")[3].split("_"): args.color = True
     args.dataset = args.name.split("/")[2]
     args.view = args.name.split("/")[1]
     args.model = args.name.split("/")[0]
@@ -184,6 +186,8 @@ class CustomDataset_g(Dataset):
         image = cv2.imread(os.path.join(self.root, name))  # PIL image
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
+        degrees = random.uniform(-20, 20)
+        image = i_rotate(image, degrees, 0, move)
         if not self.args.model == "ours":
             image_size = 256
         else:
