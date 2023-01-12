@@ -18,6 +18,10 @@ from PIL import Image
 from torchvision import transforms
 from torch.utils.data import random_split
 
+import matplotlib
+from matplotlib import pyplot as plt
+matplotlib.use('Webagg')
+
 def build_dataset(args):
     assert args.name.split("/")[0] in ["simplebaseline", "hourglass", "hrnet", "ours"], "Your name of model is the wrong => %s" % args.name.split("/")[0]
     assert args.name.split("/")[1] in ["wrist", "general"] , "Your name of view is the wrong %s" % args.name.split("/")[1] 
@@ -25,8 +29,8 @@ def build_dataset(args):
 
     if "3d" in args.name.split("/")[3].split("_"): args.D3 = True
     if "rot" in args.name.split("/")[3].split("_"): args.rot = True
-    if "color" in args.name.split("/")[3].split("_"): args.color = True; index = args.name.split("/")[3].split("_").index("color")
-    args.ratio_of_aug = float(args.name.split("/")[3].split("_")[index + 1])
+    if "color" in args.name.split("/")[3].split("_"): args.color = True; index = args.name.split("/")[3].split("_").index("color"); args.ratio_of_aug = float(args.name.split("/")[3].split("_")[index + 1])    
+    
     args.dataset = args.name.split("/")[2]
     args.view = args.name.split("/")[1]
     args.model = args.name.split("/")[0]
@@ -186,9 +190,7 @@ class CustomDataset_g(Dataset):
         id = self.meta['images'][idx]['frame_idx']
         image = cv2.imread(os.path.join(self.root, name))  # PIL image
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-
-        degrees = random.uniform(-20, 20)
-        image = i_rotate(image, degrees, 0, move)
+        
         if not self.args.model == "ours":
             image_size = 256
         else:
@@ -305,9 +307,9 @@ def i_rotate(img, degree, move_x, move_y):
     new_h, new_w = h, w
     translation = np.float32([[1, 0, move_x], [0, 1, move_y]])
     rotatefigure = cv2.getRotationMatrix2D(centerRotatePT, degree, 1)
-    result = cv2.warpAffine(img, rotatefigure, (new_w, new_h),
-                            flags=cv2.INTER_LINEAR, borderMode=cv2.INTER_LINEAR)
-    result = cv2.warpAffine(result, translation, (new_w, new_h),
+    # result = cv2.warpAffine(img, rotatefigure, (new_w, new_h),
+    #                         flags=cv2.INTER_LINEAR, borderMode=cv2.INTER_LINEAR)
+    result = cv2.warpAffine(img, translation, (new_w, new_h),
                             flags=cv2.INTER_LINEAR, borderMode=cv2.INTER_LINEAR)
 
     return result
@@ -327,6 +329,90 @@ class Json_transform(Dataset):
         self.root = f'{self.path}/{self.degree}/images/train'
         self.store_path = f'{self.path}/{self.degree}/annotations/train/CISLAB_train_data_update.json'
 
+    def get_json_g(self):
+        meta_list = self.meta['images'].copy()
+        index = []
+        pbar = tqdm(total = len(meta_list))
+        for idx, j in enumerate(meta_list):
+            pbar.update(1)
+            if j['camera'] == '0':
+                index.append(idx)
+                continue
+
+            camera = self.meta['images'][idx]['camera']
+            id = self.meta['images'][idx]['frame_idx']
+
+            joint = torch.tensor(self.joint['0'][f'{id}']['world_coord'][:21])
+            focal_length = self.camera['0']['focal'][f'{camera}'][0]
+            translation = self.camera['0']['campos'][f'{camera}']
+            rot = self.camera['0']['camrot'][f'{camera}']
+            flag = False
+            name = j['file_name']
+            ori_image = cv2.imread(os.path.join(self.root, name))
+            ori_image = cv2.cvtColor(ori_image, cv2.COLOR_BGR2RGB)
+            
+            for i in range(21):
+                a = np.dot(np.array(rot, dtype='float32'),
+                           np.array(joint[i], dtype='float32') - np.array(translation, dtype='float32'))
+                a[:2] = a[:2] / a[2]
+                b = a[:2] * focal_length + 112
+                b = torch.tensor(b)
+
+                for u in b:
+                    if u > 223 or u < 0:
+                        index.append(idx)
+                        flag = True
+                        break
+                if flag:
+                    break
+
+                if i == 0:  # 112 is image center
+                    joint_2d = b
+                elif i == 1:
+                    joint_2d = torch.stack([joint_2d, b], dim=0)
+                else:
+                    joint_2d = torch.concat([joint_2d, b.reshape(1, 2)], dim=0)
+            if flag:
+                continue
+
+            d = joint_2d.clone()
+
+            flag = False
+            for o in joint_2d:
+                if o[0] > 220 or o[1] > 220:
+                    flag = True
+                    index.append(idx)
+                    break
+            if flag:
+                continue
+            
+            center_j = d.mean(0)
+            noise = random.uniform(-20, 20)
+            move_x = 112 - center_j[0] + noise
+            move_y = 112 - center_j[1] + noise
+            tran_image = i_rotate(ori_image, 0, move_x, move_y)
+            tran_image = Image.fromarray(tran_image)
+            
+            plt.imshow(tran_image)
+            plt.show()
+            j['joint_2d'] = d.tolist()
+            j['joint_3d'] = joint.tolist()
+            j['rot_joint_2d'] = joint_2d.tolist()
+            j['move_x'] = move_x
+            j['move_y'] = move_y
+            j['tran_image'] = tran_image
+
+        count = 0
+        for w in index:
+            del self.meta['images'][w-count]
+            count += 1
+
+        with open(self.store_path, 'w') as f:
+            json.dump(self.meta, f)
+
+        print(
+            f"Done ===> {self.store_path}")
+        
     def get_json(self):
         meta_list = self.meta['images'].copy()
         index = []
@@ -415,7 +501,6 @@ class Json_transform(Dataset):
             j['rot_joint_2d'] = joint_2d.tolist()
             j['degree'] = degrees
             j['move'] = move_y + move_y2
-            j["rot_images"] = rot_image
 
         count = 0
         for w in index:
@@ -501,7 +586,7 @@ class Our_testset_media(Dataset):
     
 class Json_e(Json_transform):
     def __init__(self, phase):
-        root = "../../../../../../data1/ArmoHand"
+        root = "datasets/general_2M"
         if phase == 'eval':
             try:
                 with open(os.path.join(root, "annotations/evaluation/evaluation_camera.json"), "r") as st_json:
@@ -537,11 +622,11 @@ class Json_e(Json_transform):
             self.root = os.path.join(root, "images/train")
             self.store_path = os.path.join(root, "annotations/train/CISLAB_train_data_update.json")
     
-# def main():
-#     Json_e(phase = 'train').get_json()
-#     print("ENDDDDDD")
+def main():
+    Json_e(phase = 'train').get_json_g()
+    print("ENDDDDDD")
     
-# if __name__ == '__main__':
-#     main()
+if __name__ == '__main__':
+    main()
     
         
