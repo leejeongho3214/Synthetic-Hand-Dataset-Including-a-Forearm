@@ -73,8 +73,6 @@ def main(args, logger):
             pbar.update(1)
             
         pbar.close()
-            
-        pbar.close()
         f = open(f"pck_{threshold_type}.txt", "w")
         for each_list in eval_list:
             epe_list, pck_list, list_name = each_list[2], each_list[1], each_list[0]

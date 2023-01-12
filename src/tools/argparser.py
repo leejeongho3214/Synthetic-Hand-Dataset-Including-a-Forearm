@@ -45,7 +45,7 @@ def parse_args():
     parser.add_argument("--scale", action='store_true')
     parser.add_argument("--plt", action='store_true')
     parser.add_argument("--eval", action='store_true')
-    parser.add_argument("--reset", action='store_false')
+    parser.add_argument("--reset", action='store_true')
     parser.add_argument("--rot", action='store_true')
     parser.add_argument("--color", action='store_true',
                         help="If you write down, This dataset would be applied color jitter to train data, according to ratio of aug")
