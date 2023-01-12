@@ -23,7 +23,7 @@ from src.modeling.hourglass.posenet import PoseNet
 def parse_args():
     parser = argparse.ArgumentParser()
     
-    parser.add_argument("--name", default='None',
+    parser.add_argument("name", default='None',
                         help = 'You write down to store the directory path',type=str)
     parser.add_argument("--root_path", default=f'output', type=str, required=False,
                         help="The root directory to save location which you want")
