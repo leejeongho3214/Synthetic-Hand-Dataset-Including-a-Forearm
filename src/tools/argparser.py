@@ -60,7 +60,9 @@ def parse_args():
     return args
 
 
-def load_model(args):
+def load_model(args, log_dir):
+    if args.reset: reset_folder(log_dir); reset_folder(os.path.join(args.root_path, args.name)); args.reset = "Init"
+    else: args.reset = "Resume"
     epoch = 0
     best_loss = np.inf
     count = 0
