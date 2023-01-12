@@ -25,7 +25,8 @@ def build_dataset(args):
 
     if "3d" in args.name.split("/")[3].split("_"): args.D3 = True
     if "rot" in args.name.split("/")[3].split("_"): args.rot = True
-    if "color" in args.name.split("/")[3].split("_"): args.color = True
+    if "color" in args.name.split("/")[3].split("_"): args.color = True; index = args.name.split("/")[3].split("_").index("color")
+    args.ratio_of_aug = args.name.split("/")[3].split("_")[index]
     args.dataset = args.name.split("/")[2]
     args.view = args.name.split("/")[1]
     args.model = args.name.split("/")[0]
