@@ -4,8 +4,8 @@ import sys
 
 import tqdm
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"  # Arrange GPU devices starting from 0
-os.environ["CUDA_VISIBLE_DEVICES"]= "0" 
-os.environ["TF_ENABLE_ONEDNN_OPTS"]="3"
+os.environ["CUDA_VISIBLE_DEVICES"]= "3" 
+os.environ["TF_ENABLE_ONEDNN_OPTS"]="0"
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 from torch.utils import data
 from src.utils.dir import reset_folder
