@@ -18,7 +18,6 @@ from PIL import Image
 from torchvision import transforms
 from torch.utils.data import random_split
 
-import matplotlib
 from matplotlib import pyplot as plt
 
 def build_dataset(args):
@@ -45,7 +44,7 @@ def build_dataset(args):
     general_path = "../../../../../../data1/general_2M" # general-view image path (about 2M)
     if not os.path.isdir(general_path):
         general_path = "../../datasets/general_2M"
-        
+    
     if args.name.split("/")[1] == "wrist":
         folder = os.listdir(path)
         folder_num = [i for i in folder if i not in ["README.txt", "data.zip"]]
@@ -85,16 +84,18 @@ def build_dataset(args):
     else:
         if args.view == "wrist":
             eval_path = "/".join(path.split('/')[:-1]) + "/annotations/evaluation"
-            test_dataset = val_set(args , 0, eval_path, args.color,
-                                        args.ratio_of_aug, args.ratio_of_our)
             train_dataset = our_cat(args,folder_num, path)
+            test_dataset = val_set(args , 0, eval_path, args.color,
+                                    args.ratio_of_aug, args.ratio_of_our)
         else:       
+            eval_path = os.path.join(general_path, "annotations/val")
             dataset = CustomDataset_g(args, general_path)
-            train_dataset, test_dataset = random_split(dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
+            test_dataset = val_g_set(args , 0, eval_path, args.color,
+                            args.ratio_of_aug, args.ratio_of_our)
 
     return train_dataset, test_dataset
 
-
+    
 
 class CustomDataset(Dataset):
     def __init__(self, args, degree, path, color=False, ratio_of_aug=0.2, ratio_of_dataset=1):
@@ -198,7 +199,6 @@ class CustomDataset_g(Dataset):
                             transforms.RandomApply(torch.nn.ModuleList([transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5)]), p=self.args.ratio_of_aug),
                                                         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
         image = trans(image)
-
         joint_3d = torch.tensor(self.meta['images'][idx]['joint_3d'])
         joint_3d[:, 0] = - joint_3d[:, 0]
         joint_3d = joint_3d - joint_3d[0, :]
@@ -213,6 +213,15 @@ class val_set(CustomDataset):
         with open(os.path.join(self.path, "evaluation_data_update.json"), "r") as st_json:
             self.meta = json.load(st_json)
         self.img_path = "/".join(self.path.split('/')[:-2]) +"/images/evaluation"
+        
+class val_g_set(CustomDataset):
+    def __init__(self,  *args):
+        super().__init__(*args)
+        self.ratio_of_aug = 0
+        self.ratio_of_dataset = 1
+        with open(os.path.join(self.path, "CISLAB_val_data_update.json"), "r") as st_json:
+            self.meta = json.load(st_json)
+        self.img_path = "/".join(self.path.split('/')[:-2]) +"/images/val"
 
 class eval_set(Dataset):
     def __init__(self, args):
@@ -285,13 +294,9 @@ class AverageMeter(object):
         self.count += n
         self.avg = self.sum / self.count
 
-
-
-
 def apply(img, aug, num=1, scale=1.5):
     Y = [aug(img) for _ in range(num)]
     return Y
-
 
 def i_rotate(img, degree, move_x, move_y):
     h, w = img.shape[:-1]
@@ -379,7 +384,7 @@ class Json_transform(Dataset):
             if flag:
                 continue
             
-            center_j = d.mean(0)
+            center_j = np.array(d.mean(0))
             move_x = 112 - center_j[0]
             move_y = 112 - center_j[1]
             # tran_image = i_rotate(ori_image, 0, move_x, move_y)
@@ -603,15 +608,15 @@ class Json_e(Json_transform):
             
         else:
             root = "../../datasets/general_2M"
-            with open(os.path.join(root, "annotations/train/CISLAB_train_camera.json"), "r") as st_json:
+            with open(os.path.join(root, "annotations/val/CISLAB_val_camera.json"), "r") as st_json:
                 self.camera = json.load(st_json)
-            with open(os.path.join(root, "annotations/train/CISLAB_train_joint_3d.json"), "r") as st_json:
+            with open(os.path.join(root, "annotations/val/CISLAB_val_joint_3d.json"), "r") as st_json:
                 self.joint = json.load(st_json)
-            with open(os.path.join(root, "annotations/train/CISLAB_train_data.json"), "r") as st_json:
+            with open(os.path.join(root, "annotations/val/CISLAB_val_data.json"), "r") as st_json:
                 self.meta = json.load(st_json)
                 
-            self.root = os.path.join(root, "images/train")
-            self.store_path = os.path.join(root, "annotations/train/CISLAB_train_data_update.json")
+            self.root = os.path.join(root, "images/val")
+            self.store_path = os.path.join(root, "annotations/val/CISLAB_val_data_update.json")
     
 def main():
     Json_e(phase = 'train').get_json_g()

@@ -84,9 +84,10 @@ def load_model(args):
         _model = get_our_net(args) ## output: 21 x 2
         
     log_dir = f'tensorboard/{args.name}'
+    if args.reset: reset_folder(log_dir); reset_folder(os.path.join(args.root_path, args.name)); args.reset = "Init"
+    else: args.reset = "Resume"
+    
     if os.path.isfile(os.path.join(args.root_path, args.name,'checkpoint-good/state_dict.bin')):
-        if args.reset: reset_folder(log_dir); reset_folder(os.path.join(args.root_path, args.name)); args.reset = "Init"
-        else: args.reset = "Resume"
         best_loss, epoch, _model, count = resume_checkpoint(_model, os.path.join(args.root_path, args.name,'checkpoint-good/state_dict.bin'))
         args.logger.info("Loading ===> %s" % os.path.join(args.root_path, args.name))
         
