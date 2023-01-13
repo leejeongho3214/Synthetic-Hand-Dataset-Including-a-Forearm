@@ -27,7 +27,7 @@ def build_dataset(args):
     assert args.name.split("/")[1] in ["wrist", "general"] , "Your name of view is the wrong %s" % args.name.split("/")[1] 
     assert args.name.split("/")[2] in ["rhd", "coco", "frei", "panoptic", "hiu", "interhand", "ours"], "Your name of dataset is the wrong => %s" % args.name.split("/")[2]
 
-    if "3d" in args.name.split("/")[3].split("_"): args.D3 = True
+    if "3d" in args.name.split("/")[3].split("_"): args.D3 = True; args.loss_3d = 1
     if "rot" in args.name.split("/")[3].split("_"): args.rot = True
     if "color" in args.name.split("/")[3].split("_"): args.color = True; index = args.name.split("/")[3].split("_").index("color"); args.ratio_of_aug = float(args.name.split("/")[3].split("_")[index + 1])    
     
