@@ -60,7 +60,7 @@ class Runner(object):
         self.bar.suffix = ('({iteration}/{data_loader}) '
                            'name: {name} | '
                            'count: {count} | '
-                           'loss: {total:.6f}'
+                           'loss: {total:.6f} | '
                            'exp: {exp}'
                            ).format(name= self.args.name.split('/')[-1], count = self.count, iteration = iteration, exp = tt,
                                     data_loader = len(self.now_loader), total = self.log_losses.avg)

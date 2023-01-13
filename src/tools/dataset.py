@@ -20,7 +20,6 @@ from torch.utils.data import random_split
 
 import matplotlib
 from matplotlib import pyplot as plt
-matplotlib.use('Webagg')
 
 def build_dataset(args):
     assert args.name.split("/")[0] in ["simplebaseline", "hourglass", "hrnet", "ours"], "Your name of model is the wrong => %s" % args.name.split("/")[0]
@@ -57,19 +56,16 @@ def build_dataset(args):
         return trainset_dataset, testset_dataset
 
     if args.dataset  == "hiu":
-
         dataset = HIU_Dataset(args)
         trainset_dataset, test_dataset = add_our(args, dataset, folder_num, path)                 
         return trainset_dataset, testset_dataset
 
     if args.dataset == "panoptic":
-
         dataset = Panoptic(args)
         trainset_dataset, test_dataset = add_our(args, dataset, folder_num, path)                            
         return trainset_dataset, testset_dataset
 
     if args.dataset == "coco":
-
         dataset = Coco(args)
         trainset_dataset, test_dataset = add_our(args, dataset, folder_num, path)                    
         return trainset_dataset, testset_dataset
@@ -92,8 +88,7 @@ def build_dataset(args):
             test_dataset = val_set(args , 0, eval_path, args.color,
                                         args.ratio_of_aug, args.ratio_of_our)
             train_dataset = our_cat(args,folder_num, path)
-        else:
-            
+        else:       
             dataset = CustomDataset_g(args, general_path)
             train_dataset, test_dataset = random_split(dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
 
@@ -175,10 +170,8 @@ class CustomDataset(Dataset):
 
 class CustomDataset_g(Dataset):
     def __init__(self, args, path):
-        with open(f"{path}/annotations/train/CISLAB_train_data.json", "r") as st_json:
+        with open(f"{path}/annotations/train/CISLAB_train_data_update.json", "r") as st_json:
             self.meta = json.load(st_json)
-        with open(f"{path}/annotations/train/CISLAB_train_joint_3d.json", "r") as st_json:
-            self.joint = json.load(st_json)
         self.args = args
         self.root = os.path.join(path, "images/train")
         
@@ -188,8 +181,11 @@ class CustomDataset_g(Dataset):
     def __getitem__(self, idx):
         name = self.meta['images'][idx]['file_name']
         id = self.meta['images'][idx]['frame_idx']
+        move_x = self.meta['images'][idx]['move_x']
+        move_y = self.meta['images'][idx]['move_y']
         image = cv2.imread(os.path.join(self.root, name))  # PIL image
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        image = i_rotate(image, 0, move_x, move_y)
         
         if not self.args.model == "ours":
             image_size = 256
@@ -197,16 +193,14 @@ class CustomDataset_g(Dataset):
             image_size = 224
             
         image = Image.fromarray(image)
-
         trans = transforms.Compose([transforms.Resize((image_size, image_size)),
                             transforms.ToTensor(),
                             transforms.RandomApply(torch.nn.ModuleList([transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5)]), p=self.args.ratio_of_aug),
-                                                        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-                                                        ])
-        
+                                                        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
         image = trans(image)
-            
-        joint_3d = torch.tensor(self.joint['0'][f'{id}']['world_coord'][:21])
+        plt.imshow(image.permute(1,2,0))
+        plt.show()
+        joint_3d = torch.tensor(self.meta['images'][idx]['joint_3d'])
         joint_3d[:, 0] = - joint_3d[:, 0]
         joint_3d = joint_3d - joint_3d[0, :]
 

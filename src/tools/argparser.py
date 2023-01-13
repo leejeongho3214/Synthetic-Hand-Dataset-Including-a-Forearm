@@ -87,9 +87,10 @@ def load_model(args):
     if os.path.isfile(os.path.join(args.root_path, args.name,'checkpoint-good/state_dict.bin')):
         if args.reset: reset_folder(log_dir); reset_folder(os.path.join(args.root_path, args.name)); args.reset = "Init"
         else: args.reset = "Resume"
-        writer = SummaryWriter(log_dir); 
         best_loss, epoch, _model, count = resume_checkpoint(_model, os.path.join(args.root_path, args.name,'checkpoint-good/state_dict.bin'))
         args.logger.info("Loading ===> %s" % os.path.join(args.root_path, args.name))
+        
+    writer = SummaryWriter(log_dir)
     _model.to(args.device)
     
     return _model, best_loss, epoch, count, writer
