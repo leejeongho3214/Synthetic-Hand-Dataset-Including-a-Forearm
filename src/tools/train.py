@@ -8,8 +8,7 @@ os.environ["CUDA_VISIBLE_DEVICES"]= "0"
 os.environ["TF_ENABLE_ONEDNN_OPTS"]="0"
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 from torch.utils import data
-from src.utils.dir import reset_folder
-from torch.utils.tensorboard import SummaryWriter
+
 from argparser import parse_args, load_model, train, valid, pred_store, pred_eval
 from dataset import *
 
@@ -21,11 +20,8 @@ def main(args):
     testset_loader = data.DataLoader(dataset=test_dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=False)
     
     if not args.eval:
-        _model, best_loss, epo, count = load_model(args)
-        log_dir = f'tensorboard/{args.name}'
-        if args.reset: reset_folder(log_dir); reset_folder(os.path.join(args.root_path, args.name)); args.reset = "Init"
-        else: args.reset = "Resume"
-        writer = SummaryWriter(log_dir); pck_l = 0; batch_time = AverageMeter()
+        _model, best_loss, epo, count, writer = load_model(args)
+        pck_l = 0; batch_time = AverageMeter()
         d_type = "3D" if args.D3 else "2D"
         for epoch in range(epo, args.epoch):
             if epoch == epo: 

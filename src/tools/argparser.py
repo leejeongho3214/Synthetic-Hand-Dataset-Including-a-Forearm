@@ -11,6 +11,8 @@ from src.modeling.simplebaseline.config import config as config_simple
 from src.modeling.simplebaseline.pose_resnet import get_pose_net
 import torch
 import time
+from src.utils.dir import reset_folder
+from torch.utils.tensorboard import SummaryWriter
 from src.utils.method import Runner
 from src.utils.dir import  resume_checkpoint, dump
 import numpy as np
@@ -80,13 +82,17 @@ def load_model(args):
         
     else:
         _model = get_our_net(args) ## output: 21 x 2
-
+        
+    log_dir = f'tensorboard/{args.name}'
     if os.path.isfile(os.path.join(args.root_path, args.name,'checkpoint-good/state_dict.bin')):
+        if args.reset: reset_folder(log_dir); reset_folder(os.path.join(args.root_path, args.name)); args.reset = "Init"
+        else: args.reset = "Resume"
+        writer = SummaryWriter(log_dir); 
         best_loss, epoch, _model, count = resume_checkpoint(_model, os.path.join(args.root_path, args.name,'checkpoint-good/state_dict.bin'))
-        args.logger.info("Loading.... %s" % os.path.join(args.root_path, args.name))
+        args.logger.info("Loading ===> %s" % os.path.join(args.root_path, args.name))
     _model.to(args.device)
     
-    return _model, best_loss, epoch, count
+    return _model, best_loss, epoch, count, writer
 
 
 
