@@ -88,8 +88,9 @@ def build_dataset(args):
             test_dataset = val_set(args , 0, eval_path, args.color,
                                     args.ratio_of_aug, args.ratio_of_our)
         else:       
+            train_path = os.path.join(general_path, "annotations/train")
             eval_path = os.path.join(general_path, "annotations/val")
-            train_dataset = CustomDataset_g(args, general_path)
+            train_dataset = CustomDataset_g(args, train_path)
             test_dataset = val_g_set(args, eval_path)
     return train_dataset, test_dataset
 
@@ -169,10 +170,13 @@ class CustomDataset(Dataset):
 
 class CustomDataset_g(Dataset):
     def __init__(self, args, path):
-        with open(f"{path}/annotations/train/CISLAB_train_data_update.json", "r") as st_json:
+        self.phase = path.split("/")[-1]
+        self.root = "/".join(path.split("/")[:-2])
+        with open(f"{path}/CISLAB_{self.phase}_data_update.json", "r") as st_json:
             self.meta = json.load(st_json)
         self.args = args
-        self.root = os.path.join(path, "images/train")
+        self.path = path
+        self.img_path = os.path.join(self.root, f"images/{self.phase}")
         
     def __len__(self):
         return len(self.meta['images'])
@@ -181,7 +185,7 @@ class CustomDataset_g(Dataset):
         name = self.meta['images'][idx]['file_name']
         move_x = self.meta['images'][idx]['move_x']
         move_y = self.meta['images'][idx]['move_y']
-        image = cv2.imread(os.path.join(self.root, name))  # PIL image
+        image = cv2.imread(os.path.join(self.img_path, name))  # PIL image
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         image = i_rotate(image, 0, move_x, move_y)
         
@@ -218,7 +222,7 @@ class val_g_set(CustomDataset_g):
         self.ratio_of_dataset = 1
         with open(os.path.join(self.path, "CISLAB_val_data_update.json"), "r") as st_json:
             self.meta = json.load(st_json)
-        self.img_path = "/".join(self.path.split('/')[:-2]) +"/images/val"
+        self.img_path = os.path.join(self.root,f"images/{self.phase}" )
 
 class eval_set(Dataset):
     def __init__(self, args):

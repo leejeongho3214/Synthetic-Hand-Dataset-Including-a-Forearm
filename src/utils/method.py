@@ -168,7 +168,7 @@ class Runner(object):
                 elif iteration == len(self.train_loader) - 1:
                     self.writer.add_scalar("Loss/train", self.log_losses.avg, self.epoch)
                     
-                # break
+                break
 
             return self.model, self.optimizer, self.batch_time
             
