@@ -39,7 +39,7 @@ def parse_args():
     parser.add_argument("--ratio_of_other", default=0.3, type=float)
     parser.add_argument("--ratio_of_aug", default=0.2, type=float,
                         help="You can use color jitter to train data as many as you want, according to this ratio")
-    parser.add_argument("--epoch", default=30, type=int)
+    parser.add_argument("--epoch", default=50, type=int)
     
     parser.add_argument("--loss_2d", default=0, type=float)
     parser.add_argument("--loss_3d", default=1, type=float)
