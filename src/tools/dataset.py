@@ -198,8 +198,7 @@ class CustomDataset_g(Dataset):
                             transforms.RandomApply(torch.nn.ModuleList([transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5)]), p=self.args.ratio_of_aug),
                                                         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
         image = trans(image)
-        plt.imshow(image.permute(1,2,0))
-        plt.show()
+
         joint_3d = torch.tensor(self.meta['images'][idx]['joint_3d'])
         joint_3d[:, 0] = - joint_3d[:, 0]
         joint_3d = joint_3d - joint_3d[0, :]
