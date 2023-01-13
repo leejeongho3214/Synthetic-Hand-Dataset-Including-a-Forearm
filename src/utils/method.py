@@ -95,7 +95,7 @@ class Runner(object):
                            'name: {name} | '
                             'count: {count} | '
                            'loss: {total:.6f} | '
-                           'best_loss: {best_loss:.6f} | \n'
+                           'best_loss: {best_loss:.6f}\n'
                            ).format(name= self.args.name.split('/')[-1], count = self.count,  iteration = iteration, best_loss = self.best_loss,
                                  data_loader = len(self.now_loader), total = self.log_losses.avg)
         self.bar.next()
@@ -167,6 +167,8 @@ class Runner(object):
                     self.writer.add_scalar(f"Loss/train/{self.epoch}_epoch", self.log_losses.avg, iteration)
                 elif iteration == len(self.train_loader) - 1:
                     self.writer.add_scalar("Loss/train", self.log_losses.avg, self.epoch)
+                    
+                # break
 
             return self.model, self.optimizer, self.batch_time
             
@@ -271,51 +273,52 @@ class Runner(object):
 
         else:
             self.model.eval()
-            for iteration, (images, gt_2d_joints, gt_heatmaps, _) in enumerate(self.valid_loader):
-                batch_size = images.size(0)
-                images = images.cuda()
-                gt_2d_joint = gt_2d_joints.cuda()
-                gt_heatmaps = gt_heatmaps.cuda()    
-                
-                pred = self.model(images)
-                
-                loss = torch.mean(calc_loss(pred, gt_heatmaps, self.args))
-                self.log_losses.update(loss.item(), batch_size)
-                if self.args.model == "hourglass": pred = pred[:, -1]
-
-                pred_joint = np.zeros((pred.size(0),pred.size(1),2))
-                for idx, batch in enumerate(pred):
-                    for idx2, joint in enumerate(batch):
-                        joint = joint.detach().cpu()
-                        joint = joint.flatten()
-                        index = joint.argmax()
-                        row = int(index / heatmap_size)
-                        col = index % heatmap_size
-                        pred_joint[idx,idx2] = np.array([col, row]).flatten()
-                pred_joint = torch.tensor(pred_joint)
-                pred_2d_joints = pred_joint * multiply ## heatmap resolution was 64 x 64 so multiply 4 to make it 256 x 256
-                
-                pck = PCK_2d_loss(pred_2d_joints, gt_2d_joint, T= 0.05, threshold='proportion')
-                epe_loss, _ = EPE_train(pred_2d_joints, gt_2d_joint)  ## consider invisible joint
-                self.pck_losses.update(pck, batch_size)
-                self.epe_losses.update_p(epe_loss[0], epe_loss[1])
-                
-                if not self.args.D3:
-                    if iteration == 0 or iteration == int(len(self.valid_loader)/2) or iteration == len(self.valid_loader) - 1:
-                        fig = plt.figure()
-                        visualize_gt(images, gt_2d_joints, fig, iteration)
-                        visualize_pred(images, pred_2d_joints, fig, 'test', self.epoch, iteration, self.args, None)
-                        plt.close()
-
-                self.batch_time.update(time.time() - end)
-                end = time.time()
-                eta_seconds = self.batch_time.avg * ((len(self.valid_loader) - iteration) + (self.args.epoch - self.epoch -1) * self.len_total)  
-
-                self.test_log(iteration, eta_seconds, end)
-                if iteration == len(self.valid_loader) - 1:
-                    self.writer.add_scalar("Loss/valid", self.log_losses.avg, self.epoch)
+            with torch.no_grad():
+                for iteration, (images, gt_2d_joints, gt_heatmaps, _) in enumerate(self.valid_loader):
+                    batch_size = images.size(0)
+                    images = images.cuda()
+                    gt_2d_joint = gt_2d_joints.cuda()
+                    gt_heatmaps = gt_heatmaps.cuda()    
                     
-            return self.log_losses.avg, self.count, self.pck_losses.avg * 100, self.batch_time 
-        
-        
+                    pred = self.model(images)
+                    
+                    loss = torch.mean(calc_loss(pred, gt_heatmaps, self.args))
+                    self.log_losses.update(loss.item(), batch_size)
+                    if self.args.model == "hourglass": pred = pred[:, -1]
+
+                    pred_joint = np.zeros((pred.size(0),pred.size(1),2))
+                    for idx, batch in enumerate(pred):
+                        for idx2, joint in enumerate(batch):
+                            joint = joint.detach().cpu()
+                            joint = joint.flatten()
+                            index = joint.argmax()
+                            row = int(index / heatmap_size)
+                            col = index % heatmap_size
+                            pred_joint[idx,idx2] = np.array([col, row]).flatten()
+                    pred_joint = torch.tensor(pred_joint)
+                    pred_2d_joints = pred_joint * multiply ## heatmap resolution was 64 x 64 so multiply 4 to make it 256 x 256
+                    
+                    pck = PCK_2d_loss(pred_2d_joints, gt_2d_joint, T= 0.05, threshold='proportion')
+                    epe_loss, _ = EPE_train(pred_2d_joints, gt_2d_joint)  ## consider invisible joint
+                    self.pck_losses.update(pck, batch_size)
+                    self.epe_losses.update_p(epe_loss[0], epe_loss[1])
+                    
+                    if not self.args.D3:
+                        if iteration == 0 or iteration == int(len(self.valid_loader)/2) or iteration == len(self.valid_loader) - 1:
+                            fig = plt.figure()
+                            visualize_gt(images, gt_2d_joints, fig, iteration)
+                            visualize_pred(images, pred_2d_joints, fig, 'test', self.epoch, iteration, self.args, None)
+                            plt.close()
+
+                    self.batch_time.update(time.time() - end)
+                    end = time.time()
+                    eta_seconds = self.batch_time.avg * ((len(self.valid_loader) - iteration) + (self.args.epoch - self.epoch -1) * self.len_total)  
+
+                    self.test_log(iteration, eta_seconds, end)
+                    if iteration == len(self.valid_loader) - 1:
+                        self.writer.add_scalar("Loss/valid", self.log_losses.avg, self.epoch)
+                        
+                return self.log_losses.avg, self.count, self.pck_losses.avg * 100, self.batch_time 
+            
+            
 

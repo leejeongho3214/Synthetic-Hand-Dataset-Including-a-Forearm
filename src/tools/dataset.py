@@ -89,10 +89,8 @@ def build_dataset(args):
                                     args.ratio_of_aug, args.ratio_of_our)
         else:       
             eval_path = os.path.join(general_path, "annotations/val")
-            dataset = CustomDataset_g(args, general_path)
-            test_dataset = val_g_set(args , 0, eval_path, args.color,
-                            args.ratio_of_aug, args.ratio_of_our)
-
+            train_dataset = CustomDataset_g(args, general_path)
+            test_dataset = val_g_set(args, eval_path)
     return train_dataset, test_dataset
 
     
@@ -181,7 +179,6 @@ class CustomDataset_g(Dataset):
         
     def __getitem__(self, idx):
         name = self.meta['images'][idx]['file_name']
-        id = self.meta['images'][idx]['frame_idx']
         move_x = self.meta['images'][idx]['move_x']
         move_y = self.meta['images'][idx]['move_y']
         image = cv2.imread(os.path.join(self.root, name))  # PIL image
@@ -214,7 +211,7 @@ class val_set(CustomDataset):
             self.meta = json.load(st_json)
         self.img_path = "/".join(self.path.split('/')[:-2]) +"/images/evaluation"
         
-class val_g_set(CustomDataset):
+class val_g_set(CustomDataset_g):
     def __init__(self,  *args):
         super().__init__(*args)
         self.ratio_of_aug = 0
