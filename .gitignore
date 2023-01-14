@@ -1,11 +1,20 @@
 *.txt
+*.jpg
+*.ppg
 *.ipynb
 datasets
 **/hrnet
 .DS_Store
 .vscode/
 
+eval_image
+eval_json
+final_model
+output
+tensorboard
+
 check_joint_num.py
 frei.py
 our.py
 visualize_joint_in_image.py
+

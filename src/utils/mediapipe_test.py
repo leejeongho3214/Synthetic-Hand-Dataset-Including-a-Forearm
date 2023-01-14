@@ -5,7 +5,7 @@ from matplotlib import pyplot as plt
 from torch.utils.data import ConcatDataset
 import torch
 from torch.utils import data
-from argparser import parse_args
+from src.utils.argparser import parse_args
 import sys
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"  # Arrange GPU devices starting from 0
 os.environ["CUDA_VISIBLE_DEVICES"]= "1"  #
