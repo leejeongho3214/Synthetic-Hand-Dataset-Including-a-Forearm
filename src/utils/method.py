@@ -94,9 +94,10 @@ class Runner(object):
             self.bar.suffix = ('({iteration}/{data_loader}) '
                             'count: {count} | '
                            'loss: {total:.6f} | '
-                           'best_loss: {best_loss:.6f}\n'
+                           'best_loss: {best_loss:.6f}'
                            ).format(name= self.args.name.split('/')[-1], count = self.count,  iteration = iteration, best_loss = self.best_loss,
                                  data_loader = len(self.now_loader), total = self.log_losses.avg)
+            self.bar.suffix = self.bar.suffix + "\n"
         self.bar.next()
     
     
