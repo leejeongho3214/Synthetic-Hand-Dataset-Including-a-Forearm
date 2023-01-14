@@ -1,7 +1,11 @@
-skeletion.txt
-visualize.ipynb
+*.txt
+*.ipynb
 datasets
-models/hrnet
-manopth
-.DS_Store/
-__pycache__/
+**/hrnet
+.DS_Store
+.vscode/
+
+check_joint_num.py
+frei.py
+our.py
+visualize_joint_in_image.py
