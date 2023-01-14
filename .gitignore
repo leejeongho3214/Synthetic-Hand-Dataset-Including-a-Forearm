@@ -1,9 +1,21 @@
 *.txt
+*.jpg
+*.png
+*.pyc
+*.json
 *.ipynb
-datasets
 **/hrnet
+
 .DS_Store
 .vscode/
+
+manopth
+eval_image
+eval_json
+final_model
+output
+tensorboard
+datasets
 
 check_joint_num.py
 frei.py
