@@ -13,7 +13,7 @@
             "console": "integratedTerminal",
             "justMyCode": true,
             "cwd": "${fileDirname}",
-            "args": ["ours/general/ours/3d_color_0.2_center"]
+            "args": ["ours/wrist/ours/2d_color_0.4_0.4M"]
         }
     ]
 }

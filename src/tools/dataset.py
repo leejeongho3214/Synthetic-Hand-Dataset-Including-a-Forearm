@@ -306,9 +306,9 @@ def i_rotate(img, degree, move_x, move_y):
     new_h, new_w = h, w
     translation = np.float32([[1, 0, move_x], [0, 1, move_y]])
     rotatefigure = cv2.getRotationMatrix2D(centerRotatePT, degree, 1)
-    # result = cv2.warpAffine(img, rotatefigure, (new_w, new_h),
-    #                         flags=cv2.INTER_LINEAR, borderMode=cv2.INTER_LINEAR)
-    result = cv2.warpAffine(img, translation, (new_w, new_h),
+    result = cv2.warpAffine(img, rotatefigure, (new_w, new_h),
+                            flags=cv2.INTER_LINEAR, borderMode=cv2.INTER_LINEAR)
+    result = cv2.warpAffine(result, translation, (new_w, new_h),
                             flags=cv2.INTER_LINEAR, borderMode=cv2.INTER_LINEAR)
 
     return result
