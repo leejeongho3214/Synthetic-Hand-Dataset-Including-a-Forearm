@@ -1,9 +1,10 @@
-skeleton.txt
-visualize.ipynb
+*.txt
+*.ipynb
 datasets
-models/hrnet
-manopth
-**/.DS_Store
+**/hrnet
+.DS_Store
+.vscode/
+
 check_joint_num.py
 frei.py
 our.py
