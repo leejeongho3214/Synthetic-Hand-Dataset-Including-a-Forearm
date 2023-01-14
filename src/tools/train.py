@@ -23,7 +23,7 @@ def main(args):
         d_type = "3D" if args.D3 else "2D"
         for epoch in range(epo, args.epoch):
             if epoch == epo: 
-                args.logger.info( f"Path: {args.output_dir} | Dataset_len: {len(train_dataset)} | Type: {d_type} | View: {args.view} | Dataset: {args.dataset} | Model: {args.model} | Status: {args.reset} | 2D_loss: {args.loss_2d} | 3D_loss: {args.loss_3d} | 3D_mid_loss: {args.loss_3d_mid} | color: {(args.ratio_of_aug * 100):.0f}%")
+                args.logger.info( f"Path: {args.output_dir} | Dataset_len: {len(train_dataset)} | Type: {d_type} | View: {args.view} | Dataset: {args.dataset} | Model: {args.model} | Status: {args.reset} | 2D_loss: {args.loss_2d} | 3D_loss: {args.loss_3d} | 3D_mid_loss: {args.loss_3d_mid} | color: {(args.ratio_of_aug * 100):.0f}% | Max_count : {args.count} | Max_epoch : {args.epoch}")
             Graphormer_model, optimizer, batch_time, best_loss = train(args, trainset_loader, testset_loader, _model, epoch, best_loss, len(train_dataset),args.logger, count, writer, pck_l, len(trainset_loader)+len(testset_loader), batch_time)
             loss, count, pck, batch_time = valid(args, trainset_loader, testset_loader, Graphormer_model, epoch, count, best_loss, len(train_dataset), args.logger, writer, batch_time, len(trainset_loader)+len(testset_loader), pck_l)
             
