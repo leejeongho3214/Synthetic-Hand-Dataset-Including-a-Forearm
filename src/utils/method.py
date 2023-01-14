@@ -92,7 +92,6 @@ class Runner(object):
                            
         if iteration == len(self.now_loader) - 1:
             self.bar.suffix = ('({iteration}/{data_loader}) '
-                           'name: {name} | '
                             'count: {count} | '
                            'loss: {total:.6f} | '
                            'best_loss: {best_loss:.6f}\n'
@@ -167,7 +166,7 @@ class Runner(object):
                     self.writer.add_scalar(f"Loss/train/{self.epoch}_epoch", self.log_losses.avg, iteration)
                 elif iteration == len(self.train_loader) - 1:
                     self.writer.add_scalar("Loss/train", self.log_losses.avg, self.epoch)
-                break
+                    
             return self.model, self.optimizer, self.batch_time
             
         else:
