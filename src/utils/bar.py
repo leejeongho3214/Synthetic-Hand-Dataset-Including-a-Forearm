@@ -262,7 +262,7 @@ def colored(text, color=None, on_color=None, attrs=None):
         text += RESET
     return text
 
-class Bar(Progress):
+class Bar(Prog[ress):
     width = 16
     suffix = '%(index)d/%(max)d'
     bar_prefix = ' |'

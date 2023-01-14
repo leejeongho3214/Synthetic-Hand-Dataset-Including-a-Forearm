@@ -57,7 +57,8 @@ class Runner(object):
                             self.log_losses.avg,
                             self.best_loss))
         
-        self.bar.suffix = ('({iteration}/{data_loader}) '
+        else:
+            self.bar.suffix = ('({iteration}/{data_loader}) '
                            'name: {name} | '
                            'count: {count} | '
                            'loss: {total:.6f} | '
@@ -82,13 +83,6 @@ class Runner(object):
                             self.best_loss,
                             tt)
                         )
-
-        self.bar.suffix = ('({iteration}/{data_loader}) '
-                           'name: {name} | '
-                           'loss: {total:.6f} | '
-                           'count: {count} | '
-                           ).format(name= self.args.name.split('/')[-1], count = self.count,iteration = iteration,
-                                    data_loader = len(self.now_loader), total = self.log_losses.avg)
                            
         if iteration == len(self.now_loader) - 1:
             self.bar.suffix = ('({iteration}/{data_loader}) '
@@ -97,6 +91,14 @@ class Runner(object):
                            'best_loss: {best_loss:.6f}\n'
                            ).format(name= self.args.name.split('/')[-1], count = self.count,  iteration = iteration, best_loss = self.best_loss,
                                  data_loader = len(self.now_loader), total = self.log_losses.avg)
+                           
+        else:
+            self.bar.suffix = ('({iteration}/{data_loader}) '
+                            'name: {name} | '
+                            'loss: {total:.6f} | '
+                            'count: {count}'
+                            ).format(name= self.args.name.split('/')[-1], count = self.count,iteration = iteration,
+                                        data_loader = len(self.now_loader), total = self.log_losses.avg)
         self.bar.next()
     
     
