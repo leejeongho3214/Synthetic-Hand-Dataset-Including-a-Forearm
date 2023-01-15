@@ -15,7 +15,7 @@ eval_json
 final_model
 output
 tensorboard
-datasets
+/datasets
 
 check_joint_num.py
 frei.py
