@@ -2,7 +2,7 @@
 *.jpg
 *.png
 *.pyc
-*.json
+pred*.json
 *.ipynb
 models/hrnet
 
