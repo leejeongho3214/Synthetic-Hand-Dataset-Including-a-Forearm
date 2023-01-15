@@ -4,7 +4,7 @@
 *.pyc
 *.json
 *.ipynb
-**/hrnet
+models/hrnet
 
 .DS_Store
 .vscode/
