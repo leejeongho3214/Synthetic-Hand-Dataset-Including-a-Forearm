@@ -151,8 +151,9 @@ class Runner(object):
                 gt_2d_joint[:,:,1] = gt_2d_joint[:,:,1] * images.size(2) ## You Have to check whether weight and height is correct dimenstion
                 gt_2d_joint[:,:,0] = gt_2d_joint[:,:,0] * images.size(3) 
                 
-                if not self.args.D3:
-                    if iteration == 0 or iteration == int(len(self.train_loader)/2) or iteration == len(self.train_loader) - 1:
+
+                if iteration == 0 or iteration == int(len(self.train_loader)/2) or iteration == len(self.train_loader) - 1:
+                    if not self.args.D3 or self.args.plt:
                         fig = plt.figure()
                         visualize_gt(images, gt_2d_joint, fig, iteration)
                         visualize_pred(images, pred_2d_joints, fig, 'train', self.epoch, iteration, self.args, None)
@@ -195,6 +196,8 @@ class Runner(object):
                         loss = keypoint_2d_loss(self.criterion_keypoints, pred_2d_joints, gt_2d_joint)
                         epe_loss, _ = EPE_train(pred_2d_joints, gt_2d_joint)  ## consider invisible joint
                         self.epe_losses.update_p(epe_loss[0], epe_loss[1])
+                        
+                    if not self.args.D3 or self.args.plt:    
                         if iteration == 0 or iteration == int(len(self.valid_loader)/2) or iteration == len(self.valid_loader) - 1:
                             fig = plt.figure()
                             visualize_gt(images, gt_2d_joint, fig, iteration)
