@@ -110,7 +110,7 @@ class Infinite(object):
         except AttributeError:
             raise AttributeError('\'{}\' object has no attribute \'isatty\'. Try setting parameter check_tty=False.'.format(self))
 
-    def next(self, n=1):
+    def [next(self, n=1):
         now = monotonic()
         dt = now - self._ts
         self.update_avg(n, dt)
@@ -263,7 +263,7 @@ def colored(text, color=None, on_color=None, attrs=None):
     return text
 
 class Bar(Progress):
-    width = 16
+    width = 10
     suffix = '%(index)d/%(max)d'
     bar_prefix = ' |'
     bar_suffix = '| '

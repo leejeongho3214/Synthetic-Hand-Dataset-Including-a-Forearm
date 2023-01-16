@@ -25,7 +25,7 @@ class Runner(object):
         self.valid_loader = valid_loader
         self.batch_time = batch_time
         self.now_loader = train_loader if phase == "TRAIN" else valid_loader
-        self.bar = Bar(colored(str(epoch)+'_EPOCH_'+phase, color='blue'), max=len(self.now_loader))
+        self.bar = Bar(colored(str(epoch)+'_'+phase, color='blue'), max=len(self.now_loader))
         self.model = model
         self.optimizer = torch.optim.Adam(params=list(self.model.parameters()),
                                  lr=args.lr,
@@ -57,15 +57,22 @@ class Runner(object):
                             self.log_losses.avg,
                             self.best_loss))
         
+        if iteration == len(self.now_loader) - 1:
+            self.bar.suffix = ('({iteration}/{data_loader}) '
+                            'name: {name} | '
+                            'count: {count} | '
+                            'loss: {total:.6f} | '
+                            'exp: {exp} \r'
+                            ).format(name= self.args.name.split('/')[-1], count = self.count, iteration = iteration, exp = tt,
+                                        data_loader = len(self.now_loader), total = self.log_losses.avg)
         else:
             self.bar.suffix = ('({iteration}/{data_loader}) '
-                           'name: {name} | '
-                           'count: {count} | '
-                           'loss: {total:.6f} | '
-                           'exp: {exp}'
-                           ).format(name= self.args.name.split('/')[-1], count = self.count, iteration = iteration, exp = tt,
-                                    data_loader = len(self.now_loader), total = self.log_losses.avg)
-
+                            'name: {name} | '
+                            'count: {count} | '
+                            'loss: {total:.6f} | '
+                            'exp: {exp}'
+                            ).format(name= self.args.name.split('/')[-1], count = self.count, iteration = iteration, exp = tt,
+                                        data_loader = len(self.now_loader), total = self.log_losses.avg)
         self.bar.next()
         
     def test_log(self, iteration, eta_seconds, end):
