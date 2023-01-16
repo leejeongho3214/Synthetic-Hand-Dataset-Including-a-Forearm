@@ -51,34 +51,35 @@ def build_dataset(args):
         
     if args.dataset == "interhand":
         dataset = Dataset_interhand(transforms.ToTensor(), "train", args)     
-        trainset_dataset, test_dataset = add_our(args, dataset, folder_num, path)
+        trainset_dataset, testset_dataset = add_our(args, dataset, folder_num, path)
         return trainset_dataset, testset_dataset
 
     if args.dataset  == "hiu":
         dataset = HIU_Dataset(args)
-        trainset_dataset, test_dataset = add_our(args, dataset, folder_num, path)                 
+        trainset_dataset, testset_dataset = add_our(args, dataset, folder_num, path)                 
         return trainset_dataset, testset_dataset
 
     if args.dataset == "panoptic":
         dataset = Panoptic(args)
-        trainset_dataset, test_dataset = add_our(args, dataset, folder_num, path)                            
+        trainset_dataset, testset_dataset = add_our(args, dataset, folder_num, path)                            
         return trainset_dataset, testset_dataset
 
     if args.dataset == "coco":
         dataset = Coco(args)
-        trainset_dataset, test_dataset = add_our(args, dataset, folder_num, path)                    
+        trainset_dataset, testset_dataset = add_our(args, dataset, folder_num, path)                    
         return trainset_dataset, testset_dataset
 
     if args.dataset == "frei":
         trainset_dataset = make_hand_data_loader(
             args, args.train_yaml, False, is_train=True, scale_factor=args.img_scale_factor) 
-        testset_dataset = make_hand_data_loader(
-            args, args.val_yaml, False, is_train=False, scale_factor=args.img_scale_factor)        
+        # testset_dataset = make_hand_data_loader(
+        #     args, args.val_yaml, False, is_train=False, scale_factor=args.img_scale_factor)      
+        trainset_dataset, testset_dataset = add_our(args, dataset, folder_num, path)    
         return trainset_dataset, testset_dataset
 
     if args.dataset == "rhd":
         dataset = Rhd(args)
-        trainset_dataset, test_dataset = add_our(args, dataset, folder_num, path)                 
+        trainset_dataset, testset_dataset = add_our(args, dataset, folder_num, path)                 
         return trainset_dataset, testset_dataset
     
     else:

@@ -511,11 +511,8 @@ class Coco(Dataset):
     
 def add_our(args, dataset, folder_num, path):
     from src.tools.dataset import CustomDataset
-    trainset_dataset, testset_dataset = random_split(
-        dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
-    
     for iter, degree in enumerate(folder_num):
-        ratio  = ((len(trainset_dataset) + len(testset_dataset)) * args.ratio_of_other) / 373184
+        ratio  = (len(dataset) * args.ratio_of_other) / 1528415     ## it divides the length of dataset into totla_len
         dataset = CustomDataset(args, degree, path, color=args.color,
                                 ratio_of_aug=args.ratio_of_aug, ratio_of_dataset= ratio)
 
