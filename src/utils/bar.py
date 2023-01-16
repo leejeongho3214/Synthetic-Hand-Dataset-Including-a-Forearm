@@ -110,7 +110,7 @@ class Infinite(object):
         except AttributeError:
             raise AttributeError('\'{}\' object has no attribute \'isatty\'. Try setting parameter check_tty=False.'.format(self))
 
-    def [next(self, n=1):
+    def next(self, n=1):
         now = monotonic()
         dt = now - self._ts
         self.update_avg(n, dt)
