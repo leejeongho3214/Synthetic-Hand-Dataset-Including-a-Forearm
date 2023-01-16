@@ -69,6 +69,6 @@ def get_our_net(args):
         backbone = torch.nn.Sequential(*list(backbone.children())[:-1])
 
     trans_encoder = torch.nn.Sequential(*trans_encoder)
-    _model = Graphormer_Network(args, config, backbone, trans_encoder, token = 70)
+    _model = Graphormer_Network(args, config, backbone, trans_encoder)
     
     return _model

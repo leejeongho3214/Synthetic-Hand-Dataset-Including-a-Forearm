@@ -28,10 +28,9 @@ class Graphormer_Hand_Network(torch.nn.Module):
     End-to-end Graphormer network for hand pose and mesh reconstruction from a single image.
     '''
 
-    def __init__(self, args, config, backbone, trans_encoder, token):
+    def __init__(self, args, config, backbone, trans_encoder,):
         super(Graphormer_Hand_Network, self).__init__()
         self.config = config
-        self.token = token
         self.D3 = True if args.D3 else False
         self.backbone = backbone
         if self.D3:
