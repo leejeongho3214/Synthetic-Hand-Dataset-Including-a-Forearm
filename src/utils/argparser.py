@@ -5,6 +5,7 @@ import argparse
 from src.modeling.hrnet.config.default import update_config
 from src.modeling.hrnet.config.default import _C as cfg
 from src.modeling.hrnet.hrnet_cls_net_gridfeat import get_pose_net as get_cls_net_gridfeat
+from src.utils.bar import colored
 from src.utils.pre_argparser import pre_arg
 from src.tools.models.our_net import get_our_net
 from src.modeling.simplebaseline.config import config as config_simple
@@ -89,7 +90,8 @@ def load_model(args):
     
     if os.path.isfile(os.path.join(args.root_path, args.name,'checkpoint-good/state_dict.bin')):
         best_loss, epoch, _model, count = resume_checkpoint(_model, os.path.join(args.root_path, args.name,'checkpoint-good/state_dict.bin'))
-        args.logger.info("Loading ===> %s" % os.path.join(args.root_path, args.name))
+        args.logger.debug("Loading ===> %s" % os.path.join(args.root_path, args.name))
+        print(colored("Loading ===> %s" % os.path.join(args.root_path, args.name), "green"))
         
     writer = SummaryWriter(log_dir)
     _model.to(args.device)

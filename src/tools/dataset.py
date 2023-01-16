@@ -72,9 +72,9 @@ def build_dataset(args):
     if args.dataset == "frei":
         trainset_dataset = make_hand_data_loader(
             args, args.train_yaml, False, is_train=True, scale_factor=args.img_scale_factor) 
-        # testset_dataset = make_hand_data_loader(
-        #     args, args.val_yaml, False, is_train=False, scale_factor=args.img_scale_factor)      
-        trainset_dataset, testset_dataset = add_our(args, dataset, folder_num, path)    
+        testset_dataset = make_hand_data_loader(
+            args, args.val_yaml, False, is_train=False, scale_factor=args.img_scale_factor)      
+        # trainset_dataset, testset_dataset = add_our(args, dataset, folder_num, path)    ## Need to change code
         return trainset_dataset, testset_dataset
 
     if args.dataset == "rhd":
