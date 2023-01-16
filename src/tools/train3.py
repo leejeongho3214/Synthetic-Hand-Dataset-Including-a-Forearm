@@ -1,9 +1,7 @@
 import gc
 import os
 import sys
-
 import tqdm
-
 
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"  # Arrange GPU devices starting from 0
 os.environ["CUDA_VISIBLE_DEVICES"]= "3" 
