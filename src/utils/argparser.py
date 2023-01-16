@@ -124,7 +124,7 @@ def valid(args, train_dataloader, test_dataloader, Graphormer_model, epoch, coun
        
     return loss, count, pck, batch_time
 
-def pred_store(args, dataloader, model):
+def pred_store(args, dataloader, model, pbar):
 
     xy_list, p_list, gt_list = [], [], []
     with torch.no_grad():
@@ -143,6 +143,8 @@ def pred_store(args, dataloader, model):
             gt_list.append(gt_2d_joints.tolist())
             xy_list.append(pred_2d_joints.tolist())
             p_list.append(anno)
+            pbar.update(1) 
+            
     # dump(os.path.join(args.output_dir, "gt.json"), gt_list)
     dump(os.path.join(args.output_dir, "pred.json"), xy_list)
     # dump(os.path.join(args.output_dir, "pred_p.json"), p_list)
@@ -185,7 +187,7 @@ def pred_eval(args, T_list, Threshold_type):
             pck = PCK_2d_loss_visible(pred_joint, gt_joint, T, Threshold_type)
             if T == T_list[0]:
                 epe, _ = EPE(pred_joint, gt_joint)
-                epe_list[f'{p_type}'].append(epe[0]/epe[1])
+                epe_list[f'{p_type}'].append((epe[0]/epe[1]) * 0.264583) ## pixel -> mm
             pck_list[f'{p_type}'][f'{T:.2f}'].append(pck)
         for th in thresholds_list:
             pck = PCK_2d_loss_visible(pred_joint, gt_joint, th, Threshold_type)

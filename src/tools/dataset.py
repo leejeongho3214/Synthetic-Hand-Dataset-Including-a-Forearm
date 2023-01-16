@@ -16,11 +16,14 @@ import numpy as np
 from torch.utils.data import Dataset
 from PIL import Image
 from torchvision import transforms
-from torch.utils.data import random_split
 
-from matplotlib import pyplot as plt
 
 def build_dataset(args):
+
+    if args.eval:
+        test_dataset = eval_set(args)
+        return test_dataset, test_dataset
+    
     assert args.name.split("/")[0] in ["simplebaseline", "hourglass", "hrnet", "ours"], "Your name of model is the wrong => %s" % args.name.split("/")[0]
     assert args.name.split("/")[1] in ["wrist", "general"] , "Your name of view is the wrong %s" % args.name.split("/")[1] 
     assert args.name.split("/")[2] in ["rhd", "coco", "frei", "panoptic", "hiu", "interhand", "ours"], "Your name of dataset is the wrong => %s" % args.name.split("/")[2]
@@ -32,10 +35,6 @@ def build_dataset(args):
     args.dataset = args.name.split("/")[2]
     args.view = args.name.split("/")[1]
     args.model = args.name.split("/")[0]
-    
-    if args.eval:
-        test_dataset = eval_set(args)
-        return test_dataset, test_dataset
     
     path = "../../../../../../data1/ArmoHand/training"
     if not os.path.isdir(path):
