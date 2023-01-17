@@ -174,6 +174,7 @@ class Runner(object):
                     
                 if iteration % 100 == 99:
                     self.writer.add_scalar(f"Loss/train/{self.epoch}_epoch", self.log_losses.avg, iteration)
+                    
                 elif iteration == len(self.train_loader) - 1:
                     self.writer.add_scalar("Loss/train", self.log_losses.avg, self.epoch)
                     

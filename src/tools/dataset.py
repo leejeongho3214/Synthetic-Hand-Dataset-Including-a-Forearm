@@ -19,9 +19,20 @@ from torchvision import transforms
 
 
 def build_dataset(args):
+    path = "../../../../../../data1/ArmoHand/training"
+    if not os.path.isdir(path):
+        path = "../../datasets/ArmoHand/training"
+        
+    general_path = "../../../../../../data1/general_2M" # general-view image path (about 2M)
+    if not os.path.isdir(general_path):
+        general_path = "../../datasets/general_2M"
 
     if args.eval:
         test_dataset = eval_set(args)
+        return test_dataset, test_dataset
+    
+    if args.test:
+        test_dataset = test_set(args, path)
         return test_dataset, test_dataset
     
     assert args.name.split("/")[0] in ["simplebaseline", "hourglass", "hrnet", "ours"], "Your name of model is the wrong => %s" % args.name.split("/")[0]
@@ -35,14 +46,6 @@ def build_dataset(args):
     args.dataset = args.name.split("/")[2]
     args.view = args.name.split("/")[1]
     args.model = args.name.split("/")[0]
-    
-    path = "../../../../../../data1/ArmoHand/training"
-    if not os.path.isdir(path):
-        path = "../../datasets/ArmoHand/training"
-        
-    general_path = "../../../../../../data1/general_2M" # general-view image path (about 2M)
-    if not os.path.isdir(general_path):
-        general_path = "../../datasets/general_2M"
     
     if args.name.split("/")[1] == "wrist":
         folder = os.listdir(path)
@@ -223,6 +226,47 @@ class val_g_set(CustomDataset_g):
         with open(os.path.join(self.path, "CISLAB_val_data_update.json"), "r") as st_json:
             self.meta = json.load(st_json)
         self.img_path = os.path.join(self.root,f"images/{self.phase}" )
+
+class test_set(Dataset):
+    def __init__(self, args, path):
+        self.args = args
+        path = "/".join(path.split("/")[:-1])
+        self.image_path = os.path.join(f'{path}', "images")
+        anno_path = os.path.join(f'{path}', "annotations", "test", "test_data_update.json")
+        with open(anno_path, "r") as st_json:
+            self.meta = json.load(st_json)
+
+    def __len__(self):
+        return len(os.listdir(self.image_path))
+
+    def __getitem__(self, idx):
+        name = self.meta['images'][idx]['file_name']
+        image = cv2.imread(os.path.join(self.image_path, name))   ## Color order of cv2 is BGR
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+        if not self.args.model == "ours":
+            image_size = 256
+        else:
+            image_size = 224
+
+        image = Image.fromarray(image)
+        joint_2d = torch.tensor(self.meta['images'][idx]['joint_2d'])
+
+        trans = transforms.Compose([transforms.Resize((image_size, image_size)),
+                                    transforms.ToTensor(),
+                                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+        image = trans(image)
+        
+        if self.args.model == "hrnet":
+            heatmap = GenerateHeatmap(128, 21)(joint_2d/2)
+        else:
+            heatmap = GenerateHeatmap(64, 21)(joint_2d/4)
+            
+        joint_3d = torch.tensor(self.meta['images'][idx]['joint_3d'])
+
+
+        return image, joint_2d, heatmap, joint_3d
+
 
 class eval_set(Dataset):
     def __init__(self, args):
@@ -595,6 +639,7 @@ class Json_e(Json_transform):
                     
                 self.root = os.path.join(root, "images/evaluation")
                 self.store_path = os.path.join(root, "annotations/evaluation/evaluation_data_update.json")
+                
             except:
                 root = "../../datasets/ArmoHand"
                 with open(os.path.join(root, "annotations/evaluation/evaluation_camera.json"), "r") as st_json:
@@ -606,6 +651,18 @@ class Json_e(Json_transform):
                     
                 self.root = os.path.join(root, "images/evaluation")
                 self.store_path = os.path.join(root, "annotations/evaluation/evaluation_data_update.json")
+            
+        elif phase == 'test':
+                root = "../../../../../../data1/ArmoHand"
+                with open(os.path.join(root, "annotations/test/CISLAB_test_camera.json"), "r") as st_json:
+                    self.camera = json.load(st_json)   
+                with open(os.path.join(root, "annotations/test/CISLAB_test_joint_3d.json"), "r") as st_json:
+                    self.joint = json.load(st_json)
+                with open(os.path.join(root, "annotations/test/CISLAB_test_data.json"), "r") as st_json:
+                    self.meta = json.load(st_json)
+                    
+                self.root = os.path.join(root, "images/test")
+                self.store_path = os.path.join(root, "annotations/test/test_data_update.json")
             
         else:
             root = "../../datasets/general_2M"
@@ -620,7 +677,7 @@ class Json_e(Json_transform):
             self.store_path = os.path.join(root, "annotations/val/CISLAB_val_data_update.json")
     
 def main():
-    Json_e(phase = 'train').get_json_g()
+    Json_e(phase = "test").get_json_g()
     print("ENDDDDDD")
     
 if __name__ == '__main__':

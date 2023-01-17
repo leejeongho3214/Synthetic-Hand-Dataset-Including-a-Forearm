@@ -48,6 +48,7 @@ def parse_args():
     parser.add_argument("--scale", action='store_true')
     parser.add_argument("--plt", action='store_true')
     parser.add_argument("--eval", action='store_true')
+    parser.add_argument("--test", action='store_true')
     parser.add_argument("--logger", action='store_true')
     parser.add_argument("--reset", action='store_true')
     parser.add_argument("--rot", action='store_true')
@@ -195,7 +196,7 @@ def pred_eval(args, T_list, Threshold_type):
         
         pck_t = np.array(pck_t)
         auc = np.trapz(pck_t, thresholds)
-        auc /= norm_factor
+        auc /= (norm_factor + sys.float_info.epsilon)
         pck_list[f'{p_type}']['total'].append(auc)
     
     for j in pck_list:

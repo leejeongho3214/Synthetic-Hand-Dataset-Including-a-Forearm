@@ -20,7 +20,7 @@ def MPJPE_visible(pred_2d_joints, gt_2d_joint):
                 gt = np.array((align_gt_x.detach().cpu(), align_gt_y.detach().cpu()))
                 pixel = np.sqrt(np.sum((pred - gt)**2))
                 distance += np.sqrt(pixel)
-    mpjpe = distance/(batch_size*pred_2d_joints.size(1))
+    mpjpe = distance/((batch_size*pred_2d_joints.size(1)) + sys.float_info.epsilon)
 
     return mpjpe
     
@@ -98,7 +98,7 @@ def PCK_2d_loss_visible(pred_2d, gt_2d, T = 0.1, threshold = 'proportion'):
     diff = gt_2d_value - pred_2d_value
     distance = diff.square().sum(2).sqrt() * vis_index                                            ## Consider only visible joint
     num_vis = len(vis_index[vis_index == True])
-    
+
     if threshold == 'proportion':
         norm_distance = distance.permute(1, 0) / torch.tensor(bbox_size)
         num_correct = num_vis - len(norm_distance[norm_distance > T])
@@ -110,7 +110,7 @@ def PCK_2d_loss_visible(pred_2d, gt_2d, T = 0.1, threshold = 'proportion'):
         assert False, "Please check variable threshold is right"
 
     
-    pck = num_correct / num_vis
+    pck = num_correct / (num_vis + sys.float_info.epsilon)
     return pck
 
 def PCK_2d_loss(pred_2d, gt_2d, T = 0.1, threshold = 'proportion'):
