@@ -42,7 +42,7 @@ def main(args):
         eval_list.append([args.name, pck_list, epe_list])
     pbar.close()
     
-    f = open(f"pck_{threshold_type}.txt", "w")
+    f = open(f"pck_eval.txt", "w")
     for each_list in eval_list:
         epe_list, pck_list, list_name = each_list[2], each_list[1], each_list[0]
         for p_type in pck_list:
@@ -51,7 +51,7 @@ def main(args):
             for j in range(len(T_list)): f.write("{:.2f},".format(pck_list['%s'%p_type][T[j + 1]]))
             f.write("{:.2f}, {:.2f}\n".format(epe_list['%s'%p_type], pck_list['%s'%p_type][T[0]]))
     f.close()
-    print(colored("Writting ===> %s" % os.path.join(os.getcwd(), f"pck_{threshold_type}.txt")))
+    print(colored("Writting ===> %s" % os.path.join(os.getcwd(), f"pck_eval.txt")))
     
 
 if __name__ == "__main__":

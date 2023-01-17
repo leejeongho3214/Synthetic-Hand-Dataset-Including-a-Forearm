@@ -148,7 +148,7 @@ def pred_store(args, dataloader, model, pbar):
             p_list.append(anno)
             pbar.update(1) 
             
-    # dump(os.path.join(args.output_dir, "gt.json"), gt_list)
+    # dump(os.path.join("output", "gt_test.json"), gt_list)
     dump(os.path.join(args.output_dir, "pred.json"), xy_list)
     # dump(os.path.join(args.output_dir, "pred_p.json"), p_list)
 
@@ -206,6 +206,59 @@ def pred_eval(args, T_list, Threshold_type):
             pck_list[j][i] = np.array(pck_list[j][i]).mean()
     for i in epe_list:
         epe_list[i] = np.array(epe_list[i]).mean()
+        
+        
+    return pck_list, epe_list
+
+
+def pred_test(args, T_list, Threshold_type):
+
+    gt_path = os.path.join("output/gt_test.json")
+    pred_path = os.path.join(args.output_dir, "pred.json")
+    
+    with open(gt_path, 'r') as fi:
+        gt_json = json.load(fi)
+    with open(pred_path, 'r') as fi:
+        pred_json = json.load(fi)
+        
+    pred = [x for i in range(len(pred_json[0])) for x in pred_json[0][i]]
+    gt = [x for i in range(len(gt_json[0])) for x in gt_json[0][i]]
+    thresholds_list = np.linspace(T_list[0], T_list[-1], 100)
+    thresholds = np.array(thresholds_list)
+    norm_factor = np.trapz(np.ones_like(thresholds), thresholds)
+    
+    pck_list = dict()
+    epe_list = list()
+    pck_list['total'] = []
+    for T in T_list: 
+        pck_list[f'{T:.3f}'] = []
+            
+    for pred_joint, gt_joint in zip(pred, gt):
+        
+        gt_joint = torch.tensor(gt_joint)[None, :]
+        pred_joint = torch.tensor(pred_joint)[None, :]
+        pck_t = list()
+        for T in T_list:     
+            pck = PCK_2d_loss(pred_joint, gt_joint, T, Threshold_type)
+            if T == T_list[0]:
+                epe, _ = EPE_train(pred_joint, gt_joint)
+                epe_list.append((epe[0]/epe[1]) * 0.264583)    ## pixel -> mm
+            pck_list[f'{T:.3f}'].append(pck * 100)
+            
+        for th in thresholds_list:
+            pck = PCK_2d_loss(pred_joint, gt_joint, th, Threshold_type)
+            pck_t.append(pck * 100)
+        
+        pck_t = np.array(pck_t)
+        auc = np.trapz(pck_t, thresholds)
+        auc /= (norm_factor + sys.float_info.epsilon)
+        pck_list['total'].append(auc)
+    
+    # for j in pck_list:
+    #     for i in pck_list[j]:
+    #         pck_list[j][i] = np.nanmean(np.array(pck_list[j][i]))
+    # for i in epe_list:
+    #     epe_list[i] = np.nanmean(np.array(epe_list[i]))
         
         
     return pck_list, epe_list

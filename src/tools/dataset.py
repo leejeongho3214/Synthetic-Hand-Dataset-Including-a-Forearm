@@ -231,13 +231,13 @@ class test_set(Dataset):
     def __init__(self, args, path):
         self.args = args
         path = "/".join(path.split("/")[:-1])
-        self.image_path = os.path.join(f'{path}', "images")
+        self.image_path = os.path.join(f'{path}', "images/test")
         anno_path = os.path.join(f'{path}', "annotations", "test", "test_data_update.json")
         with open(anno_path, "r") as st_json:
             self.meta = json.load(st_json)
 
     def __len__(self):
-        return len(os.listdir(self.image_path))
+        return len(self.meta['images'])
 
     def __getitem__(self, idx):
         name = self.meta['images'][idx]['file_name']

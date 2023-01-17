@@ -126,7 +126,9 @@ def PCK_2d_loss(pred_2d, gt_2d, T = 0.1, threshold = 'proportion'):
         bbox_size.append(length)
         point.append(((min(j[:,0]),min(j[:,1])),(max(j[:,0]),max(j[:,1]))))
 
-    gt_2d_value = gt_2d[:, 1:]; pred_2d_value = pred_2d[:, 1:] ## Excluded the wrist joint by starting 1
+    # gt_2d_value = gt_2d[:, 1:]; pred_2d_value = pred_2d[:, 1:] ## Excluded the wrist joint by starting 1
+    gt_2d_value = gt_2d; pred_2d_value = pred_2d
+    
     diff = gt_2d_value - pred_2d_value
     distance = diff.square().sum(2).sqrt()
     num_total = len(distance.flatten())
@@ -141,7 +143,7 @@ def PCK_2d_loss(pred_2d, gt_2d, T = 0.1, threshold = 'proportion'):
     else:
         assert False, "Please check variable threshold is right"
 
-    pck = num_correct / num_total
+    pck = float(num_correct / num_total)
     
     return pck
 
