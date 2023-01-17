@@ -86,15 +86,17 @@ def load_model(args):
         _model = get_our_net(args) ## output: 21 x 2
         
     log_dir = f'tensorboard/{args.name}'
-    if args.reset: reset_folder(log_dir); reset_folder(os.path.join(args.root_path, args.name)); args.reset = "Init"
-    else: args.reset = "Resume"
+    if args.name.split("/")[0] != "final_model":
+        if args.reset: reset_folder(log_dir); reset_folder(os.path.join(args.root_path, args.name)); args.reset = "Init"
+        else: args.reset = "Resume"
+        writer = SummaryWriter(log_dir)
     
     if os.path.isfile(os.path.join(args.root_path, args.name,'checkpoint-good/state_dict.bin')):
         best_loss, epoch, _model, count = resume_checkpoint(_model, os.path.join(args.root_path, args.name,'checkpoint-good/state_dict.bin'))
         args.logger.debug("Loading ===> %s" % os.path.join(args.root_path, args.name))
         print(colored("Loading ===> %s" % os.path.join(args.root_path, args.name), "green"))
         
-    writer = SummaryWriter(log_dir)
+    
     _model.to(args.device)
     
     return _model, best_loss, epoch, count, writer
