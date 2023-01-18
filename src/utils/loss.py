@@ -1,8 +1,9 @@
 import sys
-from cv2 import threshold
 import numpy as np
 import torch
+import torch.nn as nn
 from src.utils.visualize import *
+
 
 def MPJPE_visible(pred_2d_joints, gt_2d_joint):
     batch_size = pred_2d_joints.size(0)
@@ -284,7 +285,31 @@ def compute_similarity_transform(S1, S2):
 
     return S1_hat
 
+class JointsMSELoss(nn.Module):
+    def __init__(self, use_target_weight):
+        super(JointsMSELoss, self).__init__()
+        self.criterion = nn.MSELoss(reduction='mean')
+        self.use_target_weight = use_target_weight
 
+    def forward(self, output, target, target_weight):
+        batch_size = output.size(0)
+        num_joints = output.size(1)
+        heatmaps_pred = output.reshape((batch_size, num_joints, -1)).split(1, 1)        ## 관절별로 분리 한 뒤에 flatten
+        heatmaps_gt = target.reshape((batch_size, num_joints, -1)).split(1, 1)          ## 16개의 64 x 1 x 4096
+        loss = 0
+
+        for idx in range(num_joints):
+            heatmap_pred = heatmaps_pred[idx].squeeze()                                 ## 64 x 4096
+            heatmap_gt = heatmaps_gt[idx].squeeze()
+            if self.use_target_weight:
+                loss += 0.5 * self.criterion(
+                    heatmap_pred.mul(target_weight[:, idx]),
+                    heatmap_gt.mul(target_weight[:, idx])
+                )
+            else:
+                loss += 0.5 * self.criterion(heatmap_pred, heatmap_gt)
+
+        return loss / num_joints
 
 def compute_similarity_transform_batch(S1, S2):
     """Batched version of compute_similarity_transform."""

@@ -12,8 +12,6 @@ import torch
 import os.path as op
 from torch.utils.data import random_split, ConcatDataset
 
-
-
 class GenerateHeatmap():
     def __init__(self, output_res, num_parts):
         self.output_res = output_res

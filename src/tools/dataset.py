@@ -8,7 +8,7 @@ from src.datasets.build import make_hand_data_loader
 import json
 import math
 import torch
-from src.utils.dataset_loader import Coco, Dataset_interhand, HIU_Dataset, Panoptic, Rhd, GenerateHeatmap, add_our, our_cat
+from src.utils.dataset_loader import Dataset_interhand, HIU_Dataset,Rhd, GenerateHeatmap, add_our, our_cat
 import os.path as op
 import random
 import cv2
