@@ -299,8 +299,8 @@ def main(gt_path, pred_path, output_dir, pred_file_name=None, set_name=None):
         
     with open(score_path, mode) as fo:
         xyz_al_mean3d *= 100
-        fo.write("\n name: %s\n" % pred_file)
-        fo.write('xyz_al_mean3d: %f:.2f\n' % xyz_al_mean3d)
+        fo.write("\nname: %s\n" % pred_file)
+        fo.write('xyz_al_mean3d: %.2f cm\n' % xyz_al_mean3d)
         fo.write("======" * 14)
 
     return 

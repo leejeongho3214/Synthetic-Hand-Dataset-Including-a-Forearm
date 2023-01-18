@@ -214,12 +214,7 @@ def pred_eval(args, T_list, Threshold_type):
     return pck_list, epe_list
 
 
-<<<<<<< HEAD
-
-def pred_test(args, T_list, Threshold_type):
-=======
 def pred_test(args, T_list, Threshold_type, pbar, dataloader, model):
->>>>>>> 39a402c8b0749bf31c735226da7cf428014430cc
 
     thresholds_list = np.linspace(T_list[0], T_list[-1], 100)
     thresholds = np.array(thresholds_list)
