@@ -173,7 +173,7 @@ class CustomDataset(Dataset):
 
 class CustomDataset_g(Dataset):
     def __init__(self, args, path):
-        self.phase = path.split("/")[-1]
+        self.phase = path.split("/")[-1]ㅁ
         self.root = "/".join(path.split("/")[:-2])
         with open(f"{path}/CISLAB_{self.phase}_data_update.json", "r") as st_json:
             self.meta = json.load(st_json)
@@ -200,7 +200,9 @@ class CustomDataset_g(Dataset):
         image = Image.fromarray(image)
         trans = transforms.Compose([transforms.Resize((image_size, image_size)),
                             transforms.ToTensor(),
+                            
                             transforms.RandomApply(torch.nn.ModuleList([transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5)]), p=self.args.ratio_of_aug),
+                            
                                                         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
         image = trans(image)
         joint_3d = torch.tensor(self.meta['images'][idx]['joint_3d'])

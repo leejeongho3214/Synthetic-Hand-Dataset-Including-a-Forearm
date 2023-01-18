@@ -147,6 +147,60 @@ def PCK_2d_loss(pred_2d, gt_2d, T = 0.1, threshold = 'proportion'):
     
     return pck
 
+def PCK_2d_loss_list(pred_2d, gt_2d, T_list = None, threshold = 'proportion', auc_t= None):
+    bbox_size = []
+    point = []
+    pred_2d = pred_2d.detach().cpu()
+    gt_2d = gt_2d.detach().cpu()
+
+    for j in gt_2d:
+        width = max(j[:,0]) - min(j[:,0])
+        height = max(j[:,1]) - min(j[:,1])
+        length = np.sqrt( width ** 2 + height ** 2)
+        bbox_size.append(length)
+        point.append(((min(j[:,0]),min(j[:,1])),(max(j[:,0]),max(j[:,1]))))
+
+    # gt_2d_value = gt_2d[:, 1:]; pred_2d_value = pred_2d[:, 1:] ## Excluded the wrist joint by starting 1
+    gt_2d_value = gt_2d; pred_2d_value = pred_2d
+    
+    diff = gt_2d_value - pred_2d_value
+    distance = diff.square().sum(2).sqrt()
+    num_total = len(distance.flatten())
+    
+    pck_list = list()
+    auc_list = list()
+    
+    for T in T_list:
+        if threshold == 'proportion':
+            norm_distance = distance.permute(1, 0) / torch.tensor(bbox_size)
+            num_correct = num_total - len(norm_distance[norm_distance > T])
+                
+        elif threshold == 'mm':
+            num_correct = num_total - len(distance[distance > (T * 3.78)])
+
+        else:
+            assert False, "Please check variable threshold is right"
+
+        pck = float(num_correct / num_total) * 100
+        pck_list.append([T, pck])
+        
+    for T in auc_t:
+        if threshold == 'proportion':
+            norm_distance = distance.permute(1, 0) / torch.tensor(bbox_size)
+            num_correct = num_total - len(norm_distance[norm_distance > T])
+                
+        elif threshold == 'mm':
+            num_correct = num_total - len(distance[distance > (T * 3.78)])
+
+        else:
+            assert False, "Please check variable threshold is right"
+
+        pck = float(num_correct / num_total) * 100
+        auc_list.append(pck)
+    
+    
+    return pck_list, auc_list
+
 def PCK_3d_loss(pred_3d, gt_3d, T = 0.1):
     
     pred_3d = pred_3d.detach().cpu()
