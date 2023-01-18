@@ -284,28 +284,6 @@ def compute_similarity_transform(S1, S2):
 
     return S1_hat
 
-class HeatmapLoss(torch.nn.Module):
-    """
-    loss for detection heatmap
-    """
-    def __init__(self):
-        super(HeatmapLoss, self).__init__()
-
-    def forward(self, pred, gt):
-        l = ((pred - gt)**2)
-        l = l.mean(dim=3).mean(dim=2).mean(dim=1)
-        return l ## l of dim bsize
-    
-def calc_loss(combined_hm_preds, heatmaps, args):
-
-    if args.model == "hourglass": 
-        combined_loss = []
-        for i in range(8):
-            combined_loss.append(HeatmapLoss()(combined_hm_preds[:, i], heatmaps))
-        combined_loss = torch.stack(combined_loss, dim=1)
-    else: combined_loss = HeatmapLoss()(combined_hm_preds, heatmaps)
-    
-    return combined_loss
 
 
 def compute_similarity_transform_batch(S1, S2):
