@@ -181,6 +181,7 @@ class HandMeshTSVDataset(object):
             rot_mat[0,:2] = [cs, -sn]
             rot_mat[1,:2] = [sn, cs]
         S[:, :-1] = np.einsum('ij,kj->ki', rot_mat, S[:, :-1]) 
+        
         # flip the x coordinates
         if f:
             S = flip_kp(S)

@@ -43,7 +43,7 @@ def parse_args():
     parser.add_argument("--epoch", default=50, type=int)
     
     parser.add_argument("--loss_2d", default=0, type=float)
-    parser.add_argument("--loss_3d", default=1, type=float)
+    parser.add_argument("--loss_3d", default=0, type=float)
     parser.add_argument("--loss_3d_mid", default=0, type=float)
     parser.add_argument("--scale", action='store_true')
     parser.add_argument("--plt", action='store_true')

@@ -8,12 +8,12 @@ from src.datasets.build import make_hand_data_loader
 import json
 import math
 import torch
-from src.utils.dataset_loader import Dataset_interhand, HIU_Dataset,Rhd, GenerateHeatmap, add_our, our_cat
+from src.utils.dataset_loader import GenerateHeatmap
 import os.path as op
 import random
 import cv2
 import numpy as np
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, ConcatDataset
 from PIL import Image
 from torchvision import transforms
 
@@ -37,64 +37,30 @@ def build_dataset(args):
     
     assert args.name.split("/")[0] in ["simplebaseline", "hourglass", "hrnet", "ours"], "Your name of model is the wrong => %s" % args.name.split("/")[0]
     assert args.name.split("/")[1] in ["wrist", "general"] , "Your name of view is the wrong %s" % args.name.split("/")[1] 
-    assert args.name.split("/")[2] in ["rhd", "coco", "frei", "panoptic", "hiu", "interhand", "ours"], "Your name of dataset is the wrong => %s" % args.name.split("/")[2]
 
     if "3d" in args.name.split("/")[3].split("_"): args.D3 = True; args.loss_3d = 1
+    if "2d" in args.name.split("/")[3].split("_"): args.loss_2d = 1
     if "rot" in args.name.split("/")[3].split("_"): args.rot = True
     if "color" in args.name.split("/")[3].split("_"): args.color = True; index = args.name.split("/")[3].split("_").index("color"); args.ratio_of_aug = float(args.name.split("/")[3].split("_")[index + 1])    
     
     args.dataset = args.name.split("/")[2]
     args.view = args.name.split("/")[1]
     args.model = args.name.split("/")[0]
-    
-    if args.name.split("/")[1] == "wrist":
-        folder = os.listdir(path)
-        folder_num = [i for i in folder if i not in ["README.txt", "data.zip"]]
-        
-    if args.dataset == "interhand":
-        dataset = Dataset_interhand(transforms.ToTensor(), "train", args)     
-        trainset_dataset, testset_dataset = add_our(args, dataset, folder_num, path)
-        return trainset_dataset, testset_dataset
-
-    if args.dataset  == "hiu":
-        dataset = HIU_Dataset(args)
-        trainset_dataset, testset_dataset = add_our(args, dataset, folder_num, path)                 
-        return trainset_dataset, testset_dataset
-
-    if args.dataset == "panoptic":
-        dataset = Panoptic(args)
-        trainset_dataset, testset_dataset = add_our(args, dataset, folder_num, path)                            
-        return trainset_dataset, testset_dataset
-
-    if args.dataset == "coco":
-        dataset = Coco(args)
-        trainset_dataset, testset_dataset = add_our(args, dataset, folder_num, path)                    
-        return trainset_dataset, testset_dataset
 
     if args.dataset == "frei":
-        trainset_dataset = make_hand_data_loader(
+        f_dataset = make_hand_data_loader(
             args, args.train_yaml, False, is_train=True, scale_factor=args.img_scale_factor) 
-        testset_dataset = make_hand_data_loader(
+        o_dataset = CustomDataset_g(args, general_path + "/annotations/train")
+        train_dataset = ConcatDataset([f_dataset, o_dataset])
+        test_dataset = make_hand_data_loader(
             args, args.val_yaml, False, is_train=False, scale_factor=args.img_scale_factor)      
-        # trainset_dataset, testset_dataset = add_our(args, dataset, folder_num, path)    ## Need to change code
-        return trainset_dataset, testset_dataset
 
-    if args.dataset == "rhd":
-        dataset = Rhd(args)
-        trainset_dataset, testset_dataset = add_our(args, dataset, folder_num, path)                 
-        return trainset_dataset, testset_dataset
-    
     else:
-        if args.view == "wrist":
-            eval_path = "/".join(path.split('/')[:-1]) + "/annotations/evaluation"
-            train_dataset = our_cat(args,folder_num, path)
-            test_dataset = val_set(args , 0, eval_path, args.color,
-                                    args.ratio_of_aug, args.ratio_of_our)
-        else:       
-            train_path = os.path.join(general_path, "annotations/train")
-            eval_path = os.path.join(general_path, "annotations/val")
-            train_dataset = CustomDataset_g(args, train_path)
-            test_dataset = val_g_set(args, eval_path)
+        train_path = os.path.join(general_path, "annotations/train")
+        eval_path = os.path.join(general_path, "annotations/val")
+        train_dataset = CustomDataset_g(args, train_path)
+        test_dataset = val_g_set(args, eval_path)
+        
     return train_dataset, test_dataset
 
     
@@ -182,7 +148,7 @@ class CustomDataset_g(Dataset):
         self.img_path = os.path.join(self.root, f"images/{self.phase}")
         
     def __len__(self):
-        return len(self.meta['images'])
+        return int(len(self.meta['images']) * self.args.ratio_of_our)
         
     def __getitem__(self, idx):
         name = self.meta['images'][idx]['file_name']
@@ -199,10 +165,8 @@ class CustomDataset_g(Dataset):
             
         image = Image.fromarray(image)
         trans = transforms.Compose([transforms.Resize((image_size, image_size)),
-                            transforms.ToTensor(),
-                            
-                            transforms.RandomApply(torch.nn.ModuleList([transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5)]), p=self.args.ratio_of_aug),
-                            
+                            transforms.ToTensor(), 
+                            transforms.RandomApply(torch.nn.ModuleList([transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5)]), p=self.args.ratio_of_aug),                         
                                                         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
         image = trans(image)
         joint_3d = torch.tensor(self.meta['images'][idx]['joint_3d'])

@@ -379,24 +379,23 @@ class Rhd(Dataset):
         return img, joint[:, :2].float(), heatmap, torch.ones(21, 3)
     
     
-def add_our(args, dataset, folder_num, path):
+def add_our(args, dataset, path):
     from src.tools.dataset import CustomDataset
-    for iter, degree in enumerate(folder_num):
-        ratio  = (len(dataset) * args.ratio_of_other) / 1528415     ## it divides the length of dataset into totla_len
-        dataset = CustomDataset(args, degree, path, color=args.color,
-                                ratio_of_aug=args.ratio_of_aug, ratio_of_dataset= ratio)
 
-        if iter == 0:
-            train_dataset, test_dataset = random_split(
-                dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
+    dataset = CustomDataset(args, degree, path, color=args.color,
+                            ratio_of_aug=args.ratio_of_aug, ratio_of_dataset= ratio)
 
-        else:
-            train_dataset_other, test_dataset_other = random_split(
-                dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
-            train_dataset = ConcatDataset(
-                [train_dataset, train_dataset_other])
-            test_dataset = ConcatDataset(
-                [test_dataset, test_dataset_other])
+    if iter == 0:
+        train_dataset, test_dataset = random_split(
+            dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
+
+    else:
+        train_dataset_other, test_dataset_other = random_split(
+            dataset, [int(len(dataset) * 0.9), len(dataset) - (int(len(dataset) * 0.9))])
+        train_dataset = ConcatDataset(
+            [train_dataset, train_dataset_other])
+        test_dataset = ConcatDataset(
+            [test_dataset, test_dataset_other])
                 
     trainset_dataset = ConcatDataset([train_dataset, trainset_dataset])
     testset_dataset = ConcatDataset([test_dataset, testset_dataset])
