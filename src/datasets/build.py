@@ -107,19 +107,19 @@ def make_data_loader(args, yaml_file, is_distributed=True,
 
 #==============================================================================================
 
-def build_hand_dataset(yaml_file, args, is_train=True, scale_factor=1):
+def build_hand_dataset(yaml_file, args, is_train=True, scale_factor=1, s_j = None):
     # print(yaml_file)
     if not op.isfile(yaml_file):
         yaml_file = op.join(args.data_dir, yaml_file)
         # code.interact(local=locals())
         assert op.isfile(yaml_file)
-    return HandMeshTSVYamlDataset(args, yaml_file, is_train, False, scale_factor)
+    return HandMeshTSVYamlDataset(args, yaml_file, is_train, False, scale_factor, s_j)
 
 
 def make_hand_data_loader(args, yaml_file, is_distributed=False,
-        is_train=True, start_iter=0, scale_factor=1):
+        is_train=True, start_iter=0, scale_factor=1, s_j = None):
 
-    dataset = build_hand_dataset(yaml_file, args, is_train=is_train, scale_factor=scale_factor)
+    dataset = build_hand_dataset(yaml_file, args, is_train=is_train, scale_factor=scale_factor, s_j = s_j)
 
     # train_dataset, test_dataset = random_split(dataset, [int(len(dataset) * 0.9), int(len(dataset) * 0.1)])
     # train_data_loader = torch.utils.data.DataLoader(

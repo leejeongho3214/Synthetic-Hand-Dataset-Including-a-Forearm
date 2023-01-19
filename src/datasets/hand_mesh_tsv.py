@@ -6,15 +6,11 @@ Licensed under the MIT license.
 
 
 import cv2
-import math
 import json
-from PIL import Image
 import os.path as op
 import numpy as np
-import code
 
-from matplotlib import pyplot as plt
-
+from src.utils.dataset_utils import align_scale, align_scale_rot
 from src.utils.tsv_file import TSVFile, CompositeTSVFile
 from src.utils.tsv_file_ops import load_linelist_file, load_from_yaml_file, find_file_path_in_yaml
 from src.utils.image_ops import img_from_base64, crop, flip_img, flip_pose, flip_kp, transform, rot_aa
@@ -55,8 +51,9 @@ class GenerateHeatmap():
 
 class HandMeshTSVDataset(object):
     def __init__(self, args, img_file, label_file=None, hw_file=None,
-                 linelist_file=None, is_train=True, cv2_output=False, scale_factor=1):
+                 linelist_file=None, is_train=True, cv2_output=False, scale_factor=1, s_j = None):
 
+        self.s_j = s_j
         self.args = args
         self.img_file = img_file
         self.label_file = label_file
@@ -298,7 +295,19 @@ class HandMeshTSVDataset(object):
         root_coord = joints_3d[self.root_index,:-1]
         joints_3d[:,:-1] = joints_3d[:,:-1] - root_coord[None,:]
         # 3d pose augmentation (random flip + rotation, consistent to image and SMPL)
-        joints_3d_transformed = self.j3d_processing(joints_3d.copy(), rot, flip)
+        
+        s_j = -s_j[:, 0]
+        s_j = s_j - s_j[0, :]
+        if self.args.set == "scale":
+            joints_3d_transformed = align_scale(joints_3d)
+            
+        elif self.args.set == "scale_rot":
+            joints_3d_transformed = align_scale_rot(s_j, joints_3d)
+            
+        else: 
+            joints_3d_transformed = self.j3d_processing(joints_3d.copy(), rot, flip) 
+        
+        
         # 2d pose augmentation
         joints_2d_transformed = self.j2d_processing(joints_2d.copy(), center, sc*scale, rot, flip)
         
@@ -348,7 +357,7 @@ class HandMeshTSVDataset(object):
         if self.args.model == "hrnet": heatmap = GenerateHeatmap(128, 21)(joint_2d/2)
         else: heatmap= GenerateHeatmap(64, 21)(joint_2d/4)
         
-        return transfromed_img[(2,1,0),:,:], joint_2d, heatmap, meta_data['joints_3d'][:, :3]
+        return transfromed_img[(2,1,0),:,:], joint_2d, meta_data['joints_3d'][:, :3]
     
 def blur_heatmaps(heatmaps):
     """Blurs heatmaps using GaussinaBlur of defined size"""
@@ -386,7 +395,7 @@ def vector_to_heatmaps(keypoints):
 class HandMeshTSVYamlDataset(HandMeshTSVDataset):
     """ TSVDataset taking a Yaml file for easy function call
     """
-    def __init__(self, args, yaml_file, is_train=True, cv2_output=False, scale_factor=1):
+    def __init__(self, args, yaml_file, is_train=True, cv2_output=False, scale_factor=1, s_j= None):
         self.cfg = load_from_yaml_file(yaml_file)
         self.is_composite = self.cfg.get('composite', False)
         self.root = op.dirname(yaml_file)

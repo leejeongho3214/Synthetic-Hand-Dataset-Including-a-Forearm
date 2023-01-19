@@ -112,7 +112,7 @@ class Runner(object):
     def our(self, end):
         if self.phase == 'TRAIN':
             self.model.train()
-            for iteration, (images, gt_2d_joints, _, gt_3d_joints) in enumerate(self.train_loader):
+            for iteration, (images, gt_2d_joints, gt_3d_joints) in enumerate(self.train_loader):
                 batch_size = images.size(0)
                 adjust_learning_rate(self.optimizer, self.epoch, self.args)  
                 gt_2d_joints[:,:,1] = gt_2d_joints[:,:,1] / images.size(2) ## You Have to check whether weight and height is correct dimenstion
@@ -183,7 +183,7 @@ class Runner(object):
         else:
             self.model.eval()
             with torch.no_grad():
-                for iteration, (images, gt_2d_joints, _, gt_3d_joints) in enumerate(self.valid_loader):
+                for iteration, (images, gt_2d_joints, gt_3d_joints) in enumerate(self.valid_loader):
                     batch_size = images.size(0)
                     
                     images = images.cuda()

@@ -5,13 +5,13 @@ Licensed under the MIT license.
 """
 
 
-import os
 import os.path as op
 import numpy as np
 import base64
 import cv2
 import yaml
 from collections import OrderedDict
+from scipy.linalg import orthogonal_procrustes
 
 
 def img_from_base64(imagestring):
@@ -64,3 +64,40 @@ def load_box_shuffle_file(shuf_file):
 def load_from_yaml_file(file_name):
     with open(file_name, 'r') as fp:
         return yaml.load(fp, Loader=yaml.CLoader)
+    
+def align_scale(pred):   ## mtx2 is pred
+    """ Align the predicted entity in some optimality sense with the ground truth. """
+    # center
+    t1 = pred.mean(0)
+    pred_t = pred - t1
+
+    # scale
+    s1 = np.linalg.norm(pred_t) + 1e-8
+    pred_t /= s1
+    
+    return pred_t + t1
+
+def align_scale_rot(mtx1, mtx2):   ## mtx2 is pred
+    """ Align the predicted entity in some optimality sense with the ground truth. """
+    # center
+    t1 = mtx1.mean(0)
+    t2 = mtx2.mean(0)
+    mtx1_t = mtx1 - t1
+    mtx2_t = mtx2 - t2
+
+    # scale
+    s1 = np.linalg.norm(mtx1_t) + 1e-8
+    mtx1_t /= s1
+    s2 = np.linalg.norm(mtx2_t) + 1e-8
+    mtx2_t /= s2
+
+    # orth alignment
+    R, s = orthogonal_procrustes(mtx1_t, mtx2_t)
+
+    # apply trafos to the second matrix
+    mtx2_t = np.dot(mtx2_t, R.T)
+    # mtx2_t = np.dot(mtx2_t, R.T) * s
+    # mtx2_t = mtx2_t * s1 + t1
+
+    return mtx2_t + t1
+

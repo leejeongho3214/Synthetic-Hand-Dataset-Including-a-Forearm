@@ -32,12 +32,10 @@ def parse_args():
                         help="The root directory to save location which you want")
     parser.add_argument("--model", default='ours', type=str, required=False)
     parser.add_argument("--dataset", default='ours', type=str, required=False)
-    parser.add_argument("--view", default='wrist', type=str, required=False)
     parser.add_argument("--batch_size", default=32, type=int)
     parser.add_argument("--count", default=5, type=int)
     parser.add_argument("--ratio_of_our", default=0.3, type=float,
                         help="Our dataset have 420k imaegs so you can use train data as many as you want, according to this ratio")
-    parser.add_argument("--ratio_of_other", default=0.3, type=float)
     parser.add_argument("--ratio_of_aug", default=0.2, type=float,
                         help="You can use color jitter to train data as many as you want, according to this ratio")
     parser.add_argument("--epoch", default=50, type=int)
@@ -45,17 +43,11 @@ def parse_args():
     parser.add_argument("--loss_2d", default=0, type=float)
     parser.add_argument("--loss_3d", default=0, type=float)
     parser.add_argument("--loss_3d_mid", default=0, type=float)
+    parser.add_argument("--set", default=None, type=str)
     parser.add_argument("--scale", action='store_true')
     parser.add_argument("--plt", action='store_true')
-    parser.add_argument("--eval", action='store_true')
-    parser.add_argument("--test", action='store_true')
     parser.add_argument("--logger", action='store_true')
     parser.add_argument("--reset", action='store_true')
-    parser.add_argument("--rot", action='store_true')
-    parser.add_argument("--color", action='store_true',
-                        help="If you write down, This dataset would be applied color jitter to train data, according to ratio of aug")
-    parser.add_argument("--D3", action='store_true',
-                        help="If you write down, The output of model would be 3d joint coordinate")
     
     args = parser.parse_args()
     args, logger = pre_arg(args)
@@ -68,6 +60,7 @@ def load_model(args):
     epoch = 0
     best_loss = np.inf
     count = 0
+    resume = False
     args.num_gpus = int(os.environ['WORLD_SIZE']) if 'WORLD_SIZE' in os.environ else 1
     os.environ['OMP_NUM_THREADS'] = str(args.num_workers)
     args.device = torch.device(args.device)
@@ -86,15 +79,27 @@ def load_model(args):
         _model = get_our_net(args) ## output: 21 x 2
         
     log_dir = f'tensorboard/{args.name}'
-    if args.name.split("/")[0] != "final_model":
-        if args.reset: reset_folder(log_dir); reset_folder(os.path.join(args.root_path, args.name)); args.reset = "Init"
-        else: args.reset = "Resume"
-        
+
     writer = SummaryWriter(log_dir)
     if os.path.isfile(os.path.join(args.root_path, args.name,'checkpoint-good/state_dict.bin')):
         best_loss, epoch, _model, count = resume_checkpoint(_model, os.path.join(args.root_path, args.name,'checkpoint-good/state_dict.bin'))
         args.logger.debug("Loading ===> %s" % os.path.join(args.root_path, args.name))
         print(colored("Loading ===> %s" % os.path.join(args.root_path, args.name), "green"))
+        
+    if args.name.split("/")[0] != "final_model":
+        if args.reset: 
+            reset_folder(log_dir); reset_folder(os.path.join(args.root_path, args.name)); 
+            if resume:
+                args.reset = "resume then init"
+            else:
+                args.reset = "init"
+        else: 
+            if resume:
+                args.reset = "resume"
+            else:
+                reset_folder(log_dir); reset_folder(os.path.join(args.root_path, args.name)); args.reset = "init"
+                
+        
         
     
     _model.to(args.device)

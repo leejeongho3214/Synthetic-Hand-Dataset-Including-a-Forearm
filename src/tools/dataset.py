@@ -16,6 +16,8 @@ import numpy as np
 from torch.utils.data import Dataset, ConcatDataset
 from PIL import Image
 from torchvision import transforms
+from src.utils.dataset_utils import align_scale, align_scale_rot
+
 
 
 def build_dataset(args):
@@ -27,39 +29,37 @@ def build_dataset(args):
     if not os.path.isdir(general_path):
         general_path = "../../datasets/general_2M"
 
-    if args.eval:
-        test_dataset = eval_set(args)
-        return test_dataset, test_dataset
-    
-    if args.test:
-        test_dataset = test_set(args, path)
-        return test_dataset, test_dataset
     
     assert args.name.split("/")[0] in ["simplebaseline", "hourglass", "hrnet", "ours"], "Your name of model is the wrong => %s" % args.name.split("/")[0]
     assert args.name.split("/")[1] in ["wrist", "general"] , "Your name of view is the wrong %s" % args.name.split("/")[1] 
 
     if "3d" in args.name.split("/")[3].split("_"): args.D3 = True; args.loss_3d = 1
-    if "2d" in args.name.split("/")[3].split("_"): args.loss_2d = 1
-    if "rot" in args.name.split("/")[3].split("_"): args.rot = True
-    if "color" in args.name.split("/")[3].split("_"): args.color = True; index = args.name.split("/")[3].split("_").index("color"); args.ratio_of_aug = float(args.name.split("/")[3].split("_")[index + 1])    
+    if "2d" in args.name.split("/")[3].split("_"): args.loss_2d = 1   
     
     args.dataset = args.name.split("/")[2]
-    args.view = args.name.split("/")[1]
     args.model = args.name.split("/")[0]
 
-    if args.dataset == "frei":
-        f_dataset = make_hand_data_loader(
-            args, args.train_yaml, False, is_train=True, scale_factor=args.img_scale_factor) 
-        o_dataset = CustomDataset_g(args, general_path + "/annotations/train")
-        train_dataset = ConcatDataset([f_dataset, o_dataset])
-        test_dataset = make_hand_data_loader(
-            args, args.val_yaml, False, is_train=False, scale_factor=args.img_scale_factor)      
+    with open(os.path.join(f"{general_path}", "annotations/train/CISLAB_train_data_update.json")) as st_json:
+        meta = json.load(st_json)
+    standard_j = torch.tensor(meta['images'][0]['joint_3d'])
+    del meta
 
-    else:
+    if args.dataset == "ours":
         train_path = os.path.join(general_path, "annotations/train")
         eval_path = os.path.join(general_path, "annotations/val")
         train_dataset = CustomDataset_g(args, train_path)
         test_dataset = val_g_set(args, eval_path)
+        
+    else:
+        train_dataset = make_hand_data_loader(
+            args, args.train_yaml, False, is_train=True, scale_factor=args.img_scale_factor, s_j = standard_j) 
+        test_dataset = make_hand_data_loader(
+            args, args.val_yaml, False, is_train=False, scale_factor=args.img_scale_factor, s_j = standard_j) 
+        if args.dataset == "both":
+            o_dataset = CustomDataset_g(args, general_path + "/annotations/train", standard_j)
+            train_dataset = ConcatDataset([train_dataset, o_dataset])
+     
+
         
     return train_dataset, test_dataset
 
@@ -138,12 +138,13 @@ class CustomDataset(Dataset):
 
 
 class CustomDataset_g(Dataset):
-    def __init__(self, args, path):
+    def __init__(self, args, path, standard_j):
         self.phase = path.split("/")[-1]
         self.root = "/".join(path.split("/")[:-2])
         with open(f"{path}/CISLAB_{self.phase}_data_update.json", "r") as st_json:
             self.meta = json.load(st_json)
         self.args = args
+        self.s_j = standard_j
         self.path = path
         self.img_path = os.path.join(self.root, f"images/{self.phase}")
         
@@ -169,12 +170,21 @@ class CustomDataset_g(Dataset):
                             transforms.RandomApply(torch.nn.ModuleList([transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5)]), p=self.args.ratio_of_aug),                         
                                                         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
         image = trans(image)
+        joint_2d = torch.tensor(self.meta['images'][idx]['joint_2d'])
         joint_3d = torch.tensor(self.meta['images'][idx]['joint_3d'])
-        joint_3d[:, 0] = - joint_3d[:, 0]
+        s_j = -self.s_j[:, 0]
+        s_j = s_j - s_j[0, :]
+        joint_3d[:, 0] = - joint_3d[:, 0]   ## change the left hand to right hand
         joint_3d = joint_3d - joint_3d[0, :]
+            
+        if self.args.set == "scale":
+            joint_3d = align_scale(joint_3d)
+            
+        elif self.args.set =="scale_rot":
+            joint_3d = align_scale_rot(s_j, joint_3d)
 
-        return image, joint_3d, joint_3d, joint_3d
-    
+        return image, joint_2d, joint_3d
+
 class val_set(CustomDataset):
     def __init__(self,  *args):
         super().__init__(*args)
