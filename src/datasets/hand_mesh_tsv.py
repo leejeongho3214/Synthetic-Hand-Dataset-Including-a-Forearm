@@ -51,9 +51,8 @@ class GenerateHeatmap():
 
 class HandMeshTSVDataset(object):
     def __init__(self, args, img_file, label_file=None, hw_file=None,
-                 linelist_file=None, is_train=True, cv2_output=False, scale_factor=1, s_j = None):
+                 linelist_file=None, is_train=True, cv2_output=False, scale_factor=1):
 
-        self.s_j = s_j
         self.args = args
         self.img_file = img_file
         self.label_file = label_file
@@ -296,13 +295,15 @@ class HandMeshTSVDataset(object):
         joints_3d[:,:-1] = joints_3d[:,:-1] - root_coord[None,:]
         # 3d pose augmentation (random flip + rotation, consistent to image and SMPL)
         
-        s_j = -s_j[:, 0]
-        s_j = s_j - s_j[0, :]
+        self.s_j[:, 0]= -self.s_j[:, 0]
+        self.s_j = self.s_j - self.s_j[0, :]
+        
         if self.args.set == "scale":
             joints_3d_transformed = align_scale(joints_3d)
             
         elif self.args.set == "scale_rot":
-            joints_3d_transformed = align_scale_rot(s_j, joints_3d)
+            joints_3d_transformed = align_scale_rot(self.s_j, joints_3d[:, :-1])
+            joints_3d_transformed = np.array(joints_3d_transformed)
             
         else: 
             joints_3d_transformed = self.j3d_processing(joints_3d.copy(), rot, flip) 
@@ -399,6 +400,7 @@ class HandMeshTSVYamlDataset(HandMeshTSVDataset):
         self.cfg = load_from_yaml_file(yaml_file)
         self.is_composite = self.cfg.get('composite', False)
         self.root = op.dirname(yaml_file)
+        self.s_j = s_j
         
         if self.is_composite==False:
             img_file = find_file_path_in_yaml(self.cfg['img'], self.root)

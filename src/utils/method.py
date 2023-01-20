@@ -61,16 +61,14 @@ class Runner(object):
             self.bar.suffix = ('({iteration}/{data_loader}) '
                             'name: {name} | '
                             'count: {count} | '
-                            'loss: {total:.6f} | '
-                            'exp: {exp} \r'
+                            'loss: {total:.6f} \r'
                             ).format(name= self.args.name.split('/')[-1], count = self.count, iteration = iteration, exp = tt,
                                         data_loader = len(self.now_loader), total = self.log_losses.avg)
         else:
             self.bar.suffix = ('({iteration}/{data_loader}) '
                             'name: {name} | '
                             'count: {count} | '
-                            'loss: {total:.6f} | '
-                            'exp: {exp}'
+                            'loss: {total:.6f} '
                             ).format(name= self.args.name.split('/')[-1], count = self.count, iteration = iteration, exp = tt,
                                         data_loader = len(self.now_loader), total = self.log_losses.avg)
         self.bar.next()
@@ -82,13 +80,12 @@ class Runner(object):
                         ' '.join(
                             ['Test =>> epoch: {ep}', 'iter: {iter}', '/{maxi}']
                         ).format(ep=self.epoch, iter=iteration, maxi=len(self.now_loader))
-                        + ' epe: {:.2f}mm, count: {} / {}, total_loss: {:.8f}, best_loss: {:.8f}, expected_date: {}'.format(
+                        + ' epe: {:.2f}mm, count: {} / {}, total_loss: {:.8f}, best_loss: {:.8f}'.format(
                             self.epe_losses.avg * 0.26,
                             int(self.count),
                             self.args.count,
                             self.log_losses.avg,
-                            self.best_loss,
-                            tt)
+                            self.best_loss)
                         )
                            
         if iteration == len(self.now_loader) - 1:

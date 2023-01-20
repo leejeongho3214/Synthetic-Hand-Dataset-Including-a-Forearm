@@ -38,17 +38,15 @@ def build_dataset(args):
     
     args.dataset = args.name.split("/")[2]
     args.model = args.name.split("/")[0]
-
-    with open(os.path.join(f"{general_path}", "annotations/train/CISLAB_train_data_update.json")) as st_json:
-        meta = json.load(st_json)
-    standard_j = torch.tensor(meta['images'][0]['joint_3d'])
-    del meta
+    
+    standard_j =  [[1.8155813217163086, 0.15561437606811523, 1.1083018779754639], [2.406423807144165, 0.5383367538452148, 1.304732084274292], [2.731782913208008, 1.172149658203125, 1.335669994354248], [2.681248903274536, 1.7862586975097656, 1.2639415264129639], [2.3304858207702637, 2.234518527984619, 1.1211540699005127], [2.341385841369629, 1.37321138381958, 2.0816190242767334], [2.3071250915527344, 2.0882482528686523, 1.7858655452728271], [2.2974867820739746, 2.293468952178955, 1.3347842693328857], [2.31135630607605, 1.9055771827697754, 1.029522180557251], [1.851935863494873, 1.30698823928833, 2.1360342502593994], [1.8758153915405273, 2.124051094055176, 2.5652201175689697], [1.973258376121521, 2.431856632232666, 2.1032679080963135], [2.0731117725372314, 2.644174098968506, 1.616095781326294], [1.471063256263733, 1.2448792457580566, 2.0854008197784424], [1.4334478378295898, 1.9523506164550781, 1.5718071460723877], [1.6441740989685059, 1.7141218185424805, 1.1860997676849365], [1.760351300239563, 1.242896556854248, 1.305544137954712], [1.1308115720748901, 1.1045317649841309, 1.9674842357635498], [1.0435627698898315, 1.6727776527404785, 1.8200523853302002], [1.2601540088653564, 1.6069226264953613, 1.4762027263641357], [1.4999980926513672, 1.5507283210754395, 1.1099226474761963]]
+    standard_j = torch.tensor(standard_j)
 
     if args.dataset == "ours":
         train_path = os.path.join(general_path, "annotations/train")
         eval_path = os.path.join(general_path, "annotations/val")
-        train_dataset = CustomDataset_g(args, train_path)
-        test_dataset = val_g_set(args, eval_path)
+        train_dataset = CustomDataset_g(args, train_path, standard_j)
+        test_dataset = val_g_set(args, eval_path, standard_j)
         
     else:
         train_dataset = make_hand_data_loader(
@@ -56,6 +54,7 @@ def build_dataset(args):
         test_dataset = make_hand_data_loader(
             args, args.val_yaml, False, is_train=False, scale_factor=args.img_scale_factor, s_j = standard_j) 
         if args.dataset == "both":
+            args.ratio_of_our = args.ratio_of_add
             o_dataset = CustomDataset_g(args, general_path + "/annotations/train", standard_j)
             train_dataset = ConcatDataset([train_dataset, o_dataset])
      
@@ -172,8 +171,9 @@ class CustomDataset_g(Dataset):
         image = trans(image)
         joint_2d = torch.tensor(self.meta['images'][idx]['joint_2d'])
         joint_3d = torch.tensor(self.meta['images'][idx]['joint_3d'])
-        s_j = -self.s_j[:, 0]
-        s_j = s_j - s_j[0, :]
+        self.s_j[:, 0] = - self.s_j[:, 0]
+        self.s_j = self.s_j- self.s_j[0, :]
+        
         joint_3d[:, 0] = - joint_3d[:, 0]   ## change the left hand to right hand
         joint_3d = joint_3d - joint_3d[0, :]
             
@@ -181,7 +181,7 @@ class CustomDataset_g(Dataset):
             joint_3d = align_scale(joint_3d)
             
         elif self.args.set =="scale_rot":
-            joint_3d = align_scale_rot(s_j, joint_3d)
+            joint_3d = align_scale_rot(self.s_j, joint_3d)
 
         return image, joint_2d, joint_3d
 
@@ -327,9 +327,9 @@ def i_rotate(img, degree, move_x, move_y):
     translation = np.float32([[1, 0, move_x], [0, 1, move_y]])
     rotatefigure = cv2.getRotationMatrix2D(centerRotatePT, degree, 1)
     result = cv2.warpAffine(img, rotatefigure, (new_w, new_h),
-                            flags=cv2.INTER_LINEAR, borderMode=cv2.INTER_LINEAR)
+                            flags=cv2.INTER_LINEAR)
     result = cv2.warpAffine(result, translation, (new_w, new_h),
-                            flags=cv2.INTER_LINEAR, borderMode=cv2.INTER_LINEAR)
+                            flags=cv2.INTER_LINEAR)
 
     return result
 

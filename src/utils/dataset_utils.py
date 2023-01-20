@@ -4,7 +4,7 @@ Licensed under the MIT license.
 
 """
 
-
+import torch
 import os.path as op
 import numpy as np
 import base64
@@ -95,9 +95,10 @@ def align_scale_rot(mtx1, mtx2):   ## mtx2 is pred
     R, s = orthogonal_procrustes(mtx1_t, mtx2_t)
 
     # apply trafos to the second matrix
-    mtx2_t = np.dot(mtx2_t, R.T)
+    mtx2_t = torch.tensor(np.dot(mtx2_t, R.T)) + t1
     # mtx2_t = np.dot(mtx2_t, R.T) * s
     # mtx2_t = mtx2_t * s1 + t1
 
-    return mtx2_t + t1
+    return mtx2_t 
 
+ 
