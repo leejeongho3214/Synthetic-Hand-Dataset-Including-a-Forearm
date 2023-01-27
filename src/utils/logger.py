@@ -92,6 +92,7 @@ def setup_logger(name, save_dir, distributed_rank, filename="log.txt"):
     ch.setFormatter(formatter)
     logger.propagate = False
     logger.addHandler(ch)
+    
     if save_dir:
         fh = FileHandler(os.path.join(save_dir, filename))
         fh.setLevel(logging.DEBUG)

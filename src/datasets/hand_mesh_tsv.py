@@ -4,7 +4,6 @@ Licensed under the MIT license.
 
 """
 
-
 import cv2
 import json
 import os.path as op

@@ -4,6 +4,7 @@ Licensed under the MIT license.
 
 """
 
+import sys
 import torch
 import os.path as op
 import numpy as np
@@ -12,7 +13,7 @@ import cv2
 import yaml
 from collections import OrderedDict
 from scipy.linalg import orthogonal_procrustes
-
+np.random.seed(77)
 
 def img_from_base64(imagestring):
     try:
@@ -60,7 +61,6 @@ def load_box_shuffle_file(shuf_file):
         return [img_shuf_list, box_shuf_list]
     return None
 
-
 def load_from_yaml_file(file_name):
     with open(file_name, 'r') as fp:
         return yaml.load(fp, Loader=yaml.CLoader)
@@ -68,14 +68,26 @@ def load_from_yaml_file(file_name):
 def align_scale(pred):   ## mtx2 is pred
     """ Align the predicted entity in some optimality sense with the ground truth. """
     # center
-    t1 = pred.mean(0)
-    pred_t = pred - t1
+    # t1 = pred.mean(0)
+    # pred_t = pred - t1
 
-    # scale
-    s1 = np.linalg.norm(pred_t) + 1e-8
-    pred_t /= s1
+    # s1 = np.sqrt(np.square(pred[9] - pred[8]).sum())
+    # pred /= s1 + sys.epsilon
+
+    # 1. original method
+    # s1 = np.linalg.norm(pred) + 1e-8
+    # pred /= s1
     
-    return pred_t + t1
+    # 2. new method to make this vector norm about from 0.8 to 1.2
+    # s1 = np.linalg.norm(pred) + 1e-8
+    # pred /= s1
+    # pred /= (1 + np.float(np.random.normal(0, 0.1 , 1)))
+    
+    # 3. method to normalized this vector through middle joint length (8-9 number joint)
+    s1 = np.sqrt(np.square(pred[9] - pred[8]).sum())
+    pred /= s1 + sys.float_info.epsilon
+
+    return pred
 
 def align_scale_rot(mtx1, mtx2):   ## mtx2 is pred
     """ Align the predicted entity in some optimality sense with the ground truth. """

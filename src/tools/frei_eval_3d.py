@@ -4,12 +4,13 @@ import sys
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"  # Arrange GPU devices starting from 0
-os.environ["CUDA_VISIBLE_DEVICES"]= "2" 
+os.environ["CUDA_VISIBLE_DEVICES"]= "0" 
 import numpy as np
 import torch
 from torch.utils import data
 torch.device('cuda')
-from src.utils.argparser import load_model, parse_args
+from src.tools.models.our_net import get_our_net
+from src.utils.argparser import parse_args
 import sys
 from dataset import *
 from src.utils.loss import *
@@ -35,28 +36,29 @@ def dump(pred_out_path, xyz_pred_list, verts_pred_list):
     print('Dumped %d joints and %d verts predictions to %s' % (len(xyz_pred_list), len(verts_pred_list), pred_out_path))
 
 def main(args):
-    name = "output/ours/general/ours/3d_color_0.6_center"
+    name = "output/ours/both/3d_0.1_scale_revision3"
     args.name = os.path.join(name, "checkpoint-good/state_dict.bin")
     args.model = args.name.split('/')[1]
     if args.model == "other_dataset": args.model = "ours"
-    args.D3 = True
-    _model, _, _,_,_ = load_model(args)
+    _model = get_our_net(args)
     state_dict = torch.load(args.name)
     _model.load_state_dict(state_dict['model_state_dict'], strict=False)
     _model.cuda()
     pred_name = name.split("/")[-1]
     pred_out_path = os.path.join(name, f"pred_{pred_name}.json")
+    resp = True
     if os.path.isfile(pred_out_path):
         print(colored("EXIST===> %s" % pred_out_path, "magenta"))
-    
-    else:
+        resp = True if input("Are you restart to infer?") == "o" else False
+        if resp: print("you select => o")
+        else: print("you select => x")
+    if resp:
         test_dataset = Frei(args)
         testset_loader = data.DataLoader(dataset=test_dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=False)
-
         pbar = tqdm(total = len(testset_loader)) 
         xyz_list, verts_list = list(), list()
-        for idx, (images, _, _, gt_3d_joints) in enumerate(testset_loader):
-
+        
+        for images, _, _, gt_3d_joints in testset_loader:
             _model.eval()
             with torch.no_grad():
                 images = images.cuda()
@@ -66,7 +68,6 @@ def main(args):
                 for xyz in pred_3d_joints:
                     xyz_list.append(xyz)
                     verts_list.append(np.zeros([778, 3]))
-
             pbar.update(1)
         pbar.close()
         dump(pred_out_path, xyz_list, verts_list)

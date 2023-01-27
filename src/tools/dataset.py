@@ -8,9 +8,9 @@ from src.datasets.build import make_hand_data_loader
 import json
 import math
 import torch
-from src.utils.dataset_loader import GenerateHeatmap
 import os.path as op
 import random
+from src.utils.dart_loader import DARTset
 import cv2
 import numpy as np
 from torch.utils.data import Dataset, ConcatDataset
@@ -20,24 +20,15 @@ from src.utils.dataset_utils import align_scale, align_scale_rot
 
 
 
-def build_dataset(args):
-    path = "../../../../../../data1/ArmoHand/training"
-    if not os.path.isdir(path):
-        path = "../../datasets/ArmoHand/training"
-        
+def build_dataset(args):   
     general_path = "../../../../../../data1/general_2M" # general-view image path (about 2M)
     if not os.path.isdir(general_path):
         general_path = "../../datasets/general_2M"
-
     
-    assert args.name.split("/")[0] in ["simplebaseline", "hourglass", "hrnet", "ours"], "Your name of model is the wrong => %s" % args.name.split("/")[0]
-    assert args.name.split("/")[1] in ["wrist", "general"] , "Your name of view is the wrong %s" % args.name.split("/")[1] 
-
-    if "3d" in args.name.split("/")[3].split("_"): args.D3 = True; args.loss_3d = 1
-    if "2d" in args.name.split("/")[3].split("_"): args.loss_2d = 1   
-    
-    args.dataset = args.name.split("/")[2]
-    args.model = args.name.split("/")[0]
+    assert args.name.split("/")[0] in ["ours"], "Your name of model is the wrong => %s" % args.name.split("/")[0]
+    assert args.name.split("/")[1] in ["ours", "frei", "both"], "Your name of model is the wrong => %s" % args.name.split("/")[1]
+  
+    args.dataset = args.name.split("/")[1]
     
     standard_j =  [[1.8155813217163086, 0.15561437606811523, 1.1083018779754639], [2.406423807144165, 0.5383367538452148, 1.304732084274292], [2.731782913208008, 1.172149658203125, 1.335669994354248], [2.681248903274536, 1.7862586975097656, 1.2639415264129639], [2.3304858207702637, 2.234518527984619, 1.1211540699005127], [2.341385841369629, 1.37321138381958, 2.0816190242767334], [2.3071250915527344, 2.0882482528686523, 1.7858655452728271], [2.2974867820739746, 2.293468952178955, 1.3347842693328857], [2.31135630607605, 1.9055771827697754, 1.029522180557251], [1.851935863494873, 1.30698823928833, 2.1360342502593994], [1.8758153915405273, 2.124051094055176, 2.5652201175689697], [1.973258376121521, 2.431856632232666, 2.1032679080963135], [2.0731117725372314, 2.644174098968506, 1.616095781326294], [1.471063256263733, 1.2448792457580566, 2.0854008197784424], [1.4334478378295898, 1.9523506164550781, 1.5718071460723877], [1.6441740989685059, 1.7141218185424805, 1.1860997676849365], [1.760351300239563, 1.242896556854248, 1.305544137954712], [1.1308115720748901, 1.1045317649841309, 1.9674842357635498], [1.0435627698898315, 1.6727776527404785, 1.8200523853302002], [1.2601540088653564, 1.6069226264953613, 1.4762027263641357], [1.4999980926513672, 1.5507283210754395, 1.1099226474761963]]
     standard_j = torch.tensor(standard_j)
@@ -48,7 +39,7 @@ def build_dataset(args):
         train_dataset = CustomDataset_g(args, train_path, standard_j)
         test_dataset = val_g_set(args, eval_path, standard_j)
         
-    else:
+    elif args.dataset == "frei":
         train_dataset = make_hand_data_loader(
             args, args.train_yaml, False, is_train=True, scale_factor=args.img_scale_factor, s_j = standard_j) 
         test_dataset = make_hand_data_loader(
@@ -57,121 +48,48 @@ def build_dataset(args):
             args.ratio_of_our = args.ratio_of_add
             o_dataset = CustomDataset_g(args, general_path + "/annotations/train", standard_j)
             train_dataset = ConcatDataset([train_dataset, o_dataset])
-     
-
+            
+    elif args.dataset == "dart":
+        train_dataset, test_dataset = DARTset()
+        
+    else:
+        assert 0, "you type the wrong dataset name"
         
     return train_dataset, test_dataset
 
     
 
-class CustomDataset(Dataset):
-    def __init__(self, args, degree, path, color=False, ratio_of_aug=0.2, ratio_of_dataset=1):
-        self.args = args
-        self.color = color
-        self.degree = degree
-        self.path = path
-        self.ratio_of_aug = ratio_of_aug
-        self.ratio_of_dataset = ratio_of_dataset
-        self.img_path = f'{path}/{degree}/images/train'
-        try:
-            if degree == None:
-                with open(f"{path}/annotations/train/CISLAB_train_data_update.json", "r") as st_json:   ## When it has only one json file
-                    self.meta = json.load(st_json)
-                    self.img_path = f'{path}/images/train'
-            else:
-                with open(f"{path}/{degree}/annotations/train/CISLAB_train_data_update.json", "r") as st_json:
-                    self.meta = json.load(st_json)              
-        except:
-            self.meta = None           ## When it calls eval_set inheritng parent's class
-        
-    
-    def __len__(self):
-        return int(len(self.meta['images']) * self.ratio_of_dataset)     
-
-    def __getitem__(self, idx):
-        name = self.meta['images'][idx]['file_name']
-        move = self.meta['images'][idx]['move']
-        degrees = self.meta['images'][idx]['degree']
-        image = cv2.imread(os.path.join(self.img_path, name))   ## Color order of cv2 is BGR
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-
-        if not self.args.model == "ours":
-            image_size = 256
-        else:
-            image_size = 224
-
-        trans_option = {
-            'resize': transforms.Resize((image_size, image_size)),
-            'to_tensor': transforms.ToTensor(),
-            'color': transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5),
-            'norm': transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-        }
-        
-        if not self.color:
-            del trans_option['color']
-        
-        image = i_rotate(image, degrees, 0, move)
-        image = Image.fromarray(image)
-        joint_2d = torch.tensor(self.meta['images'][idx]['rot_joint_2d'])
-        
-        if idx < len(self.meta['images']) * self.ratio_of_aug:
-
-            trans = transforms.Compose([trans_option[i] for i in trans_option])
-
-            
-        else:
-            trans = transforms.Compose([transforms.Resize((image_size, image_size)),
-                                        transforms.ToTensor(),
-                                        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
-        image = trans(image)
-        
-        if self.args.model == "hrnet":
-            heatmap = GenerateHeatmap(128, 21)(joint_2d/2)
-        else:
-            heatmap = GenerateHeatmap(64, 21)(joint_2d/4)
-            
-        joint_3d = torch.tensor(self.meta['images'][idx]['joint_3d'])
-
-
-        return image, joint_2d, heatmap, joint_3d
-
-
 class CustomDataset_g(Dataset):
     def __init__(self, args, path, standard_j):
+        self.args = args
+        self.path = path
         self.phase = path.split("/")[-1]
         self.root = "/".join(path.split("/")[:-2])
         with open(f"{path}/CISLAB_{self.phase}_data_update.json", "r") as st_json:
-            self.meta = json.load(st_json)
-        self.args = args
+             self.meta = json.load(st_json)
+        self.meta = self.meta["images"][:int(len(self.meta["images"]) * self.args.ratio_of_our)]
         self.s_j = standard_j
-        self.path = path
         self.img_path = os.path.join(self.root, f"images/{self.phase}")
         
     def __len__(self):
-        return int(len(self.meta['images']) * self.args.ratio_of_our)
+        return len(self.meta)
         
     def __getitem__(self, idx):
-        name = self.meta['images'][idx]['file_name']
-        move_x = self.meta['images'][idx]['move_x']
-        move_y = self.meta['images'][idx]['move_y']
-        image = cv2.imread(os.path.join(self.img_path, name))  # PIL image
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        image = i_rotate(image, 0, move_x, move_y)
+        image = self.img_aug(idx)
+        image = self.img_preprocessing(image)
+        image = torch.from_numpy(image).float()
+        # Store image before normalization to use it in visualization
+        transfromed_img = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                         std=[0.229, 0.224, 0.225])(image)
+        joint_2d, joint_3d = self.joint_processing(idx)
+
+        return transfromed_img, joint_2d, joint_3d
+
+    def joint_processing(self, idx):
+        joint_2d = torch.tensor(self.meta[idx]['joint_2d'])
+        joint_3d = torch.tensor(self.meta[idx]['joint_3d'])
         
-        if not self.args.model == "ours":
-            image_size = 256
-        else:
-            image_size = 224
-            
-        image = Image.fromarray(image)
-        trans = transforms.Compose([transforms.Resize((image_size, image_size)),
-                            transforms.ToTensor(), 
-                            transforms.RandomApply(torch.nn.ModuleList([transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5)]), p=self.args.ratio_of_aug),                         
-                                                        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
-        image = trans(image)
-        joint_2d = torch.tensor(self.meta['images'][idx]['joint_2d'])
-        joint_3d = torch.tensor(self.meta['images'][idx]['joint_3d'])
-        self.s_j[:, 0] = - self.s_j[:, 0]
+        self.s_j[:, 0] = - self.s_j[:, 0]   ## This joint is always same for unified rotation
         self.s_j = self.s_j- self.s_j[0, :]
         
         joint_3d[:, 0] = - joint_3d[:, 0]   ## change the left hand to right hand
@@ -181,18 +99,37 @@ class CustomDataset_g(Dataset):
             joint_3d = align_scale(joint_3d)
             
         elif self.args.set =="scale_rot":
-            joint_3d = align_scale_rot(self.s_j, joint_3d)
+            joint_3d = align_scale_rot(self.s_j, joint_3d)      
+            
+        return joint_2d, joint_3d
 
-        return image, joint_2d, joint_3d
+    def img_preprocessing(self, rgb_img):
+        """ Maybe, when it needs to crop img, i will modify the below code"""
+        # rgb_img = crop(rgb_img, center, scale, 
+        #         [self.img_res, self.img_res], rot=rot)
+        # in the rgb image we add pixel noise in a channel-wise manner
+        if self.phase == 'train':
+            pn = np.random.uniform(1-self.noise_factor, 1+self.noise_factor, 3)
+        else:
+            pn = np.ones(3)
+        rgb_img[:,:,0] = np.minimum(255.0, np.maximum(0.0, rgb_img[:,:,0]*pn[0]))
+        rgb_img[:,:,1] = np.minimum(255.0, np.maximum(0.0, rgb_img[:,:,1]*pn[1]))
+        rgb_img[:,:,2] = np.minimum(255.0, np.maximum(0.0, rgb_img[:,:,2]*pn[2]))
+        # (3,224,224),float,[0,1]
+        rgb_img = np.transpose(rgb_img.astype('float32'),(2,0,1))/255.0
+        
+        return rgb_img
 
-class val_set(CustomDataset):
-    def __init__(self,  *args):
-        super().__init__(*args)
-        self.ratio_of_aug = 0
-        self.ratio_of_dataset = 1
-        with open(os.path.join(self.path, "evaluation_data_update.json"), "r") as st_json:
-            self.meta = json.load(st_json)
-        self.img_path = "/".join(self.path.split('/')[:-2]) +"/images/evaluation"
+    
+    def img_aug(self, idx):
+        name = self.meta[idx]['file_name']
+        move_x = self.meta[idx]['move_x']
+        move_y = self.meta[idx]['move_y']       
+        image = cv2.imread(os.path.join(self.img_path, name))  # PIL image
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        image = i_rotate(image, 0, move_x, move_y)      ## Later, change this value changeable
+        
+        return image
         
 class val_g_set(CustomDataset_g):
     def __init__(self,  *args):
@@ -200,103 +137,8 @@ class val_g_set(CustomDataset_g):
         self.ratio_of_aug = 0
         self.ratio_of_dataset = 1
         with open(os.path.join(self.path, "CISLAB_val_data_update.json"), "r") as st_json:
-            self.meta = json.load(st_json)
+            self.meta = json.load(st_json)["images"]
         self.img_path = os.path.join(self.root,f"images/{self.phase}" )
-
-class test_set(Dataset):
-    def __init__(self, args, path):
-        self.args = args
-        path = "/".join(path.split("/")[:-1])
-        self.image_path = os.path.join(f'{path}', "images/test")
-        anno_path = os.path.join(f'{path}', "annotations", "test", "test_data_update.json")
-        with open(anno_path, "r") as st_json:
-            self.meta = json.load(st_json)
-
-    def __len__(self):
-        return len(self.meta['images'])
-
-    def __getitem__(self, idx):
-        name = self.meta['images'][idx]['file_name']
-        image = cv2.imread(os.path.join(self.image_path, name))   ## Color order of cv2 is BGR
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-
-        if not self.args.model == "ours":
-            image_size = 256
-        else:
-            image_size = 224
-
-        image = Image.fromarray(image)
-        joint_2d = torch.tensor(self.meta['images'][idx]['joint_2d'])
-
-        trans = transforms.Compose([transforms.Resize((image_size, image_size)),
-                                    transforms.ToTensor(),
-                                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
-        image = trans(image)
-        
-        if self.args.model == "hrnet":
-            heatmap = GenerateHeatmap(128, 21)(joint_2d/2)
-        else:
-            heatmap = GenerateHeatmap(64, 21)(joint_2d/4)
-            
-        joint_3d = torch.tensor(self.meta['images'][idx]['joint_3d'])
-
-
-        return image, joint_2d, heatmap, joint_3d
-
-
-class eval_set(Dataset):
-    def __init__(self, args):
-        self.args = args
-        self.image_path = f'../../datasets/test/rgb'
-        self.anno_path = f'../../datasets/test/annotations.json'
-        self.list = os.listdir(self.image_path)
-
-    def __len__(self):
-        return len(os.listdir(self.image_path))
-
-    def __getitem__(self, idx):
-        if not self.args.model == "ours":
-            size = 256
-        else:
-            size = 224
-
-        with open(self.anno_path, "r") as st_json:
-            json_data = json.load(st_json)
-            joint = json_data[f"{idx}"]['coordinates']
-            pose_type = json_data[f"{idx}"]['pose_ctgy']
-            file_name = json_data[f"{idx}"]['file_name']
-            visible = json_data[f"{idx}"]['visible']
-            try: 
-                joint_2d = torch.tensor(joint)[:, :2]
-            except:
-                print(file_name)
-                print("EROOORROORR")
-            visible = torch.tensor(visible)
-            joint_2d_v = torch.concat([joint_2d, visible[:, None]], axis = 1)
-            assert len(joint) == 21, f"{file_name} have joint error"
-            assert len(visible) == 21, f"{file_name} have visible error"
-            
-        trans = transforms.Compose([transforms.Resize((size, size)),
-                                    transforms.ToTensor(),
-                                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
-        
-        image = Image.open(f"../../datasets/{file_name}")
-        trans_image = trans(image)
-        joint_2d_v[:, 0] = joint_2d_v[:, 0] * image.width
-        joint_2d_v[:, 1] = joint_2d_v[:, 1] * image.height
-        joint_2d[:, 0] = joint_2d[:, 0] * image.width
-        joint_2d[:, 1] = joint_2d[:, 1] * image.height
-        
-        if self.args.model == "hrnet":
-            heatmap = GenerateHeatmap(128, 21)(joint_2d / 2)
-        else:
-            heatmap = GenerateHeatmap(64, 21)(joint_2d / 4)
-            
-        if self.args.eval:
-            return trans_image, joint_2d_v, heatmap, pose_type
-        else:
-            return trans_image, joint_2d_v, heatmap, joint_2d_v
-
 
 class AverageMeter(object):
 
@@ -554,51 +396,6 @@ def save_checkpoint(model, args, epoch, optimizer, best_loss, count, ment, num_t
             pass
 
     return model_to_save, checkpoint_dir
-
-
-
-
-
-class Our_testset_media(Dataset):
-    def __init__(self, path, folder_name):
-
-        self.image_path = f'{path}/{folder_name}/rgb'
-        self.anno_path = f'{path}/{folder_name}/annotations'
-        self.list = os.listdir(self.image_path)
-
-    def __len__(self):
-        return len(os.listdir(self.image_path))
-
-    def __getitem__(self, idx):
-        image = cv2.imread(os.path.join(self.image_path, self.list[idx]))
-        with open(os.path.join(self.anno_path, self.list[idx])[:-3]+"json", "r") as st_json:
-            json_data = json.load(st_json)
-            joint_total = json_data['annotations']
-            joint = {}
-            joint_2d = []
-
-            for j in joint_total:
-                if j['label'] != 'Pose':
-                    if len(j['metadata']['system']['attributes']) > 0:
-                        # Change 'z' to 'indicator function'
-                        # Ex. 0 means visible joint, 1 means invisible joint
-                        j['coordinates']['z'] = 0
-                        joint[f"{int(j['label'])}"] = j['coordinates']
-                    else:
-                        j['coordinates']['z'] = 1
-                        joint[f"{int(j['label'])}"] = j['coordinates']
-
-            if len(joint) < 21:
-                assert f"This {idx}.json is not correct"
-
-            for h in range(0, 21):
-                joint_2d.append(
-                    [joint[f'{h}']['x'], joint[f'{h}']['y'], joint[f'{h}']['z']])
-        joint_2d = torch.tensor(joint_2d)
-
-        return image, joint_2d
-
-
 
     
 class Json_e(Json_transform):

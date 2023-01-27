@@ -269,29 +269,14 @@ def main(gt_path, pred_path, output_dir, pred_file_name=None, set_name=None):
                 verts_pred_aligned
             )
 
-        # # F-scores
-        # l, la = list(), list()
-        # for t in f_threshs:
-        #     # for each threshold calculate the f score and the f score of the aligned vertices
-        #     f, _, _ = calculate_fscore(verts, verts_pred, t)
-        #     l.append(f)
-        #     f, _, _ = calculate_fscore(verts, verts_pred_aligned, t)
-        #     la.append(f)
-        # f_score.append(l)
-        # f_score_aligned.append(la)
-
-    # # Calculate results
-    # xyz_mean3d, _, xyz_auc3d, pck_xyz, thresh_xyz = eval_xyz.get_measures(0.0, 0.05, 100)
-    # print('Evaluation 3D KP results:')
-    # print('auc=%.3f, mean_kp3d_avg=%.2f cm' % (xyz_auc3d, xyz_mean3d * 100.0))
-
 
     xyz_al_mean3d, _, xyz_al_auc3d, pck_xyz_al, thresh_xyz_al = eval_xyz_aligned.get_measures(0.0, 0.05, 100)
     print('Evaluation 3D KP ALIGNED results:')
-    print('auc=%.3f, mean_kp3d_avg=%.2f cm\n' % (xyz_al_auc3d, xyz_al_mean3d * 100.0))
+    print('auc=%.3f, mean_kp3d_avg=%.2f cm' % (xyz_al_auc3d, xyz_al_mean3d * 100.0))
     
     name_list = pred_file.split('/')
-    score_path = os.path.join("/".join(name_list[:-2]), f'{name_list[-3]}_scores.txt')
+    score_path = os.path.join("/".join(name_list[:-3]), f'general_scores.txt')
+    
     if os.path.isfile(score_path):
         mode = "a"
     else:
@@ -299,81 +284,13 @@ def main(gt_path, pred_path, output_dir, pred_file_name=None, set_name=None):
         
     with open(score_path, mode) as fo:
         xyz_al_mean3d *= 100
-        fo.write("\nname: %s\n" % pred_file)
+        fo.write("\nname: %s\n" % "/".join(name_list[:-1]))
         fo.write('xyz_al_mean3d: %.2f cm\n' % xyz_al_mean3d)
         fo.write("======" * 14)
-
+    print(colored("Writting => %s" %score_path, "red"))
     return 
 
-    if shape_is_mano:
-        mesh_mean3d, _, mesh_auc3d, pck_mesh, thresh_mesh = eval_mesh_err.get_measures(0.0, 0.05, 100)
-        print('Evaluation 3D MESH results:')
-        print('auc=%.3f, mean_kp3d_avg=%.2f cm' % (mesh_auc3d, mesh_mean3d * 100.0))
-
-        mesh_al_mean3d, _, mesh_al_auc3d, pck_mesh_al, thresh_mesh_al = eval_mesh_err_aligned.get_measures(0.0, 0.05, 100)
-        print('Evaluation 3D MESH ALIGNED results:')
-        print('auc=%.3f, mean_kp3d_avg=%.2f cm\n' % (mesh_al_auc3d, mesh_al_mean3d * 100.0))
-    else:
-        mesh_mean3d, mesh_auc3d, mesh_al_mean3d, mesh_al_auc3d = -1.0, -1.0, -1.0, -1.0
-
-        pck_mesh, thresh_mesh = np.array([-1.0, -1.0]), np.array([0.0, 1.0])
-        pck_mesh_al, thresh_mesh_al = np.array([-1.0, -1.0]), np.array([0.0, 1.0])
-
-    # print('F-scores')
-    # f_out = list()
-    # f_score, f_score_aligned = np.array(f_score).T, np.array(f_score_aligned).T
-    # for f, fa, t in zip(f_score, f_score_aligned, f_threshs):
-    #     print('F@%.1fmm = %.3f' % (t*1000, f.mean()), '\tF_aligned@%.1fmm = %.3f' % (t*1000, fa.mean()))
-    #     f_out.append('f_score_%d: %f' % (round(t*1000), f.mean()))
-    #     f_out.append('f_al_score_%d: %f' % (round(t*1000), fa.mean()))
-
-    # Dump results
-    score_path = os.path.join(output_dir, 'scores.txt')
-    with open(score_path, 'w') as fo:
-        xyz_mean3d *= 100
-        xyz_al_mean3d *= 100
-        fo.write('xyz_mean3d: %f\n' % xyz_mean3d)
-        fo.write('xyz_auc3d: %f\n' % xyz_auc3d)
-        fo.write('xyz_al_mean3d: %f\n' % xyz_al_mean3d)
-        fo.write('xyz_al_auc3d: %f\n' % xyz_al_auc3d)
-
-        mesh_mean3d *= 100
-        mesh_al_mean3d *= 100
-        fo.write('mesh_mean3d: %f\n' % mesh_mean3d)
-        fo.write('mesh_auc3d: %f\n' % mesh_auc3d)
-        fo.write('mesh_al_mean3d: %f\n' % mesh_al_mean3d)
-        fo.write('mesh_al_auc3d: %f\n' % mesh_al_auc3d)
-        # for t in f_out:
-        #     fo.write('%s\n' % t)
-    print('Scores written to: %s' % score_path)
-
-    # scale to cm
-    thresh_xyz *= 100.0
-    thresh_xyz_al *= 100.0
-    thresh_mesh *= 100.0
-    thresh_mesh_al *= 100.0
-
-    createHTML(
-        output_dir,
-        [
-            curve(thresh_xyz, pck_xyz, 'Distance in cm', 'Percentage of correct keypoints', 'PCK curve for keypoint error'),
-            curve(thresh_xyz_al, pck_xyz_al, 'Distance in cm', 'Percentage of correct keypoints', 'PCK curve for aligned keypoint error'),
-            curve(thresh_mesh, pck_mesh, 'Distance in cm', 'Percentage of correct vertices', 'PCV curve for mesh error'),
-            curve(thresh_mesh_al, pck_mesh_al, 'Distance in cm', 'Percentage of correct vertices', 'PCV curve for aligned mesh error')
-        ]
-    )
-
-    pck_curve_data = {
-        'xyz': [thresh_xyz.tolist(), pck_xyz.tolist()],
-        'xyz_al': [thresh_xyz_al.tolist(), pck_xyz_al.tolist()],
-        'mesh': [thresh_mesh.tolist(), pck_mesh.tolist()],
-        'mesh_al': [thresh_mesh_al.tolist(), pck_mesh_al.tolist()],
-    }
-    with open('pck_data.json', 'w') as fo:
-        json.dump(pck_curve_data, fo)
-
-    print('Evaluation complete.')
-
+   
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Show some samples from the dataset.')
