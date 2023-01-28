@@ -152,11 +152,10 @@ class Runner(object):
                 
 
                 if iteration == 0 or iteration == int(len(self.train_loader)/2) or iteration == len(self.train_loader) - 1:
-                    if self.args.plt:
-                        fig = plt.figure()
-                        visualize_gt(images, gt_2d_joint, fig, iteration)
-                        visualize_pred(images, pred_2d_joints, fig, 'train', self.epoch, iteration, self.args, None)
-                        plt.close()
+                    fig = plt.figure()
+                    visualize_gt(images, gt_2d_joint, fig, iteration, self.epoch)
+                    visualize_pred(images, pred_2d_joints, fig, 'train', self.epoch, iteration, self.args, None)
+                    plt.close()
 
                 self.batch_time.update(time.time() - end)
                 end = time.time()
@@ -185,13 +184,12 @@ class Runner(object):
                     pred_2d_joints, pred_3d_joints= self.model(images)
                     pck, _ = PCK_3d_loss(pred_3d_joints, gt_3d_joints, T= 0.0)
                     loss = reconstruction_error(np.array(pred_3d_joints.detach().cpu()), np.array(gt_3d_joints.detach().cpu()))
-                        
-                    if self.args.plt:    
-                        if iteration == 0 or iteration == int(len(self.valid_loader)/2) or iteration == len(self.valid_loader) - 1:
-                            fig = plt.figure()
-                            visualize_gt(images, gt_2d_joint, fig, iteration)
-                            visualize_pred(images, pred_2d_joints, fig, 'test', self.epoch, iteration, self.args,None)
-                            plt.close()
+                    
+                    if iteration == 0 or iteration == int(len(self.valid_loader)/2) or iteration == len(self.valid_loader) - 1:
+                        fig = plt.figure()
+                        visualize_gt(images, gt_2d_joint, fig, iteration, self.epoch)
+                        visualize_pred(images, pred_2d_joints, fig, 'test', self.epoch, iteration, self.args, None)
+                        plt.close()
                         
                     self.pck_losses.update(pck, batch_size)
                     self.log_losses.update(loss.item(), batch_size)

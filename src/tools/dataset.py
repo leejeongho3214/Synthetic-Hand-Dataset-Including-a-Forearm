@@ -18,15 +18,11 @@ from PIL import Image
 from torchvision import transforms
 from src.utils.dataset_utils import align_scale, align_scale_rot
 
+np.random.seed(77)
 
 
 def build_dataset(args):   
-    general_path = "../../../../../../data1/general_2M" # general-view image path (about 2M)
-    if not os.path.isdir(general_path):
-        general_path = "../../datasets/general_2M"
-    
-    assert args.name.split("/")[0] in ["ours"], "Your name of model is the wrong => %s" % args.name.split("/")[0]
-    assert args.name.split("/")[1] in ["ours", "frei", "both"], "Your name of model is the wrong => %s" % args.name.split("/")[1]
+    general_path = "../../datasets/general"
   
     args.dataset = args.name.split("/")[1]
     
@@ -50,7 +46,8 @@ def build_dataset(args):
             train_dataset = ConcatDataset([train_dataset, o_dataset])
             
     elif args.dataset == "dart":
-        train_dataset, test_dataset = DARTset()
+        train_dataset = DARTset(data_split='train')
+        test_dataset = DARTset(data_split='test')
         
     else:
         assert 0, "you type the wrong dataset name"
@@ -62,6 +59,7 @@ def build_dataset(args):
 class CustomDataset_g(Dataset):
     def __init__(self, args, path, standard_j):
         self.args = args
+        self.noise_factor = 0.25
         self.path = path
         self.phase = path.split("/")[-1]
         self.root = "/".join(path.split("/")[:-2])
@@ -70,13 +68,14 @@ class CustomDataset_g(Dataset):
         self.meta = self.meta["images"][:int(len(self.meta["images"]) * self.args.ratio_of_our)]
         self.s_j = standard_j
         self.img_path = os.path.join(self.root, f"images/{self.phase}")
+        self.ratio = 0.9
         
     def __len__(self):
-        return len(self.meta)
+        return int(len(self.meta) * self.ratio)
         
     def __getitem__(self, idx):
         image = self.img_aug(idx)
-        image = self.img_preprocessing(image)
+        image = self.img_preprocessing(idx, image)
         image = torch.from_numpy(image).float()
         # Store image before normalization to use it in visualization
         transfromed_img = transforms.Normalize(mean=[0.485, 0.456, 0.406],
@@ -85,9 +84,9 @@ class CustomDataset_g(Dataset):
 
         return transfromed_img, joint_2d, joint_3d
 
-    def joint_processing(self, idx):
-        joint_2d = torch.tensor(self.meta[idx]['joint_2d'])
-        joint_3d = torch.tensor(self.meta[idx]['joint_3d'])
+    def joint_processing(self, idx): 
+        joint_2d =  torch.tensor(self.meta[idx]['rot_joint_2d']) if self.args.center else torch.tensor(self.meta[idx]['joint_2d'])
+        joint_3d = torch.tensor(self.meta[idx]['joint_3d']) 
         
         self.s_j[:, 0] = - self.s_j[:, 0]   ## This joint is always same for unified rotation
         self.s_j = self.s_j- self.s_j[0, :]
@@ -103,13 +102,16 @@ class CustomDataset_g(Dataset):
             
         return joint_2d, joint_3d
 
-    def img_preprocessing(self, rgb_img):
+    def img_preprocessing(self, idx, rgb_img):
         """ Maybe, when it needs to crop img, i will modify the below code"""
         # rgb_img = crop(rgb_img, center, scale, 
         #         [self.img_res, self.img_res], rot=rot)
         # in the rgb image we add pixel noise in a channel-wise manner
         if self.phase == 'train':
-            pn = np.random.uniform(1-self.noise_factor, 1+self.noise_factor, 3)
+            if idx < int(self.args.ratio_of_aug * self.__len__()):
+                pn = np.random.uniform(1-self.noise_factor, 1+self.noise_factor, 3)
+            else: 
+                pn = np.ones(3)
         else:
             pn = np.ones(3)
         rgb_img[:,:,0] = np.minimum(255.0, np.maximum(0.0, rgb_img[:,:,0]*pn[0]))
@@ -127,7 +129,8 @@ class CustomDataset_g(Dataset):
         move_y = self.meta[idx]['move_y']       
         image = cv2.imread(os.path.join(self.img_path, name))  # PIL image
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        image = i_rotate(image, 0, move_x, move_y)      ## Later, change this value changeable
+        if self.args.center:
+            image = i_rotate(image, 0, move_x, move_y, interpolation= self.args.interpolation)      ## Later, change this value changeable
         
         return image
         
@@ -139,6 +142,7 @@ class val_g_set(CustomDataset_g):
         with open(os.path.join(self.path, "CISLAB_val_data_update.json"), "r") as st_json:
             self.meta = json.load(st_json)["images"]
         self.img_path = os.path.join(self.root,f"images/{self.phase}" )
+        self.ratio = 0.07
 
 class AverageMeter(object):
 
@@ -161,17 +165,22 @@ def apply(img, aug, num=1, scale=1.5):
     Y = [aug(img) for _ in range(num)]
     return Y
 
-def i_rotate(img, degree, move_x, move_y):
+def i_rotate(img, degree, move_x, move_y, interpolation = True):
     h, w = img.shape[:-1]
-
+    
+    if interpolation:
+        flags = cv2.INTER_LINEAR
+    else:
+        flags = None
+        
     centerRotatePT = int(w / 2), int(h / 2)
     new_h, new_w = h, w
     translation = np.float32([[1, 0, move_x], [0, 1, move_y]])
     rotatefigure = cv2.getRotationMatrix2D(centerRotatePT, degree, 1)
     result = cv2.warpAffine(img, rotatefigure, (new_w, new_h),
-                            flags=cv2.INTER_LINEAR)
+                            flags = flags)
     result = cv2.warpAffine(result, translation, (new_w, new_h),
-                            flags=cv2.INTER_LINEAR)
+                            flags = flags)
 
     return result
 
@@ -352,7 +361,7 @@ class Json_transform(Dataset):
             if flag:
                 continue
                     
-            rot_image = i_rotate(ori_image, degrees, 0, move_y + move_y2)
+            rot_image = i_rotate(ori_image, degrees, 0, move_y + move_y2, interpolation=False)
             rot_image = Image.fromarray(rot_image)
             
             j['joint_2d'] = d.tolist()
@@ -437,8 +446,20 @@ class Json_e(Json_transform):
                 self.root = os.path.join(root, "images/test")
                 self.store_path = os.path.join(root, "annotations/test/test_data_update.json")
             
-        else:
-            root = "../../datasets/general_2M"
+        elif phase == 'train':
+            root = "../../datasets/general"
+            with open(os.path.join(root, "annotations/train/CISLAB_train_camera.json"), "r") as st_json:
+                self.camera = json.load(st_json)
+            with open(os.path.join(root, "annotations/train/CISLAB_train_joint_3d.json"), "r") as st_json:
+                self.joint = json.load(st_json)
+            with open(os.path.join(root, "annotations/train/CISLAB_train_data.json"), "r") as st_json:
+                self.meta = json.load(st_json)
+                
+            self.root = os.path.join(root, "images/train")
+            self.store_path = os.path.join(root, "annotations/train/CISLAB_train_data_update.json")
+            
+        elif phase == 'val':
+            root = "../../datasets/general"
             with open(os.path.join(root, "annotations/val/CISLAB_val_camera.json"), "r") as st_json:
                 self.camera = json.load(st_json)
             with open(os.path.join(root, "annotations/val/CISLAB_val_joint_3d.json"), "r") as st_json:
@@ -450,7 +471,7 @@ class Json_e(Json_transform):
             self.store_path = os.path.join(root, "annotations/val/CISLAB_val_data_update.json")
     
 def main():
-    Json_e(phase = "test").get_json_g()
+    Json_e(phase = "val").get_json_g()
     print("ENDDDDDD")
     
 if __name__ == '__main__':

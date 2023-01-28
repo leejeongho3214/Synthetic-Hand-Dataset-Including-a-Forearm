@@ -1,19 +1,21 @@
 import os
 import pickle
 
+import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 import cv2
 import imageio
 import numpy as np
 import torch
-from manotorch.manolayer import ManoLayer
+from manotorch.manotorch.manolayer import ManoLayer
+from torchvision import transforms
 from pytorch3d.io import load_obj
-
 from DARTset_utils import (aa_to_rotmat, fit_ortho_param, ortho_project,
                            plot_hand, rotmat_to_aa)
 
 RAW_IMAGE_SIZE = 512
 BG_IMAGE_SIZE = 384
-DATA_ROOT = "./data"
+DATA_ROOT = "../../datasets/"
 
 class DARTset():
 
@@ -33,8 +35,7 @@ class DARTset():
                                         mano_assets_root="assets/mano_v1_2",
                                         center_idx=0,
                                         flat_hand_mean=False).th_hands_mean.numpy().reshape(-1)
-
-        obj_filename = os.path.join('./assets/hand_mesh.obj')
+        obj_filename = os.path.join('../../datasets/assets/hand_mesh.obj')
         _, faces, _ = load_obj(
             obj_filename,
             device="cpu",
@@ -76,25 +77,27 @@ class DARTset():
         return len(self.image_paths)
 
     def __getitem__(self, idx):
-        return {
-            "image": self.get_image(idx),
-            "joints_3d": self.get_joints_3d(idx),
-            "joints_2d": self.get_joints_2d(idx),
-            "joints_uvd": self.get_joints_uvd(idx),
-            "verts_uvd": self.get_verts_uvd(idx),
-            "ortho_intr": self.get_ortho_intr(idx),
-            "sides": self.get_sides(idx),
-            "mano_pose": self.get_mano_pose(idx),
-            "image_mask": self.get_image_mask(idx),
-        }
+        return self.get_image(idx), self.get_joints_2d(idx), self.get_joints_3d(idx)
+        # return {
+        #     "image": self.get_image(idx),
+        #     "joints_3d": self.get_joints_3d(idx),
+        #     "joints_2d": self.get_joints_2d(idx),
+        #     "joints_uvd": self.get_joints_uvd(idx),
+        #     "verts_uvd": self.get_verts_uvd(idx),
+        #     "ortho_intr": self.get_ortho_intr(idx),
+        #     "sides": self.get_sides(idx),
+        #     "mano_pose": self.get_mano_pose(idx),
+        #     "image_mask": self.get_image_mask(idx),
+        # }
 
     def get_joints_3d(self, idx):
         joints = self.joints_3d[idx].copy()
         # * Transfer from UNITY coordinate system
         joints[:, 1:] = -joints[:, 1:]
         joints = joints[self.reorder_idx]
-        joints = joints - joints[9] + np.array(
-            [0, 0, 0.5])  # * We use ortho projection, so we need to shift the center of the hand to the origin
+        joints = joints - joints[9] + np.array([0, 0, 0.5])  # * We use ortho projection, so we need to shift the center of the hand to the origin
+        # joints = joints - joints[0, :][None, :].repeat(21, axis = 0)
+        joints = torch.from_numpy(joints).float()
         return joints
 
     def get_verts_3d(self, idx):
@@ -109,7 +112,9 @@ class DARTset():
 
     def get_joints_2d(self, idx):
         joints_2d = self.joints_2d[idx].copy()[self.reorder_idx]
-        joints_2d = joints_2d / self.raw_img_size * self.img_size
+        joints_2d = joints_2d / self.raw_img_size * 224
+        joints_2d = torch.from_numpy(joints_2d).float()
+        # joints_2d = joints_2d / self.raw_img_size * self.img_size
         return joints_2d
 
     def get_image_path(self, idx):
@@ -127,7 +132,12 @@ class DARTset():
         else:
             path = os.path.join(*path.split("/")[:-2], path.split("/")[-2] + "_wbg", path.split("/")[-1])
             img = cv2.imread(path)[..., ::-1]
-
+        img = np.transpose(img, (2, 0, 1))
+        img = torch.from_numpy(img.copy()).float() / 255.0
+        transform_func = transforms.Compose([transforms.Resize((224, 224)),
+                                transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                                    std=[0.229, 0.224, 0.225])])
+        img = transform_func(img)
         return img
 
     def get_image_mask(self, idx):

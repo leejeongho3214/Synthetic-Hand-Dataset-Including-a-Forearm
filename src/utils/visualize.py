@@ -9,7 +9,7 @@ from src.utils.dir import reset_folder
 
 def visualize_pred(images, pred_2d_joint, fig, method = None, epoch = 0, iteration = 0, args =None, dataset_name = None):
 
-    num = iteration % images.size(0)
+    num = (iteration + epoch) % images.size(0)
     image = np.moveaxis(images[num].detach().cpu().numpy(), 0, -1)
     image = ((image + abs(image.min())) / (image + abs(image.min())).max()).copy()
     parents = np.array([-1, 0, 1, 2, 3, 0, 5, 6, 7, 0, 9, 10, 11, 0, 13, 14, 15, 0, 17, 18, 19])
@@ -53,9 +53,9 @@ def visualize_pred(images, pred_2d_joint, fig, method = None, epoch = 0, iterati
     else:
         assert False, "method is the wrong name"
 
-def visualize_gt(images, gt_2d_joint, fig, iteration):
+def visualize_gt(images, gt_2d_joint, fig, iteration, epoch):
 
-    num = iteration % images.size(0)
+    num = (iteration + epoch) % images.size(0)
     image = np.moveaxis(images[num].detach().cpu().numpy(), 0, -1)
     image = ((image + abs(image.min())) / (image + abs(image.min())).max()).copy()
     parents = np.array([-1, 0, 1, 2, 3, 0, 5, 6, 7, 0, 9, 10, 11, 0, 13, 14, 15, 0, 17, 18, 19])

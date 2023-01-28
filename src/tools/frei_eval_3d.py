@@ -1,10 +1,8 @@
 import os
 import sys
-
-
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"  # Arrange GPU devices starting from 0
-os.environ["CUDA_VISIBLE_DEVICES"]= "0" 
+os.environ["CUDA_VISIBLE_DEVICES"]= "2" 
 import numpy as np
 import torch
 from torch.utils import data
@@ -36,7 +34,7 @@ def dump(pred_out_path, xyz_pred_list, verts_pred_list):
     print('Dumped %d joints and %d verts predictions to %s' % (len(xyz_pred_list), len(verts_pred_list), pred_out_path))
 
 def main(args):
-    name = "output/ours/both/3d_0.1_scale_revision3"
+    name = "output/ours/ours/3d"
     args.name = os.path.join(name, "checkpoint-good/state_dict.bin")
     args.model = args.name.split('/')[1]
     if args.model == "other_dataset": args.model = "ours"
@@ -58,7 +56,7 @@ def main(args):
         pbar = tqdm(total = len(testset_loader)) 
         xyz_list, verts_list = list(), list()
         
-        for images, _, _, gt_3d_joints in testset_loader:
+        for images, _,  gt_3d_joints in testset_loader:
             _model.eval()
             with torch.no_grad():
                 images = images.cuda()

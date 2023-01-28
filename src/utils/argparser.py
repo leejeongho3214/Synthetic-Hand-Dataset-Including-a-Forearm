@@ -21,7 +21,7 @@ def parse_args():
     parser.add_argument("--count", default=5, type=int)
     parser.add_argument("--ratio_of_our", default=1, type=float,
                         help="Our dataset have 420k imaegs so you can use train data as many as you want, according to this ratio")
-    parser.add_argument("--ratio_of_aug", default=0.2, type=float,
+    parser.add_argument("--ratio_of_aug", default=0.6, type=float,
                         help="You can use color jitter to train data as many as you want, according to this ratio")
     parser.add_argument("--ratio_of_add", default=0.1, type=float,
                         help = "set ratio that how many you add our dataset")
@@ -32,6 +32,8 @@ def parse_args():
     parser.add_argument("--loss_3d_mid", default=0, type=float)
     parser.add_argument("--set", default=None, type=str,
                         help = "when input set, the existing output folder is removed as the initialize")
+    parser.add_argument("--center", action='store_true')
+    parser.add_argument("--interpolation", action='store_true')
     parser.add_argument("--scale", action='store_true')
     parser.add_argument("--plt", action='store_true')
     parser.add_argument("--logger", action='store_true')

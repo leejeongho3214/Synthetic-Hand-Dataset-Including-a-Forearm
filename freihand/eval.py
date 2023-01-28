@@ -18,11 +18,11 @@ def install(package):
     else:
         pip._internal.main(['install', package])
 
-try:
-    import open3d as o3d
-except:
-    install('open3d-python')
-    import open3d as o3d 
+# try:
+#     import open3d as o3d
+# except:
+#     install('open3d-python')
+#     import open3d as o3d 
 
 try:
     from scipy.linalg import orthogonal_procrustes
@@ -53,24 +53,24 @@ except:
 #     return pcd
 
 
-def calculate_fscore(gt, pr, th=0.01):
-    gt = verts2pcd(gt)
-    pr = verts2pcd(pr)
-    d1 = o3d.compute_point_cloud_to_point_cloud_distance(gt, pr) # closest dist for each gt point
-    d2 = o3d.compute_point_cloud_to_point_cloud_distance(pr, gt) # closest dist for each pred point
-    if len(d1) and len(d2):
-        recall = float(sum(d < th for d in d2)) / float(len(d2))  # how many of our predicted points lie close to a gt point?
-        precision = float(sum(d < th for d in d1)) / float(len(d1))  # how many of gt points are matched?
+# def calculate_fscore(gt, pr, th=0.01):
+#     gt = verts2pcd(gt)
+#     pr = verts2pcd(pr)
+#     d1 = o3d.compute_point_cloud_to_point_cloud_distance(gt, pr) # closest dist for each gt point
+#     d2 = o3d.compute_point_cloud_to_point_cloud_distance(pr, gt) # closest dist for each pred point
+#     if len(d1) and len(d2):
+#         recall = float(sum(d < th for d in d2)) / float(len(d2))  # how many of our predicted points lie close to a gt point?
+#         precision = float(sum(d < th for d in d1)) / float(len(d1))  # how many of gt points are matched?
 
-        if recall+precision > 0:
-            fscore = 2 * recall * precision / (recall + precision)
-        else:
-            fscore = 0
-    else:
-        fscore = 0
-        precision = 0
-        recall = 0
-    return fscore, precision, recall
+#         if recall+precision > 0:
+#             fscore = 2 * recall * precision / (recall + precision)
+#         else:
+#             fscore = 0
+#     else:
+#         fscore = 0
+#         precision = 0
+#         recall = 0
+#     return fscore, precision, recall
 
 
 def align_w_scale(mtx1, mtx2, return_trafo=False):

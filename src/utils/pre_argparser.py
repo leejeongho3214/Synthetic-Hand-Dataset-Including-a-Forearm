@@ -13,6 +13,8 @@ def pre_arg(args):
     if not args.output_dir.split('/')[1] == "output" and not os.path.isfile((args.output_dir)):  mkdir(args.output_dir); logger = setup_logger(args.name, args.output_dir, get_rank())
     else: logger = None
     logger.debug("")
+    logger.debug(args)
+    logger.debug("==" * 30)
     args.num_train_epochs = int(50)
     args.multiscale_inference = False
     args.sc = float(1.0)
