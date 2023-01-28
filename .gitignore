@@ -19,6 +19,8 @@ output
 tensorboard
 /datasets
 
+!packagelist.txt
+!requirements.txt
 DARTset_utils.py
 check_joint_num.py
 frei.py
