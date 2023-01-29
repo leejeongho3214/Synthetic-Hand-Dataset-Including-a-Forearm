@@ -1,4 +1,5 @@
 import sys
+from matplotlib import pyplot as plt
 from tqdm import tqdm
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
@@ -10,7 +11,7 @@ import math
 import torch
 import os.path as op
 import random
-from src.utils.dart_loader import DARTset
+# from src.utils.dart_loader import DARTset
 import cv2
 import numpy as np
 from torch.utils.data import Dataset, ConcatDataset
@@ -45,9 +46,9 @@ def build_dataset(args):
             o_dataset = CustomDataset_g(args, general_path + "/annotations/train", standard_j)
             train_dataset = ConcatDataset([train_dataset, o_dataset])
             
-    elif args.dataset == "dart":
-        train_dataset = DARTset(data_split='train')
-        test_dataset = DARTset(data_split='test')
+    # elif args.dataset == "dart":
+    #     train_dataset = DARTset(data_split='train')
+    #     test_dataset = DARTset(data_split='test')
         
     else:
         assert 0, "you type the wrong dataset name"
@@ -59,7 +60,7 @@ def build_dataset(args):
 class CustomDataset_g(Dataset):
     def __init__(self, args, path, standard_j):
         self.args = args
-        self.noise_factor = 0.25
+        self.noise_factor = 0.4
         self.path = path
         self.phase = path.split("/")[-1]
         self.root = "/".join(path.split("/")[:-2])
@@ -68,25 +69,51 @@ class CustomDataset_g(Dataset):
         self.meta = self.meta["images"][:int(len(self.meta["images"]) * self.args.ratio_of_our)]
         self.s_j = standard_j
         self.img_path = os.path.join(self.root, f"images/{self.phase}")
+        self.img_res = 224
         self.ratio = 0.9
+        self.scale_factor = 0.25
+        self.rot_factor = 90 
         
     def __len__(self):
         return int(len(self.meta) * self.ratio)
         
     def __getitem__(self, idx):
-        image = self.img_aug(idx)
-        image = self.img_preprocessing(idx, image)
+        image, scale, rot, move_x, move_y = self.img_aug(idx)
+        if self.phase == "train":
+            image = self.img_preprocessing(idx, image)
+            
         image = torch.from_numpy(image).float()
-        # Store image before normalization to use it in visualization
-        transfromed_img = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                         std=[0.229, 0.224, 0.225])(image)
-        joint_2d, joint_3d = self.joint_processing(idx)
+        # transformed_img = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+        #                                  std=[0.229, 0.224, 0.225])(image)
+        joint_2d, joint_3d = self.joint_processing(idx, scale, rot, move_x, move_y)
 
-        return transfromed_img, joint_2d, joint_3d
+        transformed_img = np.array(image).transpose(1, 2, 0)
+        parents = np.array([-1, 0, 1, 2, 3, 0, 5, 6, 7, 0, 9, 10, 11, 0, 13, 14, 15, 0, 17, 18, 19])
+        for i in range(21):
 
-    def joint_processing(self, idx): 
-        joint_2d =  torch.tensor(self.meta[idx]['rot_joint_2d']) if self.args.center else torch.tensor(self.meta[idx]['joint_2d'])
-        joint_3d = torch.tensor(self.meta[idx]['joint_3d']) 
+            cv2.circle(transformed_img, (int(joint_2d[i][0]), int(joint_2d[i][1])), 2, [0, 1, 0],
+                        thickness=-1)
+            if i != 0:
+                cv2.line(transformed_img, (int(joint_2d[i][0]), int(joint_2d[i][1])),
+                            (int(joint_2d[parents[i]][0]), int(joint_2d[parents[i]][1])),
+                            [0, 0, 1], 1)
+        plt.imshow(transformed_img)
+        plt.savefig("aa.jpg")
+
+        return image, joint_2d, joint_3d
+
+
+    def joint_processing(self, idx, scale, rot, move_x, move_y): 
+        
+        
+        joint_3d = torch.tensor(self.meta[idx]['joint_3d'])
+        if self.args.center:
+            joint_2d = np.array(self.meta[idx]['joint_2d'])
+            joint_2d[:, 0] = joint_2d[:, 0] + move_x; joint_2d[:, 1] = joint_2d[:, 1] + move_y
+        else:
+            joint_2d = np.array(self.meta[idx]['joint_2d'])
+        joint_2d = self.j2d_processing(joint_2d, scale, rot) if self.args.crop else joint_2d
+        joint_2d = torch.tensor(joint_2d)
         
         self.s_j[:, 0] = - self.s_j[:, 0]   ## This joint is always same for unified rotation
         self.s_j = self.s_j- self.s_j[0, :]
@@ -101,11 +128,22 @@ class CustomDataset_g(Dataset):
             joint_3d = align_scale_rot(self.s_j, joint_3d)      
             
         return joint_2d, joint_3d
+    
+    
+    def j2d_processing(self, kp, scale, r):
+        """Process gt 2D keypoints and apply all augmentation transforms."""
+        nparts = kp.shape[0]
+        for i in range(nparts):
+            kp[i,0:2] = transform(kp[i,0:2]+1, (112, 112), scale, 
+                                    [self.img_res, self.img_res], rot=r)
+        # convert to normalized coordinates
+        # kp[:,:-1] = 2.*kp[:,:-1]/self.img_res - 1.
+        # kp = kp.astype('float32')
+        return kp
+
 
     def img_preprocessing(self, idx, rgb_img):
-        """ Maybe, when it needs to crop img, i will modify the below code"""
-        # rgb_img = crop(rgb_img, center, scale, 
-        #         [self.img_res, self.img_res], rot=rot)
+
         # in the rgb image we add pixel noise in a channel-wise manner
         if self.phase == 'train':
             if idx < int(self.args.ratio_of_aug * self.__len__()):
@@ -129,10 +167,28 @@ class CustomDataset_g(Dataset):
         move_y = self.meta[idx]['move_y']       
         image = cv2.imread(os.path.join(self.img_path, name))  # PIL image
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        if self.args.center:
-            image = i_rotate(image, 0, move_x, move_y, interpolation= self.args.interpolation)      ## Later, change this value changeable
         
-        return image
+        if self.args.center:
+            if self.args.nn: nn = cv2.INTER_LINEAR 
+            else: nn = None
+            translation = np.float32([[1, 0, move_x], [0, 1, move_y]])
+            image = cv2.warpAffine(image, translation, (self.img_res, self.img_res),
+                                 borderMode= nn)
+            
+        scale = min(1+self.scale_factor,
+                        max(1-self.scale_factor, np.random.randn()*self.scale_factor+1))
+        
+        if idx < int(self.args.ratio_of_aug * self.__len__()):
+            rot = min(2*self.rot_factor,
+                        max(-2*self.rot_factor, np.random.randn()*self.rot_factor))
+        else:
+            rot = 0
+        """ Maybe, when it needs to crop img, i will modify the below code"""
+
+        if self.args.crop:
+            image = crop(image, (112, 112), scale, [self.img_res, self.img_res], rot=rot)
+        
+        return image, scale, rot, move_x, move_y
         
 class val_g_set(CustomDataset_g):
     def __init__(self,  *args):
@@ -165,25 +221,117 @@ def apply(img, aug, num=1, scale=1.5):
     Y = [aug(img) for _ in range(num)]
     return Y
 
-def i_rotate(img, degree, move_x, move_y, interpolation = True):
-    h, w = img.shape[:-1]
-    
-    if interpolation:
-        flags = cv2.INTER_LINEAR
+
+
+def get_transform(center, scale, res, rot=0):
+    """Generate transformation matrix."""
+    h = 200 * scale
+    t = np.zeros((3, 3))
+    t[0, 0] = float(res[1]) / h
+    t[1, 1] = float(res[0]) / h
+    t[0, 2] = res[1] * (-float(center[0]) / h + .5)
+    t[1, 2] = res[0] * (-float(center[1]) / h + .5)
+    t[2, 2] = 1
+    if not rot == 0:
+        rot = -rot # To match direction of rotation from cropping
+        rot_mat = np.zeros((3,3))
+        rot_rad = rot * np.pi / 180
+        sn,cs = np.sin(rot_rad), np.cos(rot_rad)
+        rot_mat[0,:2] = [cs, -sn]
+        rot_mat[1,:2] = [sn, cs]
+        rot_mat[2,2] = 1
+        # Need to rotate around center
+        t_mat = np.eye(3)
+        t_mat[0,2] = -res[1]/2
+        t_mat[1,2] = -res[0]/2
+        t_inv = t_mat.copy()
+        t_inv[:2,2] *= -1
+        t = np.dot(t_inv,np.dot(rot_mat,np.dot(t_mat,t)))
+    return t
+
+
+def transform(pt, center, scale, res, invert=0, rot=0):
+    """Transform pixel location to different reference."""
+    t = get_transform(center, scale, res, rot=rot)
+    if invert:
+        # t = np.linalg.inv(t)
+        t_torch = torch.from_numpy(t)
+        t_torch = torch.inverse(t_torch)
+        t = t_torch.numpy()
+    new_pt = np.array([pt[0]-1, pt[1]-1, 1.]).T
+    new_pt = np.dot(t, new_pt)
+    return new_pt[:2].astype(int)+1
+
+
+def crop(img, center, scale, res, rot=0):
+    """Crop image according to the supplied bounding box."""
+    # Upper left point
+    ul = np.array(transform([1, 1], center, scale, res, invert=1))-1
+    # Bottom right point
+    br = np.array(transform([res[0]+1, 
+                             res[1]+1], center, scale, res, invert=1))-1
+    # Padding so that when rotated proper amount of context is included
+    pad = int(np.linalg.norm(br - ul) / 2 - float(br[1] - ul[1]) / 2)
+    if not rot == 0:
+        ul -= pad
+        br += pad
+    new_shape = [br[1] - ul[1], br[0] - ul[0]]
+    if len(img.shape) > 2:
+        new_shape += [img.shape[2]]
+    new_img = np.zeros(new_shape)
+
+    # Range to fill new array
+    new_x = max(0, -ul[0]), min(br[0], len(img[0])) - ul[0]
+    new_y = max(0, -ul[1]), min(br[1], len(img)) - ul[1]
+    # Range to sample from original image
+    old_x = max(0, ul[0]), min(len(img[0]), br[0])
+    old_y = max(0, ul[1]), min(len(img), br[1])
+
+    new_img[new_y[0]:new_y[1], new_x[0]:new_x[1]] = img[old_y[0]:old_y[1], 
+                                                        old_x[0]:old_x[1]]
+    if not rot == 0:
+        # Remove padding
+        # new_img = scipy.misc.imrotate(new_img, rot)
+        new_img = myimrotate(new_img, rot)
+        new_img = new_img[pad:-pad, pad:-pad]
+
+    # new_img = scipy.misc.imresize(new_img, res)
+    new_img = myimresize(new_img, [res[0], res[1]])
+    return new_img
+
+
+def myimrotate(img, angle, center=None, scale=1.0, border_value=0, auto_bound=False):
+    if center is not None and auto_bound:
+        raise ValueError('`auto_bound` conflicts with `center`')
+    h, w = img.shape[:2]
+    if center is None:
+        center = ((w - 1) * 0.5, (h - 1) * 0.5)
+    assert isinstance(center, tuple)
+
+    matrix = cv2.getRotationMatrix2D(center, angle, scale)
+    if auto_bound:
+        cos = np.abs(matrix[0, 0])
+        sin = np.abs(matrix[0, 1])
+        new_w = h * sin + w * cos
+        new_h = h * cos + w * sin
+        matrix[0, 2] += (new_w - w) * 0.5
+        matrix[1, 2] += (new_h - h) * 0.5
+        w = int(np.round(new_w))
+        h = int(np.round(new_h))
+    rotated = cv2.warpAffine(img, matrix, (w, h), borderValue=border_value)
+    return rotated
+
+def myimresize(img, size, return_scale=False, interpolation='bilinear'):
+
+    h, w = img.shape[:2]
+    resized_img = cv2.resize(
+        img, (size[0],size[1]), interpolation=cv2.INTER_LINEAR)
+    if not return_scale:
+        return resized_img
     else:
-        flags = None
-        
-    centerRotatePT = int(w / 2), int(h / 2)
-    new_h, new_w = h, w
-    translation = np.float32([[1, 0, move_x], [0, 1, move_y]])
-    rotatefigure = cv2.getRotationMatrix2D(centerRotatePT, degree, 1)
-    result = cv2.warpAffine(img, rotatefigure, (new_w, new_h),
-                            flags = flags)
-    result = cv2.warpAffine(result, translation, (new_w, new_h),
-                            flags = flags)
-
-    return result
-
+        w_scale = size[0] / w
+        h_scale = size[1] / h
+        return resized_img, w_scale, h_scale
 
 class Json_transform(Dataset):
     def __init__(self, degree, path):
@@ -245,7 +393,6 @@ class Json_transform(Dataset):
             if flag:
                 continue
 
-            d = joint_2d.clone()
 
             flag = False
             for o in joint_2d:
@@ -256,19 +403,14 @@ class Json_transform(Dataset):
             if flag:
                 continue
             
-            center_j = np.array(d.mean(0))
+            center_j = np.array(joint_2d.mean(0))
             move_x = 112 - center_j[0]
             move_y = 112 - center_j[1]
-            # tran_image = i_rotate(ori_image, 0, move_x, move_y)
-            image = Image.fromarray(ori_image)
 
-
-            j['joint_2d'] = d.tolist()
+            j['joint_2d'] = joint_2d.tolist()
             j['joint_3d'] = joint.tolist()
-            j['rot_joint_2d'] = joint_2d.tolist()
             j['move_x'] = move_x
             j['move_y'] = move_y
-            # j['tran_image'] = tran_image
 
         count = 0
         for w in index:
@@ -399,13 +541,26 @@ def save_checkpoint(model, args, epoch, optimizer, best_loss, count, ment, num_t
                 'best_loss': best_loss,
                 'count': count,
                 'model_state_dict': model_to_save.state_dict()}, op.join(checkpoint_dir, 'state_dict.bin'))
-
             break
         except:
             pass
 
     return model_to_save, checkpoint_dir
 
+def i_rotate(img, degree, move_x, move_y):
+    h, w = img.shape[:-1]
+
+    centerRotatePT = int(w / 2), int(h / 2)
+    new_h, new_w = h, w
+
+    rotatefigure = cv2.getRotationMatrix2D(centerRotatePT, degree, 1)
+    result = cv2.warpAffine(img, rotatefigure, (new_w, new_h),
+                            flags=cv2.INTER_LINEAR, borderMode=cv2.INTER_LINEAR)
+    translation = np.float32([[1, 0, move_x], [0, 1, move_y]])
+    result = cv2.warpAffine(result, translation, (new_w, new_h),
+                            flags=cv2.INTER_LINEAR, borderMode=cv2.INTER_LINEAR)
+
+    return result
     
 class Json_e(Json_transform):
     def __init__(self, phase):

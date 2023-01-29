@@ -33,7 +33,8 @@ def parse_args():
     parser.add_argument("--set", default=None, type=str,
                         help = "when input set, the existing output folder is removed as the initialize")
     parser.add_argument("--center", action='store_true')
-    parser.add_argument("--interpolation", action='store_true')
+    parser.add_argument("--nn", action='store_true')
+    parser.add_argument("--crop", action='store_true')
     parser.add_argument("--scale", action='store_true')
     parser.add_argument("--plt", action='store_true')
     parser.add_argument("--logger", action='store_true')
