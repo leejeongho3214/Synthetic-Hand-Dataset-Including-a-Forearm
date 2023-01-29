@@ -66,7 +66,6 @@ class CustomDataset_g(Dataset):
         self.root = "/".join(path.split("/")[:-2])
         with open(f"{path}/CISLAB_{self.phase}_data_update.json", "r") as st_json:
              self.meta = json.load(st_json)
-        self.meta = self.meta["images"][:int(len(self.meta["images"]) * self.args.ratio_of_our)]
         self.s_j = standard_j
         self.img_path = os.path.join(self.root, f"images/{self.phase}")
         self.img_res = 224
@@ -79,39 +78,24 @@ class CustomDataset_g(Dataset):
         
     def __getitem__(self, idx):
         image, scale, rot, move_x, move_y = self.img_aug(idx)
-        if self.phase == "train":
-            image = self.img_preprocessing(idx, image)
+        image = self.img_preprocessing(idx, image)
             
         image = torch.from_numpy(image).float()
-        # transformed_img = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-        #                                  std=[0.229, 0.224, 0.225])(image)
+        transformed_img = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                         std=[0.229, 0.224, 0.225])(image)
         joint_2d, joint_3d = self.joint_processing(idx, scale, rot, move_x, move_y)
 
-        transformed_img = np.array(image).transpose(1, 2, 0)
-        parents = np.array([-1, 0, 1, 2, 3, 0, 5, 6, 7, 0, 9, 10, 11, 0, 13, 14, 15, 0, 17, 18, 19])
-        for i in range(21):
-
-            cv2.circle(transformed_img, (int(joint_2d[i][0]), int(joint_2d[i][1])), 2, [0, 1, 0],
-                        thickness=-1)
-            if i != 0:
-                cv2.line(transformed_img, (int(joint_2d[i][0]), int(joint_2d[i][1])),
-                            (int(joint_2d[parents[i]][0]), int(joint_2d[parents[i]][1])),
-                            [0, 0, 1], 1)
-        plt.imshow(transformed_img)
-        plt.savefig("aa.jpg")
-
-        return image, joint_2d, joint_3d
+        return transformed_img, joint_2d, joint_3d
 
 
     def joint_processing(self, idx, scale, rot, move_x, move_y): 
         
-        
-        joint_3d = torch.tensor(self.meta[idx]['joint_3d'])
+        joint_3d = torch.tensor(self.meta[f"{idx}"]['joint_3d'])
         if self.args.center:
-            joint_2d = np.array(self.meta[idx]['joint_2d'])
+            joint_2d = np.array(self.meta[f"{idx}"]['joint_2d'])
             joint_2d[:, 0] = joint_2d[:, 0] + move_x; joint_2d[:, 1] = joint_2d[:, 1] + move_y
         else:
-            joint_2d = np.array(self.meta[idx]['joint_2d'])
+            joint_2d = np.array(self.meta[f"{idx}"]['joint_2d'])
         joint_2d = self.j2d_processing(joint_2d, scale, rot) if self.args.crop else joint_2d
         joint_2d = torch.tensor(joint_2d)
         
@@ -162,9 +146,9 @@ class CustomDataset_g(Dataset):
 
     
     def img_aug(self, idx):
-        name = self.meta[idx]['file_name']
-        move_x = self.meta[idx]['move_x']
-        move_y = self.meta[idx]['move_y']       
+        name = self.meta[f"{idx}"]['file_name']
+        move_x = self.meta[f"{idx}"]['move_x']
+        move_y = self.meta[f"{idx}"]['move_y']       
         image = cv2.imread(os.path.join(self.img_path, name))  # PIL image
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         
@@ -196,9 +180,9 @@ class val_g_set(CustomDataset_g):
         self.ratio_of_aug = 0
         self.ratio_of_dataset = 1
         with open(os.path.join(self.path, "CISLAB_val_data_update.json"), "r") as st_json:
-            self.meta = json.load(st_json)["images"]
+            self.meta = json.load(st_json)
         self.img_path = os.path.join(self.root,f"images/{self.phase}" )
-        self.ratio = 0.07
+        self.ratio = 1
 
 class AverageMeter(object):
 
@@ -351,12 +335,13 @@ class Json_transform(Dataset):
         meta_list = self.meta['images'].copy()
         index = []
         pbar = tqdm(total = len(meta_list))
+        k = dict()
+        count = 0
         for idx, j in enumerate(meta_list):
             pbar.update(1)
             if j['camera'] == '0':
                 index.append(idx)
                 continue
-
             camera = self.meta['images'][idx]['camera']
             id = self.meta['images'][idx]['frame_idx']
 
@@ -406,19 +391,12 @@ class Json_transform(Dataset):
             center_j = np.array(joint_2d.mean(0))
             move_x = 112 - center_j[0]
             move_y = 112 - center_j[1]
-
-            j['joint_2d'] = joint_2d.tolist()
-            j['joint_3d'] = joint.tolist()
-            j['move_x'] = move_x
-            j['move_y'] = move_y
-
-        count = 0
-        for w in index:
-            del self.meta['images'][w-count]
+            k[f"{count}"] = {'joint_2d': joint_2d.tolist(), 'joint_3d':joint.tolist(), 'move_x': move_x, 'move_y': move_y, "file_name": name}
             count += 1
 
+
         with open(self.store_path, 'w') as f:
-            json.dump(self.meta, f)
+            json.dump(k, f)
 
         print(
             f"Done ===> {self.store_path}")
@@ -626,7 +604,9 @@ class Json_e(Json_transform):
             self.store_path = os.path.join(root, "annotations/val/CISLAB_val_data_update.json")
     
 def main():
-    Json_e(phase = "val").get_json_g()
+    with open(os.path.join("../../datasets/general", "annotations/val/CISLAB_val_data_update.json"), "r") as st_json:
+        meta = json.load(st_json)
+    Json_e(phase = "train").get_json_g()
     print("ENDDDDDD")
     
 if __name__ == '__main__':
