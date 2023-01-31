@@ -11,7 +11,7 @@ import math
 import torch
 import os.path as op
 import random
-# from src.utils.dart_loader import DARTset
+from src.utils.dart_loader import DARTset
 import cv2
 import numpy as np
 from torch.utils.data import Dataset, ConcatDataset
@@ -41,14 +41,15 @@ def build_dataset(args):
             args, args.train_yaml, False, is_train=True, scale_factor=args.img_scale_factor, s_j = standard_j) 
         test_dataset = make_hand_data_loader(
             args, args.val_yaml, False, is_train=False, scale_factor=args.img_scale_factor, s_j = standard_j) 
+        
         if args.dataset == "both":
             args.ratio_of_our = args.ratio_of_add
             o_dataset = CustomDataset_g(args, general_path + "/annotations/train", standard_j)
             train_dataset = ConcatDataset([train_dataset, o_dataset])
             
-    # elif args.dataset == "dart":
-    #     train_dataset = DARTset(data_split='train')
-    #     test_dataset = DARTset(data_split='test')
+    elif args.dataset == "dart":
+        train_dataset = DARTset(data_split='train')
+        test_dataset = DARTset(data_split='test')
         
     else:
         assert 0, "you type the wrong dataset name"
@@ -84,8 +85,10 @@ class CustomDataset_g(Dataset):
         transformed_img = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                          std=[0.229, 0.224, 0.225])(image)
         joint_2d, joint_3d = self.joint_processing(idx, scale, rot, move_x, move_y)
-
+            
+            
         return transformed_img, joint_2d, joint_3d
+
 
 
     def joint_processing(self, idx, scale, rot, move_x, move_y): 

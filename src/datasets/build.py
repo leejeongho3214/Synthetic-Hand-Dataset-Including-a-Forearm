@@ -118,18 +118,6 @@ def build_hand_dataset(yaml_file, args, is_train=True, scale_factor=1, s_j = Non
 
 def make_hand_data_loader(args, yaml_file, is_distributed=False,
         is_train=True, start_iter=0, scale_factor=1, s_j = None):
-
     dataset = build_hand_dataset(yaml_file, args, is_train=is_train, scale_factor=scale_factor, s_j = s_j)
-
-    # train_dataset, test_dataset = random_split(dataset, [int(len(dataset) * 0.9), int(len(dataset) * 0.1)])
-    # train_data_loader = torch.utils.data.DataLoader(
-    #     train_dataset, num_workers=args.num_workers, batch_size=32,
-    #     pin_memory=True,
-    # )
-    # test_data_loader = torch.utils.data.DataLoader(
-    #     test_dataset, num_workers=args.num_workers, batch_size=32,
-    #     pin_memory=True,
-    # )
-    # return train_data_loader, test_data_loader, train_dataset, test_dataset
     return dataset
 

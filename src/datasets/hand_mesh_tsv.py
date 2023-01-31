@@ -101,6 +101,7 @@ class HandMeshTSVDataset(object):
 
     def prepare_image_key_to_index(self):
         tsv = self.get_valid_tsv()
+        
         return {tsv.get_key(i) : i for i in range(tsv.num_rows())}
 
 
@@ -264,7 +265,13 @@ class HandMeshTSVDataset(object):
         has_3d_joints = annotations['has_3d_joints']
         joints_2d = np.asarray(annotations['2d_joints'])
         joints_3d = np.asarray(annotations['3d_joints'])
-
+        
+        joints_3d = np.empty([1, 21, 3])
+        for idx in range(self.__len__()):
+            annotations = self.get_annotations(idx)
+            annotations = annotations[0]
+            joints_3d = np.concatenate((joints_3d, np.asarray(annotations['3d_joints'])[None, :, :-1]), axis = 0) 
+            
         if joints_2d.ndim==3:
             joints_2d = joints_2d[0]
         if joints_3d.ndim==3:

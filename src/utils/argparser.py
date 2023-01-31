@@ -76,7 +76,7 @@ def load_model(args):
                 print(colored("Loading ===> %s" % os.path.join(args.root_path, args.name), "green"))
                 args.reset = "resume"
             else:
-                reset_folder(log_dir); reset_folder(os.path.join(args.root_path, args.name)); args.reset = "init"
+                reset_folder(log_dir); args.reset = "init"
         
     _model.to(args.device)
     
