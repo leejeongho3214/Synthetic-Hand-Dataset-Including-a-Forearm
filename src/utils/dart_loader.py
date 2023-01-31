@@ -43,7 +43,8 @@ class DARTset():
         )
         self.reorder_idx = [0, 13, 14, 15, 20, 1, 2, 3, 16, 4, 5, 6, 17, 10, 11, 12, 19, 7, 8, 9, 18]
         self.hand_faces = faces[0].numpy()
-
+        self.noise_factor = 0.4
+        self.ratio_of_aug = 0.6
         self.load_dataset()
 
     def load_dataset(self):
@@ -132,8 +133,9 @@ class DARTset():
         else:
             path = os.path.join(*path.split("/")[:-2], path.split("/")[-2] + "_wbg", path.split("/")[-1])
             img = cv2.imread(path)[..., ::-1]
-        img = np.transpose(img, (2, 0, 1))
-        img = torch.from_numpy(img.copy()).float() / 255.0
+            
+        img = self.img_preprocessing(idx, img)
+        img = torch.from_numpy(img)
         transform_func = transforms.Compose([transforms.Resize((224, 224)),
                                 transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                                     std=[0.229, 0.224, 0.225])])
@@ -145,6 +147,24 @@ class DARTset():
         image = np.array(imageio.imread(path, pilmode="RGBA"), dtype=np.uint8)
         image = cv2.resize(image, dsize=(self.img_size, self.img_size))
         return (image[:, :, 3] >= 128).astype(np.float32) * 255.0
+    
+    def img_preprocessing(self, idx, rgb_img):
+
+        # in the rgb image we add pixel noise in a channel-wise manner
+        if self.data_split == 'train':
+            if idx < int(self.ratio_of_aug * self.__len__()):
+                pn = np.random.uniform(1-self.noise_factor, 1+self.noise_factor, 3)
+            else: 
+                pn = np.ones(3)
+        else:
+            pn = np.ones(3)
+        rgb_img[:,:,0] = np.minimum(255.0, np.maximum(0.0, rgb_img[:,:,0]*pn[0]))
+        rgb_img[:,:,1] = np.minimum(255.0, np.maximum(0.0, rgb_img[:,:,1]*pn[1]))
+        rgb_img[:,:,2] = np.minimum(255.0, np.maximum(0.0, rgb_img[:,:,2]*pn[2]))
+        # (3,224,224),float,[0,1]
+        rgb_img = np.transpose(rgb_img.astype('float32'),(2,0,1))/255.0
+        
+        return rgb_img
 
     def get_joints_uvd(self, idx):
         uv = self.get_joints_2d(idx)
