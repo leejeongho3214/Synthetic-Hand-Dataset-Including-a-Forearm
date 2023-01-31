@@ -93,14 +93,16 @@ class CustomDataset_g(Dataset):
 
     def joint_processing(self, idx, scale, rot, move_x, move_y): 
         
-        joint_3d = torch.tensor(self.meta[f"{idx}"]['joint_3d'])
         if self.args.center:
             joint_2d = np.array(self.meta[f"{idx}"]['joint_2d'])
             joint_2d[:, 0] = joint_2d[:, 0] + move_x; joint_2d[:, 1] = joint_2d[:, 1] + move_y
         else:
             joint_2d = np.array(self.meta[f"{idx}"]['joint_2d'])
         joint_2d = self.j2d_processing(joint_2d, scale, rot) if self.args.crop else joint_2d
-        joint_2d = torch.tensor(joint_2d)
+        joint_3d = self.meta[f"{idx}"]['joint_3d']
+        joint_3d = self.j3d_processing(joint_3d, rot)
+        
+        joint_2d, joint_3d = torch.tensor(joint_2d), torch.tensor(joint_2d)
         
         self.s_j[:, 0] = - self.s_j[:, 0]   ## This joint is always same for unified rotation
         self.s_j = self.s_j- self.s_j[0, :]
@@ -128,6 +130,19 @@ class CustomDataset_g(Dataset):
         # kp = kp.astype('float32')
         return kp
 
+    def j3d_processing(self, S, r):
+        """Process gt 3D keypoints and apply all augmentation transforms."""
+        # in-plane rotation
+        rot_mat = np.eye(3)
+        if not r == 0:
+            rot_rad = -r * np.pi / 180
+            sn,cs = np.sin(rot_rad), np.cos(rot_rad)
+            rot_mat[0,:2] = [cs, -sn]
+            rot_mat[1,:2] = [sn, cs]
+        S[:, :-1] = np.einsum('ij,kj->ki', rot_mat, S[:, :-1]) 
+
+        S = S.astype('float32')
+        return S
 
     def img_preprocessing(self, idx, rgb_img):
 
