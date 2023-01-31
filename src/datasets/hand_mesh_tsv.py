@@ -265,7 +265,6 @@ class HandMeshTSVDataset(object):
         has_3d_joints = annotations['has_3d_joints']
         joints_2d = np.asarray(annotations['2d_joints'])
         joints_3d = np.asarray(annotations['3d_joints'])
-
             
         if joints_2d.ndim==3:
             joints_2d = joints_2d[0]
