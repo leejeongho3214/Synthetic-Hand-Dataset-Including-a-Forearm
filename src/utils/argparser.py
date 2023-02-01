@@ -31,8 +31,6 @@ def parse_args():
     parser.add_argument("--nn", action='store_true')
     parser.add_argument("--crop", action='store_true')
     parser.add_argument("--scale", action='store_true')
-    parser.add_argument("--plt", action='store_true')
-    parser.add_argument("--logger", action='store_true')
     parser.add_argument("--reset", action='store_true')
     parser.add_argument("--batch_size", default=32, type=int)
     
