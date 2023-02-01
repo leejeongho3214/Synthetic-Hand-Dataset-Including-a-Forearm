@@ -283,8 +283,7 @@ class HandMeshTSVDataset(object):
         img = self.rgb_processing(img, center, sc*scale, rot, flip, pn)
         img = torch.from_numpy(img).float()
         
-        if self.args.model == "ours": size =  224
-        else:  size= 256
+        size = 224
         img = transforms.Resize((size, size))(img)
         
         # Store image before normalization to use it in visualization
@@ -355,8 +354,6 @@ class HandMeshTSVDataset(object):
         # transfromed_img = transforms.Resize((224, 224))(transfromed_img)
 
         joint_2d = (meta_data['joints_2d'][:,:-1] * 100 + 112) * (size/224)
-        if self.args.model == "hrnet": heatmap = GenerateHeatmap(128, 21)(joint_2d/2)
-        else: heatmap= GenerateHeatmap(64, 21)(joint_2d/4)
         
         return transfromed_img[(2,1,0),:,:], joint_2d, meta_data['joints_3d'][:, :3]
     

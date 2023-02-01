@@ -2,7 +2,6 @@ import sys
 from matplotlib import pyplot as plt
 from tqdm import tqdm
 import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 from src.utils.miscellaneous import mkdir
 from src.utils.comm import is_main_process
 from src.datasets.build import make_hand_data_loader
@@ -48,8 +47,8 @@ def build_dataset(args):
             train_dataset = ConcatDataset([train_dataset, o_dataset])
             
     elif args.dataset == "dart":
-        train_dataset = DARTset(data_split='train')
-        test_dataset = DARTset(data_split='test')
+        train_dataset = DARTset(args, data_split='train')
+        test_dataset = DARTset(args, data_split='test')
         
     else:
         assert 0, "you type the wrong dataset name"
