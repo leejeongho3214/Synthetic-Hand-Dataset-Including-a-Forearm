@@ -13,11 +13,7 @@ def parse_args():
     
     parser.add_argument("name", default='None',
                         help = 'You write down to store the directory path',type=str)
-    parser.add_argument("--root_path", default=f'output', type=str, required=False,
-                        help="The root directory to save location which you want")
-    parser.add_argument("--model", default='ours', type=str, required=False)
     parser.add_argument("--dataset", default='ours', type=str, required=False)
-    parser.add_argument("--batch_size", default=32, type=int)
     parser.add_argument("--count", default=5, type=int)
     parser.add_argument("--ratio_of_our", default=1, type=float,
                         help="Our dataset have 420k imaegs so you can use train data as many as you want, according to this ratio")
@@ -25,8 +21,7 @@ def parse_args():
                         help="You can use color jitter to train data as many as you want, according to this ratio")
     parser.add_argument("--ratio_of_add", default=0.1, type=float,
                         help = "set ratio that how many you add our dataset")
-    parser.add_argument("--epoch", default=50, type=int)
-    
+    parser.add_argument("--epoch", default=50, type=int) 
     parser.add_argument("--loss_2d", default=0, type=float)
     parser.add_argument("--loss_3d", default=0, type=float)
     parser.add_argument("--loss_3d_mid", default=0, type=float)
@@ -39,6 +34,7 @@ def parse_args():
     parser.add_argument("--plt", action='store_true')
     parser.add_argument("--logger", action='store_true')
     parser.add_argument("--reset", action='store_true')
+    parser.add_argument("--batch_size", default=32, type=int)
     
     args = parser.parse_args()
     args, logger = pre_arg(args)

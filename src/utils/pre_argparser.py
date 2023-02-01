@@ -1,6 +1,7 @@
 
 import argparse
 import os
+from src.utils.bar import colored
 from src.utils.comm import get_rank
 from src.utils.logger import setup_logger
 from src.utils.miscellaneous import mkdir
@@ -12,6 +13,7 @@ def pre_arg(args):
     if not args.output_dir.split('/')[1] == "output" and not os.path.isfile((args.output_dir)):  mkdir(args.output_dir); logger = setup_logger(args.name, args.output_dir, get_rank())
     else: logger = None
     logger.debug(args)
+    print(colored(args, "yellow"))
     args.num_train_epochs = int(50)
     args.multiscale_inference = False
     args.sc = float(1.0)
@@ -43,6 +45,9 @@ def pre_arg(args):
     args.run_eval_only = True
     args.device = str('cuda')
     args.seed = int(88)
+    args.root_path = 'output'
+
+
 
     
     return args, logger
