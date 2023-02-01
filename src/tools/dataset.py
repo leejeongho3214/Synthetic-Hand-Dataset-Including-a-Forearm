@@ -139,8 +139,7 @@ class CustomDataset_g(Dataset):
             sn,cs = np.sin(rot_rad), np.cos(rot_rad)
             rot_mat[0,:2] = [cs, -sn]
             rot_mat[1,:2] = [sn, cs]
-        S[:, :-1] = np.einsum('ij,kj->ki', rot_mat, S[:, :-1]) 
-
+        S = np.einsum('ij,kj->ki', rot_mat, S) 
         S = S.astype('float32')
         return S
 
