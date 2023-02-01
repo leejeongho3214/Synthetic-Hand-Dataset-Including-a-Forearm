@@ -102,7 +102,7 @@ class CustomDataset_g(Dataset):
         joint_3d = self.meta[f"{idx}"]['joint_3d']
         joint_3d = self.j3d_processing(joint_3d, rot)
         
-        joint_2d, joint_3d = torch.tensor(joint_2d), torch.tensor(joint_2d)
+        joint_2d, joint_3d = torch.tensor(joint_2d), torch.tensor(joint_3d)
         
         self.s_j[:, 0] = - self.s_j[:, 0]   ## This joint is always same for unified rotation
         self.s_j = self.s_j- self.s_j[0, :]
