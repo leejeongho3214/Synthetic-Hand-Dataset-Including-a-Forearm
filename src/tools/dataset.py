@@ -100,7 +100,8 @@ class CustomDataset_g(Dataset):
             joint_2d = np.array(self.meta[f"{idx}"]['joint_2d'])
         joint_2d = self.j2d_processing(joint_2d, scale, rot) if self.args.crop else joint_2d
         joint_3d = self.meta[f"{idx}"]['joint_3d']
-        joint_3d = self.j3d_processing(joint_3d, rot)
+        if self.args.rot_j:
+            joint_3d = self.j3d_processing(joint_3d, rot)
         
         joint_2d, joint_3d = torch.tensor(joint_2d), torch.tensor(joint_3d)
         
