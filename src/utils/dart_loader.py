@@ -82,9 +82,7 @@ class DARTset():
         return len(self.image_paths)
 
     def __getitem__(self, idx):
-
-        image, scale, rot = self.get_image(idx)
-        return image, self.get_joints_2d(idx, scale, rot), self.get_joints_3d(idx, rot)
+        return self.get_image(idx), self.get_joints_2d(idx), self.get_joints_3d(idx)
         # return {
         #     "image": self.get_image(idx),
         #     "joints_3d": self.get_joints_3d(idx),
@@ -97,21 +95,12 @@ class DARTset():
         #     "image_mask": self.get_image_mask(idx),
         # }
 
-    def get_joints_3d(self, idx, r):
+    def get_joints_3d(self, idx):
         joints = self.joints_3d[idx].copy()
         # * Transfer from UNITY coordinate system
         joints[:, 1:] = -joints[:, 1:]
         joints = joints[self.reorder_idx]
         joints = joints - joints[9] + np.array([0, 0, 0.5])  # * We use ortho projection, so we need to shift the center of the hand to the origin
-        if self.args.crop:
-            rot_mat = np.eye(3)
-            if not r == 0:
-                rot_rad = -r * np.pi / 180
-                sn,cs = np.sin(rot_rad), np.cos(rot_rad)
-                rot_mat[0,:2] = [cs, -sn]
-                rot_mat[1,:2] = [sn, cs]
-            joints = np.einsum('ij,kj->ki', rot_mat, joints) 
-            joints = joints.astype('float32')
         # joints = joints - joints[0, :][None, :].repeat(21, axis = 0)
         joints = torch.from_numpy(joints).float()
         return joints
@@ -126,17 +115,10 @@ class DARTset():
         verts = verts.astype(np.float32)
         return verts
 
-    def get_joints_2d(self, idx, scale, r):
-        from src.tools.dataset import transform
+    def get_joints_2d(self, idx):
         joints_2d = self.joints_2d[idx].copy()[self.reorder_idx]
         joints_2d = joints_2d / self.raw_img_size * 224
 
-        if self.args.crop:
-            nparts = joints_2d.shape[0]
-            for i in range(nparts):
-                joints_2d[i,0:2] = transform(joints_2d[i,0:2]+1, (112, 112), scale, 
-                                        [self.img_res, self.img_res], rot=r)
-                
         joints_2d = torch.from_numpy(joints_2d).float()
         # joints_2d = joints_2d / self.raw_img_size * self.img_size
         return joints_2d
@@ -149,7 +131,6 @@ class DARTset():
         return ortho_cam
 
     def get_image(self, idx):
-        from src.tools.dataset import crop
         path = self.image_paths[idx]
         if self.load_wo_background:
             img = np.array(imageio.imread(path, pilmode="RGBA"), dtype=np.uint8)
@@ -158,25 +139,13 @@ class DARTset():
             path = os.path.join(*path.split("/")[:-2], path.split("/")[-2] + "_wbg", path.split("/")[-1])
             img = cv2.imread(path)[..., ::-1]
             
-        scale = min(1+self.scale_factor,
-                max(1-self.scale_factor, np.random.randn()*self.scale_factor+1))
-        
-        if idx < int(self.args.ratio_of_aug * self.__len__()):
-            rot = min(2*self.rot_factor,
-                        max(-2*self.rot_factor, np.random.randn()*self.rot_factor))
-        else:
-            rot = 0
-            
-        if self.args.crop: 
-            img= crop(img, (112, 112), scale, [self.img_res, self.img_res], rot)
-            
         img = self.img_preprocessing(idx, img)
         img = torch.from_numpy(img)
         transform_func = transforms.Compose([transforms.Resize((224, 224)),
                                 transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                                     std=[0.229, 0.224, 0.225])])
         img = transform_func(img)
-        return img, scale, rot
+        return img
     
 
     def get_image_mask(self, idx):
@@ -195,6 +164,7 @@ class DARTset():
                 pn = np.ones(3)
         else:
             pn = np.ones(3)
+            
         rgb_img[:,:,0] = np.minimum(255.0, np.maximum(0.0, rgb_img[:,:,0]*pn[0]))
         rgb_img[:,:,1] = np.minimum(255.0, np.maximum(0.0, rgb_img[:,:,1]*pn[1]))
         rgb_img[:,:,2] = np.minimum(255.0, np.maximum(0.0, rgb_img[:,:,2]*pn[2]))

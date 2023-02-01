@@ -8,7 +8,7 @@ from torch.utils.tensorboard import SummaryWriter
 import numpy as np
 from src.utils import *
 
-def parse_args():
+def parse_args(eval=False):
     parser = argparse.ArgumentParser()
     
     parser.add_argument("name", default='None',
@@ -34,9 +34,8 @@ def parse_args():
     parser.add_argument("--scale", action='store_true')
     parser.add_argument("--reset", action='store_true')
     parser.add_argument("--batch_size", default=32, type=int)
-    
     args = parser.parse_args()
-    args, logger = pre_arg(args)
+    args, logger = pre_arg(args, eval)
     args.logger = logger
     
     return args

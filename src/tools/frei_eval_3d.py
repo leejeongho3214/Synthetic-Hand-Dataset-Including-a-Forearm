@@ -2,7 +2,7 @@ import os
 import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"  # Arrange GPU devices starting from 0
-os.environ["CUDA_VISIBLE_DEVICES"]= "2" 
+os.environ["CUDA_VISIBLE_DEVICES"]= "1" 
 import numpy as np
 import torch
 from torch.utils import data
@@ -34,7 +34,7 @@ def dump(pred_out_path, xyz_pred_list, verts_pred_list):
     print('Dumped %d joints and %d verts predictions to %s' % (len(xyz_pred_list), len(verts_pred_list), pred_out_path))
 
 def main(args):
-    name = "output/ours/dart/3d"
+    name = "output/ours/ours/3d_crop"
     args.name = os.path.join(name, "checkpoint-good/state_dict.bin")
     args.model = args.name.split('/')[1]
     if args.model == "other_dataset": args.model = "ours"
@@ -74,7 +74,7 @@ def main(args):
             
 
 if __name__ == "__main__":
-    args= parse_args()
+    args= parse_args(eval = True)
     main(args)
     
 

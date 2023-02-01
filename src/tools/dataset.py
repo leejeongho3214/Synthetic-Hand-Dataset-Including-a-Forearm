@@ -176,14 +176,16 @@ class CustomDataset_g(Dataset):
             image = cv2.warpAffine(image, translation, (self.img_res, self.img_res),
                                  borderMode= nn)
             
-        scale = min(1+self.scale_factor,
-                        max(1-self.scale_factor, np.random.randn()*self.scale_factor+1))
+
         
         if idx < int(self.args.ratio_of_aug * self.__len__()):
             rot = min(2*self.rot_factor,
                         max(-2*self.rot_factor, np.random.randn()*self.rot_factor))
+            scale = min(1+self.scale_factor,
+                    max(1-self.scale_factor, np.random.randn()*self.scale_factor+1))
         else:
             rot = 0
+            scale = 1
         """ Maybe, when it needs to crop img, i will modify the below code"""
 
         if self.args.crop:

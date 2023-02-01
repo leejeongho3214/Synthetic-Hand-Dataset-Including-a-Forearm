@@ -7,13 +7,13 @@ from src.utils.logger import setup_logger
 from src.utils.miscellaneous import mkdir
 from src.utils.dir import reset_file
 
-def pre_arg(args):
+def pre_arg(args, eval):
     output_dir = os.path.join('output', args.name)
     if args.reset or not os.path.isfile(os.path.join(output_dir,'checkpoint-good/state_dict.bin')): reset_file(os.path.join(output_dir, "log.txt"))
     if not output_dir.split('/')[1] == "output" and not os.path.isfile((output_dir)):  mkdir(output_dir); logger = setup_logger(args.name, output_dir, get_rank())
     else: logger = None
     logger.debug(args)
-    print(colored(args, "yellow"))
+    if not eval: print(colored(args, "yellow"))
     args.root_path = 'output'
     args.output_dir = os.path.join(args.root_path, args.name)
     args.logger = logger
