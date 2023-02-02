@@ -200,10 +200,10 @@ class val_g_set(CustomDataset_g):
         super().__init__(*args)
         self.ratio_of_aug = 0
         self.ratio_of_dataset = 1
-        if args.forearm == "with":
+        if self.args.forearm == "with":
             with open(f"{self.path}/CISLAB_{self.phase}_data_update_forearm.json", "r") as st_json:
                 self.meta = json.load(st_json)
-        elif args.forearm == "without":
+        elif self.git add .args.forearm == "without":
             with open(f"{self.path}/CISLAB_{self.phase}_data_update_without_forearm.json", "r") as st_json:
                 self.meta = json.load(st_json)
         else:
