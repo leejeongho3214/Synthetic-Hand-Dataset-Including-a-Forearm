@@ -85,36 +85,32 @@ class CustomDataset_g(Dataset):
                                          std=[0.229, 0.224, 0.225])(image)
         joint_2d, joint_3d = self.joint_processing(idx, scale, rot, move_x, move_y)
             
-            
         return transformed_img, joint_2d, joint_3d
 
-
-
     def joint_processing(self, idx, scale, rot, move_x, move_y): 
-        
-        if self.args.center:
-            joint_2d = np.array(self.meta[f"{idx}"]['joint_2d'])
-            joint_2d[:, 0] = joint_2d[:, 0] + move_x; joint_2d[:, 1] = joint_2d[:, 1] + move_y
-        else:
-            joint_2d = np.array(self.meta[f"{idx}"]['joint_2d'])
-        joint_2d = self.j2d_processing(joint_2d, scale, rot) if self.args.crop else joint_2d
+        joint_2d = np.array(self.meta[f"{idx}"]['joint_2d'])
+        if self.phase == "train":    
+            if self.args.center:
+                joint_2d[:, 0] = joint_2d[:, 0] + move_x; joint_2d[:, 1] = joint_2d[:, 1] + move_y
+            if self.args.crop:
+                joint_2d = self.j2d_processing(joint_2d, scale, rot)       
         joint_3d = self.meta[f"{idx}"]['joint_3d']
-        if self.args.rot_j:
-            joint_3d = self.j3d_processing(joint_3d, rot)
         
+        if self.args.rot_j:
+            joint_3d = self.j3d_processing(joint_3d, rot)   
         joint_2d, joint_3d = torch.tensor(joint_2d), torch.tensor(joint_3d)
         
-        self.s_j[:, 0] = - self.s_j[:, 0]   ## This joint is always same for unified rotation
-        self.s_j = self.s_j- self.s_j[0, :]
+        # self.s_j[:, 0] = - self.s_j[:, 0]   ## This joint is always same for unified rotation
+        # self.s_j = self.s_j- self.s_j[0, :]
         
-        joint_3d[:, 0] = - joint_3d[:, 0]   ## change the left hand to right hand
-        joint_3d = joint_3d - joint_3d[0, :]
+        # joint_3d[:, 0] = - joint_3d[:, 0]   ## change the left hand to right hand
+        # joint_3d = joint_3d - joint_3d[0, :]
             
-        if self.args.set == "scale":
-            joint_3d = align_scale(joint_3d)
+        # if self.args.set == "scale":
+        #     joint_3d = align_scale(joint_3d)
             
-        elif self.args.set =="scale_rot":
-            joint_3d = align_scale_rot(self.s_j, joint_3d)      
+        # elif self.args.set =="scale_rot":
+        #     joint_3d = align_scale_rot(self.s_j, joint_3d)      
             
         return joint_2d, joint_3d
     
@@ -144,7 +140,6 @@ class CustomDataset_g(Dataset):
         return S
 
     def img_preprocessing(self, idx, rgb_img):
-
         # in the rgb image we add pixel noise in a channel-wise manner
         if self.phase == 'train':
             if idx < int(self.args.ratio_of_aug * self.__len__()):
@@ -157,8 +152,7 @@ class CustomDataset_g(Dataset):
         rgb_img[:,:,1] = np.minimum(255.0, np.maximum(0.0, rgb_img[:,:,1]*pn[1]))
         rgb_img[:,:,2] = np.minimum(255.0, np.maximum(0.0, rgb_img[:,:,2]*pn[2]))
         # (3,224,224),float,[0,1]
-        rgb_img = np.transpose(rgb_img.astype('float32'),(2,0,1))/255.0
-        
+        rgb_img = np.transpose(rgb_img.astype('float32'),(2,0,1))/255.0  
         return rgb_img
 
     
@@ -169,27 +163,26 @@ class CustomDataset_g(Dataset):
         image = cv2.imread(os.path.join(self.img_path, name))  # PIL image
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         
-        if self.args.center:
-            if self.args.nn: nn = cv2.INTER_LINEAR 
-            else: nn = None
-            translation = np.float32([[1, 0, move_x], [0, 1, move_y]])
-            image = cv2.warpAffine(image, translation, (self.img_res, self.img_res),
-                                 borderMode= nn)
-            
+        if self.phase == "train":
+            if self.args.center:
+                translation = np.float32([[1, 0, move_x], [0, 1, move_y]])
+                image = cv2.warpAffine(image, translation, (self.img_res, self.img_res),
+                                    borderMode= cv2.INTER_LINEAR )
+    
+            if idx < int(self.args.ratio_of_aug * self.__len__()):
+                rot = min(2*self.rot_factor,
+                            max(-2*self.rot_factor, np.random.randn()*self.rot_factor))
+                scale = min(1+self.scale_factor,
+                        max(1-self.scale_factor, np.random.randn()*self.scale_factor+1))
+            else:
+                rot = 0
+                scale = 1
 
-        
-        if idx < int(self.args.ratio_of_aug * self.__len__()):
-            rot = min(2*self.rot_factor,
-                        max(-2*self.rot_factor, np.random.randn()*self.rot_factor))
-            scale = min(1+self.scale_factor,
-                    max(1-self.scale_factor, np.random.randn()*self.scale_factor+1))
-        else:
-            rot = 0
-            scale = 1
-        """ Maybe, when it needs to crop img, i will modify the below code"""
-
-        if self.args.crop:
-            image = crop(image, (112, 112), scale, [self.img_res, self.img_res], rot=rot)
+            if self.args.crop:
+                image = crop(image, (112, 112), scale, [self.img_res, self.img_res], rot=rot)
+                
+        else: 
+            scale, rot, move_x, move_y = 1, 0, 0, 0
         
         return image, scale, rot, move_x, move_y
         
