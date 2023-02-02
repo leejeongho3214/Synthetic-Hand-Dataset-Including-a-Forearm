@@ -2,6 +2,7 @@ import sys
 from matplotlib import pyplot as plt
 from tqdm import tqdm
 import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 from src.utils.miscellaneous import mkdir
 from src.utils.comm import is_main_process
 from src.datasets.build import make_hand_data_loader
@@ -64,8 +65,16 @@ class CustomDataset_g(Dataset):
         self.path = path
         self.phase = path.split("/")[-1]
         self.root = "/".join(path.split("/")[:-2])
-        with open(f"{path}/CISLAB_{self.phase}_data_update.json", "r") as st_json:
-             self.meta = json.load(st_json)
+        if args.forearm == "with":
+            with open(f"{path}/CISLAB_{self.phase}_data_update_forearm.json", "r") as st_json:
+                self.meta = json.load(st_json)
+        elif args.forearm == "without":
+            with open(f"{path}/CISLAB_{self.phase}_data_update_without_forearm.json", "r") as st_json:
+                self.meta = json.load(st_json)
+        else:
+            with open(f"{path}/CISLAB_{self.phase}_data_update.json", "r") as st_json:
+                self.meta = json.load(st_json)
+        
         self.s_j = standard_j
         self.img_path = os.path.join(self.root, f"images/{self.phase}")
         self.img_res = 224
@@ -191,8 +200,15 @@ class val_g_set(CustomDataset_g):
         super().__init__(*args)
         self.ratio_of_aug = 0
         self.ratio_of_dataset = 1
-        with open(os.path.join(self.path, "CISLAB_val_data_update.json"), "r") as st_json:
-            self.meta = json.load(st_json)
+        if args.forearm == "with":
+            with open(f"{self.path}/CISLAB_{self.phase}_data_update_forearm.json", "r") as st_json:
+                self.meta = json.load(st_json)
+        elif args.forearm == "without":
+            with open(f"{self.path}/CISLAB_{self.phase}_data_update_without_forearm.json", "r") as st_json:
+                self.meta = json.load(st_json)
+        else:
+            with open(f"{self.path}/CISLAB_{self.phase}_data_update.json", "r") as st_json:
+                self.meta = json.load(st_json)
         self.img_path = os.path.join(self.root,f"images/{self.phase}" )
         self.ratio = 1
 
@@ -353,6 +369,8 @@ class Json_transform(Dataset):
             pbar.update(1)
             if j['camera'] == '0':
                 index.append(idx)
+                continue
+            if int(j['camera']) > 40:
                 continue
             camera = self.meta['images'][idx]['camera']
             id = self.meta['images'][idx]['frame_idx']
@@ -601,7 +619,7 @@ class Json_e(Json_transform):
                 self.meta = json.load(st_json)
                 
             self.root = os.path.join(root, "images/train")
-            self.store_path = os.path.join(root, "annotations/train/CISLAB_train_data_update.json")
+            self.store_path = os.path.join(root, "annotations/train/CISLAB_train_data_update_forearm.json")
             
         elif phase == 'val':
             root = "../../datasets/general"
@@ -613,12 +631,11 @@ class Json_e(Json_transform):
                 self.meta = json.load(st_json)
                 
             self.root = os.path.join(root, "images/val")
-            self.store_path = os.path.join(root, "annotations/val/CISLAB_val_data_update.json")
+            self.store_path = os.path.join(root, "annotations/val/CISLAB_val_data_update_forearm.json")
     
-def main():
-    with open(os.path.join("../../datasets/general", "annotations/val/CISLAB_val_data_update.json"), "r") as st_json:
-        meta = json.load(st_json)
+def main():   
     Json_e(phase = "train").get_json_g()
+    Json_e(phase = "val").get_json_g()
     print("ENDDDDDD")
     
 if __name__ == '__main__':
