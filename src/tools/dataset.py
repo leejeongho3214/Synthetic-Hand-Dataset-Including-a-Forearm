@@ -51,8 +51,8 @@ def build_dataset(args):
         train_dataset = DARTset(args, data_split='train')
         test_dataset = DARTset(args, data_split='test')
         
-    # else:
-    #     assert 0, "you type the wrong dataset name"
+    else:
+        assert 0, "you type the wrong dataset name"
         
     return train_dataset, test_dataset
 
