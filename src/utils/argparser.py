@@ -22,6 +22,7 @@ def parse_args(eval=False):
     parser.add_argument("--ratio_of_add", default=0.1, type=float,
                         help = "set ratio that how many you add our dataset")
     parser.add_argument("--rot_j", action = "store_true")
+    parser.add_argument("--forearm", default= None, type=str) 
     parser.add_argument("--epoch", default=50, type=int) 
     parser.add_argument("--loss_2d", default=0, type=float)
     parser.add_argument("--loss_3d", default=0, type=float)
