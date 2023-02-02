@@ -60,14 +60,14 @@ class Runner(object):
                             'name: {name} | '
                             'count: {count} | '
                             'loss: {total:.6f} \r'
-                            ).format(name= self.args.name.split('/')[-2:], count = self.count, iteration = iteration, exp = tt,
+                            ).format(name= "/".join(self.args.name.split('/')[-2:]), count = self.count, iteration = iteration, exp = tt,
                                         data_loader = len(self.now_loader), total = self.log_losses.avg)
         else:
             self.bar.suffix = ('({iteration}/{data_loader}) '
                             'name: {name} | '
                             'count: {count} | '
                             'loss: {total:.6f} '
-                            ).format(name= self.args.name.split('/')[-2:], count = self.count, iteration = iteration, exp = tt,
+                            ).format(name= "/".join(self.args.name.split('/')[-2:]), count = self.count, iteration = iteration, exp = tt,
                                         data_loader = len(self.now_loader), total = self.log_losses.avg)
         self.bar.next()
         
@@ -92,7 +92,7 @@ class Runner(object):
                             'count: {count} | '
                            'loss: {total:.6f} | '
                            'best_loss: {best_loss:.6f}\n'
-                           ).format(name= self.args.name.split('/')[-2:], count = self.count,  iteration = iteration, best_loss = self.best_loss,
+                           ).format(name= "/".join(self.args.name.split('/')[-2:]), count = self.count,  iteration = iteration, best_loss = self.best_loss,
                                  data_loader = len(self.now_loader), total = self.log_losses.avg)
                            
         else:
@@ -101,7 +101,7 @@ class Runner(object):
                             'count: {count} | '
                            'loss: {total:.6f} | '
                            'best_loss: {best_loss:.6f}'
-                           ).format(name= self.args.name.split('/')[-2:], count = self.count,  iteration = iteration, best_loss = self.best_loss,
+                           ).format(name= "/".join(self.args.name.split('/')[-2:]), count = self.count,  iteration = iteration, best_loss = self.best_loss,
                                  data_loader = len(self.now_loader), total = self.log_losses.avg)
         self.bar.next()
     
