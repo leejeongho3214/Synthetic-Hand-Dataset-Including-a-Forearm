@@ -9,6 +9,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../.
 from torch.utils import data
 from src.utils.argparser import parse_args, load_model, train, valid
 from dataset import *
+from src.utils.bar import colored
+
 def main(args):
 
     train_dataset, test_dataset = build_dataset(args)
@@ -19,10 +21,10 @@ def main(args):
     _model, best_loss, epo, count, writer = load_model(args)
     pck_l = 0; batch_time = AverageMeter()
     for epoch in range(epo, args.epoch):
-        
+        print(colored("Train_len: %i, Test_len: %i".format(len(train_dataset), len(test_dataset)), "blue"))
+        args.logger.debug("Train_len: %i, Test_len: %i".format(len(train_dataset), len(test_dataset)))
         Graphormer_model, optimizer, batch_time, best_loss = train(args, trainset_loader, testset_loader, _model, epoch, best_loss, len(train_dataset), count, writer, pck_l, len(trainset_loader)+len(testset_loader), batch_time)
         loss, count, pck, batch_time = valid(args, trainset_loader, testset_loader, Graphormer_model, epoch, count, best_loss, len(train_dataset),  writer, batch_time, len(trainset_loader)+len(testset_loader), pck_l)
-        
         pck_l = max(pck, pck_l)
         is_best = loss < best_loss
         best_loss = min(loss, best_loss)
