@@ -200,6 +200,7 @@ class val_g_set(CustomDataset_g):
         super().__init__(*args)
         self.ratio_of_aug = 0
         self.ratio_of_dataset = 1
+        
         if self.args.forearm == "with":
             with open(f"{self.path}/CISLAB_{self.phase}_data_update_forearm.json", "r") as st_json:
                 self.meta = json.load(st_json)
@@ -210,7 +211,7 @@ class val_g_set(CustomDataset_g):
             with open(f"{self.path}/CISLAB_{self.phase}_data_update.json", "r") as st_json:
                 self.meta = json.load(st_json)
         self.img_path = os.path.join(self.root,f"images/{self.phase}" )
-        self.ratio = 1
+        self.ratio = 0.15
 
 class AverageMeter(object):
 
