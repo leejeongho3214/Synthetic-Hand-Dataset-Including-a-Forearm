@@ -1,18 +1,14 @@
 import os
 import pickle
-
 import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../pytorch3d')))
 import cv2
 import imageio
 import numpy as np
 import torch
-
-from manotorch.manotorch.manolayer import ManoLayer
 from torchvision import transforms
 from pytorch3d.io import load_obj
-from DARTset_utils import (aa_to_rotmat, fit_ortho_param, ortho_project,
-                           plot_hand, rotmat_to_aa)
+
 
 RAW_IMAGE_SIZE = 512
 BG_IMAGE_SIZE = 384
@@ -35,11 +31,6 @@ class DARTset():
         self.img_res = 224
         self.use_full_wrist = use_full_wrist
 
-        self.MANO_pose_mean = ManoLayer(joint_rot_mode="axisang",
-                                        use_pca=False,
-                                        mano_assets_root="assets/mano_v1_2",
-                                        center_idx=0,
-                                        flat_hand_mean=False).th_hands_mean.numpy().reshape(-1)
         obj_filename = os.path.join('../../datasets/assets/hand_mesh.obj')
         _, faces, _ = load_obj(
             obj_filename,
@@ -48,7 +39,10 @@ class DARTset():
         )
         self.reorder_idx = [0, 13, 14, 15, 20, 1, 2, 3, 16, 4, 5, 6, 17, 10, 11, 12, 19, 7, 8, 9, 18]
         self.hand_faces = faces[0].numpy()
-
+        self.transform_func = transforms.Compose([
+            transforms.Resize((224, 224)),
+                                transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                                    std=[0.229, 0.224, 0.225])])
         self.load_dataset()
 
     def load_dataset(self):
@@ -82,18 +76,47 @@ class DARTset():
         return len(self.image_paths)
 
     def __getitem__(self, idx):
-        return self.get_image(idx), self.get_joints_2d(idx), self.get_joints_3d(idx)
-        # return {
-        #     "image": self.get_image(idx),
-        #     "joints_3d": self.get_joints_3d(idx),
-        #     "joints_2d": self.get_joints_2d(idx),
-        #     "joints_uvd": self.get_joints_uvd(idx),
-        #     "verts_uvd": self.get_verts_uvd(idx),
-        #     "ortho_intr": self.get_ortho_intr(idx),
-        #     "sides": self.get_sides(idx),
-        #     "mano_pose": self.get_mano_pose(idx),
-        #     "image_mask": self.get_image_mask(idx),
-        # }
+        from src.tools.dataset import crop
+        from matplotlib import pyplot as plt
+
+        img = self.get_image(idx)
+        scale_factor = 0.2
+        joint, joint_3d = self.get_joints_2d(idx), self.get_joints_3d(idx)      ## get a joint location of image that is 224 x 224
+        
+        ''' Use a augmentation in only train phase
+            And image resolution is 512 x 512 so don't confuse resolution before image resizing'''
+        if self.data_split == "train":
+            if idx < int(self.__len__() * 0.6):
+                scale = min(1.2 + scale_factor, max(1.3 - scale_factor, np.random.randn()* scale_factor + 1.1))
+                rot = min(2*self.rot_factor,
+                    max(-2*self.rot_factor, np.random.randn()*self.rot_factor))
+                joint = torch.tensor(self.j2d_processing(np.array(joint), scale, rot))
+                while not ((0 < joint.all()) and (joint.all() < 224)):
+                    scale = min(1.2 + scale_factor, max(1.3 - scale_factor, np.random.randn()* scale_factor + 1.1))
+                    rot = min(2*self.rot_factor,
+                        max(-2*self.rot_factor, np.random.randn()*self.rot_factor))
+                    joint = torch.tensor(self.j2d_processing(np.array(joint), scale, rot))
+                img = crop(img, [img.shape[1]/2, img.shape[1]/2], scale, [img.shape[1], img.shape[1]], rot = rot)
+                if self.args.rot_j: joint_3d = torch.tensor(self.j3d_processing(self.get_joints_3d(idx), rot))
+            
+        img = torch.from_numpy(img.transpose(2, 0, 1)).float()
+        img = self.transform_func(img)
+        
+        # img = transforms.Resize([224, 224])(img)
+        # ori_img = np.array(img.permute(1, 2, 0)).copy()
+
+        # parents = np.array([-1, 0, 1, 2, 3, 0, 5, 6, 7, 0, 9, 10, 11, 0, 13, 14, 15, 0, 17, 18, 19])    
+        # for i in range(21):
+        #     cv2.circle(ori_img, (int(joint[i][0]), int(joint[i][1])), 2, [0, 1, 0],
+        #             thickness=-1)
+        #     if i != 0:
+        #         cv2.line(ori_img, (int(joint[i][0]), int(joint[i][1])),
+        #                 (int(joint[parents[i]][0]), int(joint[parents[i]][1])),
+        #                 [0, 0, 1], 1)
+        # plt.imshow(ori_img)
+        # plt.savefig("rot.jpg")
+
+        return img, joint, joint_3d
 
     def get_joints_3d(self, idx):
         joints = self.joints_3d[idx].copy()
@@ -105,19 +128,10 @@ class DARTset():
         joints = torch.from_numpy(joints).float()
         return joints
 
-    def get_verts_3d(self, idx):
-        verts = pickle.load(open(self.verts_3d_paths[idx], "rb"))
-        # * Transfer from UNITY coordinate system
-        verts[:, 1:] = -verts[:, 1:]
-        verts = verts + self.get_joints_3d(idx)[5]
-        if not self.use_full_wrist:
-            verts = verts[:778]
-        verts = verts.astype(np.float32)
-        return verts
-
     def get_joints_2d(self, idx):
         joints_2d = self.joints_2d[idx].copy()[self.reorder_idx]
-        joints_2d = joints_2d / self.raw_img_size * 224
+        # joints_2d = joints_2d / self.raw_img_size * 224
+        joints_2d = joints_2d / self.raw_img_size * self.img_res
 
         joints_2d = torch.from_numpy(joints_2d).float()
         # joints_2d = joints_2d / self.raw_img_size * self.img_size
@@ -125,10 +139,6 @@ class DARTset():
 
     def get_image_path(self, idx):
         return self.image_paths[idx]
-
-    def get_ortho_intr(self, idx):
-        ortho_cam = fit_ortho_param(self.get_joints_3d(idx), self.get_joints_2d(idx))
-        return ortho_cam
 
     def get_image(self, idx):
         path = self.image_paths[idx]
@@ -140,19 +150,33 @@ class DARTset():
             img = cv2.imread(path)[..., ::-1]
             
         img = self.img_preprocessing(idx, img)
-        img = torch.from_numpy(img)
-        transform_func = transforms.Compose([transforms.Resize((224, 224)),
-                                transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                                    std=[0.229, 0.224, 0.225])])
-        img = transform_func(img)
+
         return img
     
+    def j2d_processing(self, kp, scale, r):
+        from src.tools.dataset import transform
+        """Process gt 2D keypoints and apply all augmentation transforms."""
+        nparts = kp.shape[0]
+        for i in range(nparts):
+            kp[i,0:2] = transform(kp[i,0:2]+1, (self.img_res/2, self.img_res/2), scale, 
+                                    [self.img_res, self.img_res], rot=r)
+        # convert to normalized coordinates
+        # kp[:,:-1] = 2.*kp[:,:-1]/self.img_res - 1.
+        # kp = kp.astype('float32')
+        return kp
 
-    def get_image_mask(self, idx):
-        path = self.image_paths[idx]
-        image = np.array(imageio.imread(path, pilmode="RGBA"), dtype=np.uint8)
-        image = cv2.resize(image, dsize=(self.img_size, self.img_size))
-        return (image[:, :, 3] >= 128).astype(np.float32) * 255.0
+    def j3d_processing(self, S, r):
+        """Process gt 3D keypoints and apply all augmentation transforms."""
+        # in-plane rotation
+        rot_mat = np.eye(3)
+        if not r == 0:
+            rot_rad = -r * np.pi / 180
+            sn,cs = np.sin(rot_rad), np.cos(rot_rad)
+            rot_mat[0,:2] = [cs, -sn]
+            rot_mat[1,:2] = [sn, cs]
+        S = np.einsum('ij,kj->ki', rot_mat, S) 
+        S = S.astype('float32')
+        return S
     
     def img_preprocessing(self, idx, rgb_img):
 
@@ -169,85 +193,10 @@ class DARTset():
         rgb_img[:,:,1] = np.minimum(255.0, np.maximum(0.0, rgb_img[:,:,1]*pn[1]))
         rgb_img[:,:,2] = np.minimum(255.0, np.maximum(0.0, rgb_img[:,:,2]*pn[2]))
         # (3,224,224),float,[0,1]
-        rgb_img = np.transpose(rgb_img.astype('float32'),(2,0,1))/255.0
+        # rgb_img = np.transpose(rgb_img.astype('float32'),(2,0,1))/255.0
+        rgb_img = rgb_img.astype('float32')/255.0
         
         return rgb_img
 
-    def get_joints_uvd(self, idx):
-        uv = self.get_joints_2d(idx)
-        d = self.get_joints_3d(idx)[:, 2:]  # (21, 1)
-        uvd = np.concatenate((uv, d), axis=1)
-        return uvd
-
-    def get_verts_uvd(self, idx):
-        v3d = self.get_verts_3d(idx)
-        ortho_cam = self.get_ortho_intr(idx)
-        ortho_proj_verts = ortho_project(v3d, ortho_cam)
-        d = v3d[:, 2:]
-        uvd = np.concatenate((ortho_proj_verts, d), axis=1)
-        return uvd
-
-    def get_raw_mano_param(self, idx):
-        return self.raw_mano_param[idx].copy()
-
-    def get_mano_pose(self, idx):
-        pose = self.get_raw_mano_param(idx)  # [16, 3]
-
-        # * Transfer from UNITY coordinate system
-        unity2cam = np.array([[1, 0, 0], [0, -1, 0], [0, 0, -1]]).astype(np.float32)
-        root = rotmat_to_aa(unity2cam @ aa_to_rotmat(pose[0]))[None]
-        new_pose = np.concatenate([root.reshape(-1), pose[1:].reshape(-1) + self.MANO_pose_mean], axis=0)  # [48]
-        return new_pose.astype(np.float32)
-
-    def get_mano_shape(self, idx):
-        return np.zeros((10), dtype=np.float32)
-
     def get_sides(self, idx):
         return "right"
-
-
-if __name__ == "__main__":
-
-    dart_set = DARTset(data_split="test")
-
-    for i in range(len(dart_set)):
-        output = dart_set[i]
-
-        image = output["image"]
-        mask = (output["image_mask"]).astype(np.uint8)
-
-        joints_2d = output["joints_2d"]
-        joints_3d = output["joints_3d"]
-        joints_uvd = output["joints_uvd"]
-        verts_uvd = output["verts_uvd"]
-        ortho_intr = output["ortho_intr"]
-        mano_pose = output["mano_pose"]
-
-        mano = ManoLayer(joint_rot_mode="axisang",
-                    use_pca=False,
-                    mano_assets_root="assets/mano_v1_2",
-                    center_idx=9,
-                    flat_hand_mean=True)
-
-        mano_joints = mano(torch.tensor(mano_pose).unsqueeze(0)).joints.numpy()[0]
-        mano_2d = ortho_project(mano_joints, ortho_intr)
-
-        proj_2d = ortho_project(joints_3d, ortho_intr)
-
-        frame_1 = image.copy()
-        mask = mask[:, :, None]
-        mask = np.concatenate([mask, mask * 0, mask * 0], axis=2)
-        frame_2 = cv2.addWeighted(frame_1, 0.5, mask, 0.5, 0)
-
-        all_2d_opt = {"ortho_proj": proj_2d, "gt": joints_2d, "uv": joints_uvd[:, :2], "mano_2d": mano_2d}
-        plot_hand(frame_1, all_2d_opt["uv"], linewidth=1)
-        plot_hand(frame_1, all_2d_opt["gt"], linewidth=2)
-        plot_hand(frame_1, all_2d_opt["ortho_proj"], linewidth=1)
-        plot_hand(frame_1, all_2d_opt["mano_2d"], linewidth=1)
-
-        img_list = [image, frame_1, frame_2]
-        comb_image = np.hstack(img_list)
-
-        comb_image = cv2.cvtColor(comb_image, cv2.COLOR_BGR2RGB)
-        cv2.imshow("comb_image", comb_image)
-        cv2.waitKey(0)
