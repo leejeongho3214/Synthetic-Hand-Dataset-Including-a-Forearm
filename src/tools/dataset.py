@@ -95,23 +95,22 @@ class CustomDataset_g(Dataset):
         image = self.img_preprocessing(idx, image)
 
         image = torch.from_numpy(image).float()
-        transformed_img = transforms.Compose([ transforms.Resize((self.img_res, self.img_res))])(image)
-        # transforms.Normalize(mean=[0.485, 0.456, 0.406],std=[0.229, 0.224, 0.225]),
+        transformed_img = transforms.Compose([ transforms.Normalize(mean=[0.485, 0.456, 0.406],std=[0.229, 0.224, 0.225]),transforms.Resize((self.img_res, self.img_res))])(image)
 
-        parents = np.array([-1, 0, 1, 2, 3, 0, 5, 6, 7, 0, 9, 10, 11, 0, 13, 14, 15, 0, 17, 18, 19])
-        img = np.array(transformed_img.permute(1, 2, 0)).copy().astype(float)
-        for i in range(21):
-            cv2.circle(img, (int(joint_2d[i][0]), int(joint_2d[i][1])), 2, [0, 1, 0],
-                    thickness=-1)
-            if i != 0:
-                cv2.line(img, (int(joint_2d[i][0]), int(joint_2d[i][1])),
-                        (int(joint_2d[parents[i]][0]), int(joint_2d[parents[i]][1])),
-                        [0, 0, 1], 1)
+        # parents = np.array([-1, 0, 1, 2, 3, 0, 5, 6, 7, 0, 9, 10, 11, 0, 13, 14, 15, 0, 17, 18, 19])
+        # img = np.array(transformed_img.permute(1, 2, 0)).copy().astype(float)
+        # for i in range(21):
+        #     cv2.circle(img, (int(joint_2d[i][0]), int(joint_2d[i][1])), 2, [0, 1, 0],
+        #             thickness=-1)
+        #     if i != 0:
+        #         cv2.line(img, (int(joint_2d[i][0]), int(joint_2d[i][1])),
+        #                 (int(joint_2d[parents[i]][0]), int(joint_2d[parents[i]][1])),
+        #                 [0, 0, 1], 1)
 
-        plt.imshow(img)
-        plt.savefig("rot.jpg")
+        # plt.imshow(img)
+        # plt.savefig("rot.jpg")
         
-        print("scale=> %s, bbox=> %s" % (scale, bbox_size))
+        # print("scale=> %s, bbox=> %s" % (scale, bbox_size))
 
         return transformed_img, joint_2d, joint_3d
 
