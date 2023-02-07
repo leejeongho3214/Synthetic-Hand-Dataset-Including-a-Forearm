@@ -90,7 +90,7 @@ class CustomDataset_g(Dataset):
         
     def __getitem__(self, idx):
 
-        joint_2d, joint_3d, scale, rot, bbox_size = self.joint_processing(idx)
+        joint_2d, joint_3d, scale, rot = self.joint_processing(idx)
         image = self.img_aug(idx, scale, rot)
         image = self.img_preprocessing(idx, image)
 
@@ -151,7 +151,7 @@ class CustomDataset_g(Dataset):
         # elif self.args.set =="scale_rot":
         #     joint_3d = align_scale_rot(self.s_j, joint_3d)      
             
-        return joint_2d, joint_3d, scale, rot, bbox_size
+        return joint_2d, joint_3d, scale, rot
     
     
     def j2d_processing(self, kp, scale, r):
