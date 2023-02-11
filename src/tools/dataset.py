@@ -1,3 +1,4 @@
+import pickle
 import sys
 from matplotlib import pyplot as plt
 from tqdm import tqdm
@@ -11,7 +12,10 @@ import math
 import torch
 import os.path as op
 import random
-# from src.utils.dart_loader import DARTset
+try:
+    from src.utils.dart_loader import DARTset
+except:
+    print("Not import dart")
 import cv2
 import numpy as np
 from torch.utils.data import Dataset, ConcatDataset
@@ -23,20 +27,14 @@ np.random.seed(77)
 
 
 def build_dataset(args):   
-    general_path = "../../datasets/general"
+    general_path = "../../datasets/general_512"
   
     args.dataset = args.name.split("/")[1]
     
     standard_j =  [[1.8155813217163086, 0.15561437606811523, 1.1083018779754639], [2.406423807144165, 0.5383367538452148, 1.304732084274292], [2.731782913208008, 1.172149658203125, 1.335669994354248], [2.681248903274536, 1.7862586975097656, 1.2639415264129639], [2.3304858207702637, 2.234518527984619, 1.1211540699005127], [2.341385841369629, 1.37321138381958, 2.0816190242767334], [2.3071250915527344, 2.0882482528686523, 1.7858655452728271], [2.2974867820739746, 2.293468952178955, 1.3347842693328857], [2.31135630607605, 1.9055771827697754, 1.029522180557251], [1.851935863494873, 1.30698823928833, 2.1360342502593994], [1.8758153915405273, 2.124051094055176, 2.5652201175689697], [1.973258376121521, 2.431856632232666, 2.1032679080963135], [2.0731117725372314, 2.644174098968506, 1.616095781326294], [1.471063256263733, 1.2448792457580566, 2.0854008197784424], [1.4334478378295898, 1.9523506164550781, 1.5718071460723877], [1.6441740989685059, 1.7141218185424805, 1.1860997676849365], [1.760351300239563, 1.242896556854248, 1.305544137954712], [1.1308115720748901, 1.1045317649841309, 1.9674842357635498], [1.0435627698898315, 1.6727776527404785, 1.8200523853302002], [1.2601540088653564, 1.6069226264953613, 1.4762027263641357], [1.4999980926513672, 1.5507283210754395, 1.1099226474761963]]
     standard_j = torch.tensor(standard_j)
-
-    if args.dataset == "ours":
-        train_path = os.path.join(general_path, "annotations/train")
-        eval_path = os.path.join(general_path, "annotations/val")
-        train_dataset = CustomDataset_g(args, train_path, standard_j)
-        test_dataset = val_g_set(args, eval_path, standard_j)
         
-    elif args.dataset == "frei":
+    if args.dataset == "frei":
         train_dataset = make_hand_data_loader(
             args, args.train_yaml, False, is_train=True, scale_factor=args.img_scale_factor, s_j = standard_j) 
         test_dataset = make_hand_data_loader(
@@ -50,9 +48,12 @@ def build_dataset(args):
     elif args.dataset == "dart":
         train_dataset = DARTset(args, data_split='train')
         test_dataset = DARTset(args, data_split='test')
-        
+
     else:
-        assert 0, "you type the wrong dataset name"
+        train_path = os.path.join(general_path, "annotations/train")
+        eval_path = os.path.join(general_path, "annotations/val")
+        train_dataset = CustomDataset_g(args, train_path, standard_j)
+        test_dataset = val_g_set(args, eval_path, standard_j)
         
     return train_dataset, test_dataset
 
@@ -66,17 +67,18 @@ class CustomDataset_g(Dataset):
         self.phase = path.split("/")[-1]
         self.root = "/".join(path.split("/")[:-2])
         if args.forearm == "with":
-            with open(f"{path}/CISLAB_{self.phase}_data_update_forearm.json", "r") as st_json:
-                self.meta = json.load(st_json)
+            with open(f"{path}/CISLAB_{self.phase}_data_update_w_f.pkl", "rb") as st_json:
+                self.meta = pickle.load(st_json)
         elif args.forearm == "without":
-            with open(f"{path}/CISLAB_{self.phase}_data_update_without_forearm.json", "r") as st_json:
-                self.meta = json.load(st_json)
+            with open(f"{path}/CISLAB_{self.phase}_data_update_w_o_f.pkl", "rb") as st_json:
+                self.meta = pickle.load(st_json)
         else:
-            with open(f"{path}/CISLAB_{self.phase}_data_update.json", "r") as st_json:
-                self.meta = json.load(st_json)
+            with open(f"{path}/CISLAB_{self.phase}_data_update.pkl", "rb") as st_json:
+                self.meta = pickle.load(st_json)
         
         self.s_j = standard_j
         self.img_path = os.path.join(self.root, f"images/{self.phase}")
+        self.raw_res = 512
         self.img_res = 224
         self.ratio = 0.9
         self.scale_factor = 0.25
@@ -86,21 +88,19 @@ class CustomDataset_g(Dataset):
         return int(len(self.meta) * self.ratio)
         
     def __getitem__(self, idx):
-        image, scale, rot, move_x, move_y = self.img_aug(idx)
+        image, scale, rot = self.img_aug(idx)
         image = self.img_preprocessing(idx, image)
             
         image = torch.from_numpy(image).float()
         transformed_img = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                          std=[0.229, 0.224, 0.225])(image)
-        joint_2d, joint_3d = self.joint_processing(idx, scale, rot, move_x, move_y)
+        joint_2d, joint_3d = self.joint_processing(idx, scale, rot)
             
         return transformed_img, joint_2d, joint_3d
 
-    def joint_processing(self, idx, scale, rot, move_x, move_y): 
-        joint_2d = np.array(self.meta[f"{idx}"]['joint_2d'])
+    def joint_processing(self, idx, scale, rot): 
+        joint_2d = np.array(self.meta[f"{idx}"]['joint_2d']) * self.raw_res
         if self.phase == "train":    
-            if self.args.center:
-                joint_2d[:, 0] = joint_2d[:, 0] + move_x; joint_2d[:, 1] = joint_2d[:, 1] + move_y
             if self.args.crop:
                 joint_2d = self.j2d_processing(joint_2d, scale, rot)       
         joint_3d = self.meta[f"{idx}"]['joint_3d']
@@ -128,7 +128,7 @@ class CustomDataset_g(Dataset):
         """Process gt 2D keypoints and apply all augmentation transforms."""
         nparts = kp.shape[0]
         for i in range(nparts):
-            kp[i,0:2] = transform(kp[i,0:2]+1, (112, 112), scale, 
+            kp[i,0:2] = transform(kp[i,0:2]+1, (self.img_res/2, self.img_res/2), scale, 
                                     [self.img_res, self.img_res], rot=r)
         # convert to normalized coordinates
         # kp[:,:-1] = 2.*kp[:,:-1]/self.img_res - 1.
@@ -167,16 +167,10 @@ class CustomDataset_g(Dataset):
     
     def img_aug(self, idx):
         name = self.meta[f"{idx}"]['file_name']
-        move_x = self.meta[f"{idx}"]['move_x']
-        move_y = self.meta[f"{idx}"]['move_y']       
         image = cv2.imread(os.path.join(self.img_path, name))  # PIL image
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         
         if self.phase == "train":
-            if self.args.center:
-                translation = np.float32([[1, 0, move_x], [0, 1, move_y]])
-                image = cv2.warpAffine(image, translation, (self.img_res, self.img_res),
-                                    borderMode= cv2.INTER_LINEAR )
     
             if idx < int(self.args.ratio_of_aug * self.__len__()):
                 rot = min(2*self.rot_factor,
@@ -188,12 +182,12 @@ class CustomDataset_g(Dataset):
                 scale = 1
 
             if self.args.crop:
-                image = crop(image, (112, 112), scale, [self.img_res, self.img_res], rot=rot)
+                image = crop(image, (self.img_res/2, self.img_res/2), scale, [self.img_res, self.img_res], rot=rot)
                 
         else: 
-            scale, rot, move_x, move_y = 1, 0, 0, 0
+            scale, rot = 1, 0
         
-        return image, scale, rot, move_x, move_y
+        return image, scale, rot
         
 class val_g_set(CustomDataset_g):
     def __init__(self,  *args):
@@ -202,14 +196,14 @@ class val_g_set(CustomDataset_g):
         self.ratio_of_dataset = 1
         
         if self.args.forearm == "with":
-            with open(f"{self.path}/CISLAB_{self.phase}_data_update_forearm.json", "r") as st_json:
-                self.meta = json.load(st_json)
+            with open(f"{self.path}/CISLAB_{self.phase}_data_update_w_f.pkl", "rb") as st_json:
+                self.meta = pickle.load(st_json)
         elif self.args.forearm == "without":
-            with open(f"{self.path}/CISLAB_{self.phase}_data_update_without_forearm.json", "r") as st_json:
-                self.meta = json.load(st_json)
+            with open(f"{self.path}/CISLAB_{self.phase}_data_update_w_o_f.pkl", "rb") as st_json:
+                self.meta = pickle.load(st_json)
         else:
-            with open(f"{self.path}/CISLAB_{self.phase}_data_update.json", "r") as st_json:
-                self.meta = json.load(st_json)
+            with open(f"{self.path}/CISLAB_{self.phase}_data_update.pkl", "rb") as st_json:
+                self.meta = pickle.load(st_json)
         self.img_path = os.path.join(self.root,f"images/{self.phase}" )
         self.ratio = 0.15
 
@@ -389,8 +383,8 @@ class Json_transform(Dataset):
                 a = np.dot(np.array(rot, dtype='float32'),
                            np.array(joint[i], dtype='float32') - np.array(translation, dtype='float32'))
                 a[:2] = a[:2] / a[2]
-                b = a[:2] * focal_length + 112
-                b = torch.tensor(b)
+                b = a[:2] * focal_length + 112   # 112 is image center
+                b = torch.tensor(b) * (1/224)
 
                 for u in b:
                     if u > 223 or u < 0:
@@ -400,7 +394,7 @@ class Json_transform(Dataset):
                 if flag:
                     break
 
-                if i == 0:  # 112 is image center
+                if i == 0: 
                     joint_2d = b
                 elif i == 1:
                     joint_2d = torch.stack([joint_2d, b], dim=0)
@@ -409,25 +403,12 @@ class Json_transform(Dataset):
             if flag:
                 continue
 
-
-            flag = False
-            for o in joint_2d:
-                if o[0] > 220 or o[1] > 220:
-                    flag = True
-                    index.append(idx)
-                    break
-            if flag:
-                continue
-            
-            center_j = np.array(joint_2d.mean(0))
-            move_x = 112 - center_j[0]
-            move_y = 112 - center_j[1]
-            k[f"{count}"] = {'joint_2d': joint_2d.tolist(), 'joint_3d':joint.tolist(), 'move_x': move_x, 'move_y': move_y, "file_name": name}
+            k[f"{count}"] = {'joint_2d': joint_2d.tolist(), 'joint_3d':joint.tolist(), "file_name": name}
             count += 1
 
 
-        with open(self.store_path, 'w') as f:
-            json.dump(k, f)
+        with open(self.store_path, 'wb') as f:
+            pickle.dump(k, f)
 
         print(
             f"Done ===> {self.store_path}")
@@ -611,7 +592,7 @@ class Json_e(Json_transform):
                 self.store_path = os.path.join(root, "annotations/test/test_data_update.json")
             
         elif phase == 'train':
-            root = "../../datasets/general"
+            root = "../../datasets/general_512"
             with open(os.path.join(root, "annotations/train/CISLAB_train_camera.json"), "r") as st_json:
                 self.camera = json.load(st_json)
             with open(os.path.join(root, "annotations/train/CISLAB_train_joint_3d.json"), "r") as st_json:
@@ -620,10 +601,10 @@ class Json_e(Json_transform):
                 self.meta = json.load(st_json)
                 
             self.root = os.path.join(root, "images/train")
-            self.store_path = os.path.join(root, "annotations/train/CISLAB_train_data_update_forearm.json")
+            self.store_path = os.path.join(root, "annotations/train/CISLAB_train_data_update_w_f.pkl")
             
         elif phase == 'val':
-            root = "../../datasets/general"
+            root = "../../datasets/general_512"
             with open(os.path.join(root, "annotations/val/CISLAB_val_camera.json"), "r") as st_json:
                 self.camera = json.load(st_json)
             with open(os.path.join(root, "annotations/val/CISLAB_val_joint_3d.json"), "r") as st_json:
@@ -632,7 +613,7 @@ class Json_e(Json_transform):
                 self.meta = json.load(st_json)
                 
             self.root = os.path.join(root, "images/val")
-            self.store_path = os.path.join(root, "annotations/val/CISLAB_val_data_update_forearm.json")
+            self.store_path = os.path.join(root, "annotations/val/CISLAB_val_data_update_w_f.pkl")
     
 def main():   
     Json_e(phase = "train").get_json_g()
