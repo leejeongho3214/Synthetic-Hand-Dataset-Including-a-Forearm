@@ -438,9 +438,6 @@ class Json_transform(Dataset):
             count += 1
 
 
-        with open(self.store_path, 'wb') as f:
-            pickle.dump(k, f)
-
             # parents = np.array([-1, 0, 1, 2, 3, 0, 5, 6, 7, 0, 9, 10, 11, 0, 13, 14, 15, 0, 17, 18, 19])
             
             # box_size = ((joint_2d[:, 0].min()-joint_2d[:, 0].max()).square() + (joint_2d[:, 1].min()-joint_2d[:, 1].max()).square()).sqrt()
@@ -456,8 +453,7 @@ class Json_transform(Dataset):
 
             # if not 0 < joint_2d.all() < 511:
             #     continue
-            if count == num:
-                break
+
             # joint = np.array(joint)
             # rot_joint_3d = self.j3d_processing(joint, rot)
             # root_path = "../../datasets/new_rot/images/train"
@@ -659,11 +655,7 @@ class Json_e(Json_transform):
                 self.store_path = os.path.join(root, "annotations/test/test_data_update.json")
             
         elif phase == 'train':
-<<<<<<< HEAD
             root = "../../datasets/general_512"
-=======
-            root = "../../datasets/new"
->>>>>>> 050a3f33736cc75132648b1a1d7a1ae5b95fa83a
             with open(os.path.join(root, "annotations/train/CISLAB_train_camera.json"), "r") as st_json:
                 self.camera = json.load(st_json)
             with open(os.path.join(root, "annotations/train/CISLAB_train_joint_3d.json"), "r") as st_json:
