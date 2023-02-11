@@ -21,7 +21,6 @@ import numpy as np
 from torch.utils.data import Dataset, ConcatDataset
 from PIL import Image
 from torchvision import transforms
-from src.utils.dataset_utils import align_scale, align_scale_rot
 
 np.random.seed(77)
 
@@ -80,17 +79,17 @@ class CustomDataset_g(Dataset):
         self.img_path = os.path.join(self.root, f"images/{self.phase}")
         self.raw_res = 512
         self.img_res = 224
-        self.ratio = 0.9
+        self.raw_res = 512
         self.scale_factor = 0.25
         self.rot_factor = 90 
         
     def __len__(self):
-        return int(len(self.meta) * self.ratio)
+        return len(self.meta)
         
     def __getitem__(self, idx):
         image, scale, rot = self.img_aug(idx)
         image = self.img_preprocessing(idx, image)
-            
+
         image = torch.from_numpy(image).float()
         transformed_img = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                          std=[0.229, 0.224, 0.225])(image)
@@ -102,13 +101,24 @@ class CustomDataset_g(Dataset):
         joint_2d = np.array(self.meta[f"{idx}"]['joint_2d']) * self.raw_res
         if self.phase == "train":    
             if self.args.crop:
-                joint_2d = self.j2d_processing(joint_2d, scale, rot)       
-        joint_3d = self.meta[f"{idx}"]['joint_3d']
-        
+                bbox_size = np.sqrt((joint_2d[:, 0].min() - joint_2d[:, 1].max())**2 + (joint_2d[:, 1].min() - joint_2d[:, 1].max())**2)
+                rot = min(2*self.rot_factor,
+                            max(-2*self.rot_factor, np.random.randn()*self.rot_factor))
+                scale = max(min(bbox_size / 100, 1.1), 0.7)
+                # scale = min(1+self.scale_factor,
+                #         max(1-self.scale_factor, np.random.randn()*self.scale_factor+1))
+                crop_joint_2d = self.j2d_processing(joint_2d.copy(), scale, rot)  
+                if not ((joint_2d>0).all() and (joint_2d < 224).all()):
+                    scale, rot = 1, 0
+                    crop_joint_2d = self.j2d_processing(joint_2d.copy(), scale, rot) 
+                joint_2d = crop_joint_2d    
+                
+                                    
+        joint_3d = self.meta[f"{idx}"]['joint_3d']        
         if self.args.rot_j:
             joint_3d = self.j3d_processing(joint_3d, rot)   
         joint_2d, joint_3d = torch.tensor(joint_2d), torch.tensor(joint_3d)
-        
+
         # self.s_j[:, 0] = - self.s_j[:, 0]   ## This joint is always same for unified rotation
         # self.s_j = self.s_j- self.s_j[0, :]
         
@@ -121,7 +131,7 @@ class CustomDataset_g(Dataset):
         # elif self.args.set =="scale_rot":
         #     joint_3d = align_scale_rot(self.s_j, joint_3d)      
             
-        return joint_2d, joint_3d
+        return joint_2d, joint_3d, scale, rot
     
     
     def j2d_processing(self, kp, scale, r):
@@ -169,6 +179,7 @@ class CustomDataset_g(Dataset):
         name = self.meta[f"{idx}"]['file_name']
         image = cv2.imread(os.path.join(self.img_path, name))  # PIL image
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    
         
         if self.phase == "train":
     
@@ -192,9 +203,6 @@ class CustomDataset_g(Dataset):
 class val_g_set(CustomDataset_g):
     def __init__(self,  *args):
         super().__init__(*args)
-        self.ratio_of_aug = 0
-        self.ratio_of_dataset = 1
-        
         if self.args.forearm == "with":
             with open(f"{self.path}/CISLAB_{self.phase}_data_update_w_f.pkl", "rb") as st_json:
                 self.meta = pickle.load(st_json)
@@ -205,7 +213,6 @@ class val_g_set(CustomDataset_g):
             with open(f"{self.path}/CISLAB_{self.phase}_data_update.pkl", "rb") as st_json:
                 self.meta = pickle.load(st_json)
         self.img_path = os.path.join(self.root,f"images/{self.phase}" )
-        self.ratio = 0.15
 
 class AverageMeter(object):
 
@@ -232,7 +239,8 @@ def apply(img, aug, num=1, scale=1.5):
 
 def get_transform(center, scale, res, rot=0):
     """Generate transformation matrix."""
-    h = 200 * scale
+    h = res[0] * scale
+    # h = 200 * scale
     t = np.zeros((3, 3))
     t[0, 0] = float(res[1]) / h
     t[1, 1] = float(res[0]) / h
@@ -341,10 +349,10 @@ def myimresize(img, size, return_scale=False, interpolation='bilinear'):
         return resized_img, w_scale, h_scale
 
 class Json_transform(Dataset):
+
     def __init__(self, degree, path):
         self.degree = degree
         self.path = path
-        self.degree = degree
         with open(f"{path}/{degree}/annotations/train/CISLAB_train_camera.json", "r") as st_json:
             self.camera = json.load(st_json)
         with open(f"{path}/{degree}/annotations/train/CISLAB_train_joint_3d.json", "r") as st_json:
@@ -353,8 +361,32 @@ class Json_transform(Dataset):
             self.meta = json.load(st_json)
         self.root = f'{self.path}/{self.degree}/images/train'
         self.store_path = f'{self.path}/{self.degree}/annotations/train/CISLAB_train_data_update.json'
+        
+    def j2d_processing(self, kp, scale, r):
+        """Process gt 2D keypoints and apply all augmentation transforms."""
+        kp = np.array(kp)
+        nparts = kp.shape[0]
+        kp_mean = np.array(kp.mean(0), dtype = int)
+        for i in range(nparts):
+            kp[i,0:2] = transform(kp[i,0:2]+1, kp_mean , scale, 
+                                    [512, 512], rot=r)
+        # convert to normalized coordinates
+        # kp[:,:-1] = 2.*kp[:,:-1]/self.img_res - 1.
+        # kp = kp.astype('float32')
+        return kp
+    def j3d_processing(self, S, r):
 
-    def get_json_g(self):
+        rot_mat = np.eye(3)
+        if not r == 0:
+            rot_rad = -r * np.pi / 180
+            sn,cs = np.sin(rot_rad), np.cos(rot_rad)
+            rot_mat[0,:2] = [cs, -sn]
+            rot_mat[1,:2] = [sn, cs]
+        S = np.einsum('ij,kj->ki', rot_mat, S) 
+        S = S.astype('float32')
+        return S
+    
+    def get_json_g(self, num):
         meta_list = self.meta['images'].copy()
         index = []
         pbar = tqdm(total = len(meta_list))
@@ -365,8 +397,7 @@ class Json_transform(Dataset):
             if j['camera'] == '0':
                 index.append(idx)
                 continue
-            if int(j['camera']) > 40:
-                continue
+
             camera = self.meta['images'][idx]['camera']
             id = self.meta['images'][idx]['frame_idx']
 
@@ -383,11 +414,11 @@ class Json_transform(Dataset):
                 a = np.dot(np.array(rot, dtype='float32'),
                            np.array(joint[i], dtype='float32') - np.array(translation, dtype='float32'))
                 a[:2] = a[:2] / a[2]
-                b = a[:2] * focal_length + 112   # 112 is image center
-                b = torch.tensor(b) * (1/224)
+                b = a[:2] * focal_length + (self.res /2)
+                b = torch.tensor(b)
 
                 for u in b:
-                    if u > 223 or u < 0:
+                    if u > (self.res-1) or u < 0:
                         index.append(idx)
                         flag = True
                         break
@@ -410,8 +441,41 @@ class Json_transform(Dataset):
         with open(self.store_path, 'wb') as f:
             pickle.dump(k, f)
 
-        print(
-            f"Done ===> {self.store_path}")
+            # parents = np.array([-1, 0, 1, 2, 3, 0, 5, 6, 7, 0, 9, 10, 11, 0, 13, 14, 15, 0, 17, 18, 19])
+            
+            # box_size = ((joint_2d[:, 0].min()-joint_2d[:, 0].max()).square() + (joint_2d[:, 1].min()-joint_2d[:, 1].max()).square()).sqrt()
+            # rot = min(2*self.rot_factor,
+            #             max(-2*self.rot_factor, np.random.randn()*self.rot_factor))
+            
+            # scale_factor = (512 / box_size) * 0.4
+            # # scale = min(1+scale_factor,
+            # #         max(1-scale_factor, np.random.randn()*scale_factor+1))  
+            # scale = 1 + scale_factor
+            # img = crop(ori_image, np.array(joint_2d.mean(0), dtype = int), scale , [512, 512], rot =rot)
+            # joint_2d = self.j2d_processing(joint_2d, scale, rot)
+
+            # if not 0 < joint_2d.all() < 511:
+            #     continue
+            if count == num:
+                break
+            # joint = np.array(joint)
+            # rot_joint_3d = self.j3d_processing(joint, rot)
+            # root_path = "../../datasets/new_rot/images/train"
+            # plt.imshow(img.astype(int))
+            # if not os.path.isdir(os.path.join(root_path, ''.join(name.split('/')[:-1]))):
+            #     mkdir(os.path.join(root_path, '/'.join(name.split('/')[:-1])))
+            # plt.savefig(os.path.join(root_path, name))
+        
+            
+            # center_j = np.array(joint_2d.mean(0))
+            # move_x = (self.res/2) - center_j[0]
+            # move_y = (self.res/2) - center_j[1]
+            k[f"{count}"] = {'joint_2d': joint_2d.tolist(), 'joint_3d':joint.tolist() ,"file_name": name}
+            count += 1
+            if count == 1:
+                print(self.store_path)
+        with open(self.store_path, 'wb') as f:
+	        pickle.dump(k, f, protocol=pickle.HIGHEST_PROTOCOL)
         
     def get_json(self):
         meta_list = self.meta['images'].copy()
@@ -555,6 +619,9 @@ def i_rotate(img, degree, move_x, move_y):
 class Json_e(Json_transform):
     def __init__(self, phase):
         root = "datasets/general_2M"
+        self.res = 512
+        self.rot_factor = 90
+        self.scale_factor = 0.5
         if phase == 'eval':
             try:
                 with open(os.path.join(root, "annotations/evaluation/evaluation_camera.json"), "r") as st_json:
@@ -592,7 +659,11 @@ class Json_e(Json_transform):
                 self.store_path = os.path.join(root, "annotations/test/test_data_update.json")
             
         elif phase == 'train':
+<<<<<<< HEAD
             root = "../../datasets/general_512"
+=======
+            root = "../../datasets/new"
+>>>>>>> 050a3f33736cc75132648b1a1d7a1ae5b95fa83a
             with open(os.path.join(root, "annotations/train/CISLAB_train_camera.json"), "r") as st_json:
                 self.camera = json.load(st_json)
             with open(os.path.join(root, "annotations/train/CISLAB_train_joint_3d.json"), "r") as st_json:
@@ -616,8 +687,8 @@ class Json_e(Json_transform):
             self.store_path = os.path.join(root, "annotations/val/CISLAB_val_data_update_w_f.pkl")
     
 def main():   
-    Json_e(phase = "train").get_json_g()
-    Json_e(phase = "val").get_json_g()
+    Json_e(phase = "train").get_json_g(720000)
+    Json_e(phase = "val").get_json_g(29000)
     print("ENDDDDDD")
     
 if __name__ == '__main__':

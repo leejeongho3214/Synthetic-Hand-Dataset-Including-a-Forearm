@@ -257,8 +257,8 @@ class HandMeshTSVDataset(object):
         img = self.get_image(idx)
         img_key = self.get_img_key(idx)
         annotations = self.get_annotations(idx)
-
         annotations = annotations[0]
+
         center = annotations['center']
         scale = annotations['scale']
         has_2d_joints = annotations['has_2d_joints']
