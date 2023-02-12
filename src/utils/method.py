@@ -106,7 +106,7 @@ class Runner(object):
         self.bar.next()
     
     
-    def  our(self, end):
+    def our(self, end):
         if self.phase == 'TRAIN':
             self.model.train()
             for iteration, (images, gt_2d_joints, gt_3d_joints) in enumerate(self.train_loader):
@@ -132,8 +132,7 @@ class Runner(object):
                 
                 loss_2d = keypoint_2d_loss(self.criterion_keypoints, pred_2d_joints, gt_2d_joint)
                 loss_3d_mid = keypoint_3d_loss(self.criterion_keypoints, pred_3d_mid_joints, gt_3d_mid_joints)
-                loss_3d_re = reconstruction_error(np.array(pred_3d_joints.detach().cpu()), np.array(gt_3d_joints.detach().cpu()))
-                
+                # loss_3d_re = reconstruction_error(np.array(pred_3d_joints.detach().cpu()), np.array(gt_3d_joints.detach().cpu()))      
                 loss_3d = keypoint_3d_loss(self.criterion_keypoints, pred_3d_joints, gt_3d_joints)
                 
                 loss = loss_3d
@@ -141,7 +140,6 @@ class Runner(object):
                 self.log_losses.update(loss.item(), batch_size)
                 self.log_2d_losses.update(loss_2d.item(), batch_size)
                 self.log_3d_losses.update(loss_3d.item(), batch_size)
-                self.log_3d_re_losses.update(loss_3d_re.item(), batch_size)
 
                 self.optimizer.zero_grad()
                 loss.backward()

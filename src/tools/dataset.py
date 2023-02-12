@@ -383,38 +383,8 @@ class Json_transform(Dataset):
 
             k[f"{count}"] = {'joint_2d': joint_2d.tolist(), 'joint_3d':joint.tolist(), "file_name": name}
             count += 1
-
-
-            # parents = np.array([-1, 0, 1, 2, 3, 0, 5, 6, 7, 0, 9, 10, 11, 0, 13, 14, 15, 0, 17, 18, 19])
-            
-            # box_size = ((joint_2d[:, 0].min()-joint_2d[:, 0].max()).square() + (joint_2d[:, 1].min()-joint_2d[:, 1].max()).square()).sqrt()
-            # rot = min(2*self.rot_factor,
-            #             max(-2*self.rot_factor, np.random.randn()*self.rot_factor))
-            
-            # scale_factor = (512 / box_size) * 0.4
-            # # scale = min(1+scale_factor,
-            # #         max(1-scale_factor, np.random.randn()*scale_factor+1))  
-            # scale = 1 + scale_factor
-            # img = crop(ori_image, np.array(joint_2d.mean(0), dtype = int), scale , [512, 512], rot =rot)
-            # joint_2d = self.j2d_processing(joint_2d, scale, rot)
-
-            # if not 0 < joint_2d.all() < 511:
-            #     continue
-
-            # joint = np.array(joint)
-            # rot_joint_3d = self.j3d_processing(joint, rot)
-            # root_path = "../../datasets/new_rot/images/train"
-            # plt.imshow(img.astype(int))
-            # if not os.path.isdir(os.path.join(root_path, ''.join(name.split('/')[:-1]))):
-            #     mkdir(os.path.join(root_path, '/'.join(name.split('/')[:-1])))
-            # plt.savefig(os.path.join(root_path, name))
-        
-            
-            # center_j = np.array(joint_2d.mean(0))
-            # move_x = (self.res/2) - center_j[0]
-            # move_y = (self.res/2) - center_j[1]
-            k[f"{count}"] = {'joint_2d': joint_2d.tolist(), 'joint_3d':joint.tolist() ,"file_name": name}
-            count += 1
+            if count == num:
+                break
             if count == 1:
                 print(self.store_path)
         with open(self.store_path, 'wb') as f:
@@ -611,7 +581,7 @@ class Json_e(Json_transform):
                 self.meta = json.load(st_json)
                 
             self.root = os.path.join(root, "images/train")
-            self.store_path = os.path.join(root, "annotations/train/CISLAB_train_data_update_w_o_f.pkl")
+            self.store_path = os.path.join(root, "annotations/train/CISLAB_train_data_update_part.pkl")
             
         elif phase == 'val':
             root = "../../datasets/general_512"
@@ -623,11 +593,11 @@ class Json_e(Json_transform):
                 self.meta = json.load(st_json)
                 
             self.root = os.path.join(root, "images/val")
-            self.store_path = os.path.join(root, "annotations/val/CISLAB_val_data_update_w_o_f.pkl")
+            self.store_path = os.path.join(root, "annotations/val/CISLAB_val_data_update_part.pkl")
     
 def main():   
-    Json_e(phase = "train").get_json_g(720000)
-    Json_e(phase = "val").get_json_g(29000)
+    Json_e(phase = "train").get_json_g(130000)
+    Json_e(phase = "val").get_json_g(13000)
     print("ENDDDDDD")
     
 if __name__ == '__main__':
