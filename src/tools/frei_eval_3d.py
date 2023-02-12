@@ -35,7 +35,7 @@ def dump(pred_out_path, xyz_pred_list, verts_pred_list):
 
 def main(args):
     root = 'output/ours'
-    n_l  = ["ours/3d_my_crop_rot_rot_j", "ours/3d_my_crop_rot"]
+    n_l  = ["frei/3d_patch"]
     name_list = [os.path.join(root, n) for n in n_l]
     for name in name_list:
         # name = "output/ours/dart/3d"
