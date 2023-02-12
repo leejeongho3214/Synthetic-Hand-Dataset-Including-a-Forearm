@@ -112,18 +112,14 @@ class Runner(object):
             for iteration, (images, gt_2d_joints, gt_3d_joints) in enumerate(self.train_loader):
                 batch_size = images.size(0)
                 adjust_learning_rate(self.optimizer, self.epoch, self.args)  
-                gt_2d_joints[:,:,1] = gt_2d_joints[:,:,1] / images.size(2) ## You Have to check whether weight and height is correct dimenstion
-                gt_2d_joints[:,:,0] = gt_2d_joints[:,:,0] / images.size(3)  ## 2d joint value rearrange from 0 to 1
-                gt_2d_joint = gt_2d_joints.cuda()
-                gt_3d_joints = gt_3d_joints.cuda()
+                gt_2d_joint = gt_2d_joints.cuda(); gt_3d_joints = gt_3d_joints.cuda(); images = images.cuda()
+              
                 
                 parents = [-1, 0, 1, 2, 3, 0, 5, 6, 7, 0, 9, 10, 11, 0, 13, 14, 15, 0, 17, 18, 19]
                 gt_3d_mid_joints = torch.ones(batch_size, 20, 3)
                 for i in range(20):
                     gt_3d_mid_joints[:, i, :] =  (gt_3d_joints[:, i + 1, :] + gt_3d_joints[:, parents[i + 1], :]) / 2
-                
-                images = images.cuda()
-              
+            
                 pred_2d_joints, pred_3d_joints= self.model(images)
 
                 pred_3d_mid_joints = torch.ones(batch_size, 20, 3)
@@ -131,11 +127,11 @@ class Runner(object):
                     pred_3d_mid_joints[:, i, :] =  (pred_3d_joints[:, i + 1, :] + pred_3d_joints[:, parents[i + 1], :]) / 2
                 
                 loss_2d = keypoint_2d_loss(self.criterion_keypoints, pred_2d_joints, gt_2d_joint)
-                loss_3d_mid = keypoint_3d_loss(self.criterion_keypoints, pred_3d_mid_joints, gt_3d_mid_joints)
+                # loss_3d_mid = keypoint_3d_loss(self.criterion_keypoints, pred_3d_mid_joints, gt_3d_mid_joints)
                 # loss_3d_re = reconstruction_error(np.array(pred_3d_joints.detach().cpu()), np.array(gt_3d_joints.detach().cpu()))      
                 loss_3d = keypoint_3d_loss(self.criterion_keypoints, pred_3d_joints, gt_3d_joints)
                 
-                loss = loss_3d
+                loss = loss_3d * self.args.loss_3d + loss_2d * self.args.loss_2d
                 
                 self.log_losses.update(loss.item(), batch_size)
                 self.log_2d_losses.update(loss_2d.item(), batch_size)
@@ -182,7 +178,6 @@ class Runner(object):
                     gt_3d_joints = gt_3d_joints.cuda()
 
                     pred_2d_joints, pred_3d_joints= self.model(images)
-                    pck, _ = PCK_3d_loss(pred_3d_joints, gt_3d_joints, T= 0.0)
                     loss = reconstruction_error(np.array(pred_3d_joints.detach().cpu()), np.array(gt_3d_joints.detach().cpu()))
                     
                     if iteration == 0 or iteration == int(len(self.valid_loader)/2) or iteration == len(self.valid_loader) - 1:
@@ -190,8 +185,7 @@ class Runner(object):
                         visualize_gt(images, gt_2d_joint, fig, iteration, self.epoch)
                         visualize_pred(images, pred_2d_joints, fig, 'test', self.epoch, iteration, self.args, None)
                         plt.close()
-                        
-                    self.pck_losses.update(pck, batch_size)
+
                     self.log_losses.update(loss.item(), batch_size)
                     self.batch_time.update(time.time() - end)
                     

@@ -106,6 +106,14 @@ class CustomDataset_g(Dataset):
         rgb_img = torch.from_numpy(rgb_img)
         return rgb_img
 
+    def get_value(self):
+        rot = min(2*self.rot_factor,
+                    max(-2*self.rot_factor, np.random.randn()*self.rot_factor))
+        scale = min(1+self.scale_factor,
+                max(1-self.scale_factor, np.random.randn()*self.scale_factor+1))
+        
+        return rot, scale
+    
     
     def aug(self, idx):
         name = self.meta[f"{idx}"]['file_name']
@@ -117,24 +125,25 @@ class CustomDataset_g(Dataset):
         if self.phase == "train":
     
             if idx < int(self.args.ratio_of_aug * self.__len__()):
-                rot = min(2*self.rot_factor,
-                            max(-2*self.rot_factor, np.random.randn()*self.rot_factor))
-                scale = min(1+self.scale_factor,
-                        max(1-self.scale_factor, np.random.randn()*self.scale_factor+1))
+                rot, scale = self.get_value()
             else:
-                rot = 0
-                scale = 1
+                rot = 0; scale = 1
 
             if self.args.crop:
                 while not ((joint_2d > 0).all() and (joint_2d < self.raw_res).all()):
+                    rot, scale = self.get_value()
                     image = crop(image, (self.raw_res/2, self.raw_res/2), scale, [self.raw_res, self.raw_res], rot=rot)
                     joint_2d = self.j2d_processing(joint_2d.copy(), scale, rot) 
             
             if self.args.rot_j:
                 joint_3d = self.j3d_processing(joint_3d, rot)   
             
-        joint_2d = joint_2d * ( self.img_res/ self.raw_res)    
-        joint_2d, joint_3d = torch.tensor(joint_2d), torch.tensor(joint_3d)
+            joint_2d = joint_2d / self.raw_res
+            
+        else:
+            joint_2d = joint_2d * (self.img_res / self.raw_res) 
+            
+        joint_2d, joint_3d = torch.tensor(joint_2d).float(), torch.tensor(joint_3d).float()
         
         return image, joint_2d, joint_3d
     

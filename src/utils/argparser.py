@@ -25,8 +25,9 @@ def parse_args(eval=False):
     parser.add_argument("--forearm", default= None, type=str) 
     parser.add_argument("--epoch", default=100, type=int) 
     parser.add_argument("--loss_2d", default=0, type=float)
-    parser.add_argument("--loss_3d", default=0, type=float)
+    parser.add_argument("--loss_3d", default=1, type=float)
     parser.add_argument("--loss_3d_mid", default=0, type=float)
+    parser.add_argument("--loss_3d_re", default=0, type=float)
     parser.add_argument("--set", default=None, type=str,
                         help = "when input set, the existing output folder is removed as the initialize")
     parser.add_argument("--center", action='store_true')
