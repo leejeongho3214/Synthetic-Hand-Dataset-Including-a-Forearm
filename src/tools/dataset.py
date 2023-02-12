@@ -65,15 +65,8 @@ class CustomDataset_g(Dataset):
         self.path = path
         self.phase = path.split("/")[-1]
         self.root = "/".join(path.split("/")[:-2])
-        if args.forearm == "with":
-            with open(f"{path}/CISLAB_{self.phase}_data_update_w_f.pkl", "rb") as st_json:
-                self.meta = pickle.load(st_json)
-        elif args.forearm == "without":
-            with open(f"{path}/CISLAB_{self.phase}_data_update_w_o_f.pkl", "rb") as st_json:
-                self.meta = pickle.load(st_json)
-        else:
-            with open(f"{path}/CISLAB_{self.phase}_data_update.pkl", "rb") as st_json:
-                self.meta = pickle.load(st_json)
+        with open(f"{path}/CISLAB_{self.phase}_data_update_part.pkl", "rb") as st_json:
+            self.meta = pickle.load(st_json)
         
         self.s_j = standard_j
         self.img_path = os.path.join(self.root, f"images/{self.phase}")
@@ -86,6 +79,7 @@ class CustomDataset_g(Dataset):
         return len(self.meta)
         
     def __getitem__(self, idx):
+        
         image, joint_2d, joint_3d = self.aug(idx)
         image = self.img_preprocessing(idx, image)
 
@@ -94,29 +88,7 @@ class CustomDataset_g(Dataset):
                                             transforms.Resize((224, 224))])(image)
 
         return transformed_img, joint_2d, joint_3d
-
     
-    def j2d_processing(self, kp, scale, r):
-        """Process gt 2D keypoints and apply all augmentation transforms."""
-        nparts = kp.shape[0]
-        for i in range(nparts):
-            kp[i,0:2] = transform(kp[i,0:2]+1, (self.img_res/2, self.img_res/2), scale, 
-                                    [self.img_res, self.img_res], rot=r)
-        return kp
-
-    def j3d_processing(self, S, r):
-        """Process gt 3D keypoints and apply all augmentation transforms."""
-        # in-plane rotation
-        rot_mat = np.eye(3)
-        if not r == 0:
-            rot_rad = -r * np.pi / 180
-            sn,cs = np.sin(rot_rad), np.cos(rot_rad)
-            rot_mat[0,:2] = [cs, -sn]
-            rot_mat[1,:2] = [sn, cs]
-        S = np.einsum('ij,kj->ki', rot_mat, S) 
-        S = S.astype('float32') 
-        return S
-
     def img_preprocessing(self, idx, rgb_img):
         # in the rgb image we add pixel noise in a channel-wise manner
         if self.phase == 'train':
@@ -139,7 +111,7 @@ class CustomDataset_g(Dataset):
         name = self.meta[f"{idx}"]['file_name']
         image = cv2.imread(os.path.join(self.img_path, name))  # PIL image
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        joint_2d = np.array(self.meta[f"{idx}"]['joint_2d']) * self.img_res
+        joint_2d = np.array(self.meta[f"{idx}"]['joint_2d']) * self.raw_res
         joint_3d = self.meta[f"{idx}"]['joint_3d']        
     
         if self.phase == "train":
@@ -154,30 +126,48 @@ class CustomDataset_g(Dataset):
                 scale = 1
 
             if self.args.crop:
-                while not ((joint_2d > 0).all() and (joint_2d < self.img_res).all()):
-                    print('why')
+                while not ((joint_2d > 0).all() and (joint_2d < self.raw_res).all()):
                     image = crop(image, (self.raw_res/2, self.raw_res/2), scale, [self.raw_res, self.raw_res], rot=rot)
                     joint_2d = self.j2d_processing(joint_2d.copy(), scale, rot) 
             
             if self.args.rot_j:
                 joint_3d = self.j3d_processing(joint_3d, rot)   
-                
+            
+        joint_2d = joint_2d * ( self.img_res/ self.raw_res)    
         joint_2d, joint_3d = torch.tensor(joint_2d), torch.tensor(joint_3d)
         
         return image, joint_2d, joint_3d
+    
+    def j2d_processing(self, kp, scale, r):
+        """Process gt 2D keypoints and apply all augmentation transforms."""
+        nparts = kp.shape[0]
+        for i in range(nparts):
+            kp[i,0:2] = transform(kp[i,0:2]+1, (self.raw_res/2, self.raw_res/2), scale, 
+                                    [self.raw_res, self.raw_res], rot=r)
+            
+
+        return kp
+
+    def j3d_processing(self, S, r):
+        """Process gt 3D keypoints and apply all augmentation transforms."""
+        # in-plane rotation
+        rot_mat = np.eye(3)
+        if not r == 0:
+            rot_rad = -r * np.pi / 180
+            sn,cs = np.sin(rot_rad), np.cos(rot_rad)
+            rot_mat[0,:2] = [cs, -sn]
+            rot_mat[1,:2] = [sn, cs]
+        S = np.einsum('ij,kj->ki', rot_mat, S) 
+        S = S.astype('float32') 
+        return S
+
+
         
 class val_g_set(CustomDataset_g):
     def __init__(self,  *args):
         super().__init__(*args)
-        if self.args.forearm == "with":
-            with open(f"{self.path}/CISLAB_{self.phase}_data_update_w_f.pkl", "rb") as st_json:
-                self.meta = pickle.load(st_json)
-        elif self.args.forearm == "without":
-            with open(f"{self.path}/CISLAB_{self.phase}_data_update_w_o_f.pkl", "rb") as st_json:
-                self.meta = pickle.load(st_json)
-        else:
-            with open(f"{self.path}/CISLAB_{self.phase}_data_update.pkl", "rb") as st_json:
-                self.meta = pickle.load(st_json)
+        with open(f"{self.path}/CISLAB_{self.phase}_data_update_part.pkl", "rb") as st_json:
+            self.meta = pickle.load(st_json)
         self.img_path = os.path.join(self.root,f"images/{self.phase}" )
 
 class AverageMeter(object):
@@ -359,7 +349,7 @@ class Json_transform(Dataset):
                 a = np.dot(np.array(rot, dtype='float32'),
                            np.array(joint[i], dtype='float32') - np.array(translation, dtype='float32'))
                 a[:2] = a[:2] / a[2]
-                b = a[:2] * focal_length + 112
+                b = (a[:2] * focal_length + (self.res/2)) / self.res  # normalize
                 b = torch.tensor(b)
 
                 for u in b:
@@ -376,8 +366,7 @@ class Json_transform(Dataset):
                     joint_2d = torch.stack([joint_2d, b], dim=0)
                 else:
                     joint_2d = torch.concat([joint_2d, b.reshape(1, 2)], dim=0)
-                    
-                joint_2d = joint_2d / 224   # normalize
+
             if flag:
                 continue
 
