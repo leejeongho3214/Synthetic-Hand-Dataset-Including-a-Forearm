@@ -365,17 +365,21 @@ class Json_transform(Dataset):
                 continue
 
             if count < int(130000 * 0.6):
-                while True:
-                    r = min(2*90,
-                    max(-2*90, np.random.randn()*90))
-                    scale = min(1+0.25,
-                            max(1-0.25, np.random.randn()*0.25+1))
+                loof_count = 0 
+                while loof_count < 5:
+                    r = min(2*90, max(-2*90, np.random.randn()*90))
+                    scale = min(1+0.25, max(1-0.25, np.random.randn()*0.25+1))
                     image = crop(ori_image.copy(), (self.res/2, self.res/2), scale, [self.res, self.res], rot=r)
                     joint_2d = self.j2d_processing(b.copy(), scale, r) 
                     if ((joint_2d > 0).all() and (joint_2d < self.res).all()):
                         break
+                    loof_count += 1
+                    if loof_count == 4:
+                        break
+                if loof_count == 4:
+                    continue
             else:
-                r, scale = 0, 1
+                joint_2d = b.copy()
                 image = ori_image.copy()
         
             joint_2d = (joint_2d/self.res).tolist()        # normalize

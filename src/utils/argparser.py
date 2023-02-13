@@ -19,6 +19,7 @@ def parse_args(eval=False):
                         help="You can use color jitter to train data as many as you want, according to this ratio")
     parser.add_argument("--ratio_of_add", default=0, type=float,
                         help = "set ratio that how many you add our dataset")
+    parser.add_argument("--set", default=None, type=str) 
     parser.add_argument("--rot_j", action = "store_true")
     parser.add_argument("--epoch", default=100, type=int) 
     parser.add_argument("--loss_2d", default=0, type=float)
