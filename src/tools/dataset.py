@@ -123,16 +123,20 @@ class CustomDataset_g(Dataset):
     
         if self.phase == "train":
             if self.args.crop:
-                while True:   
+                loof_count = 0 
+                while loof_count < 5:   
                     if idx < int(self.args.ratio_of_aug * self.__len__()):
                         rot, scale = self.get_value()
+                    elif loof_count == 5:
+                        rot, scale = 0, 1
                     else:
                         rot, scale = 0, 1
-                    image = crop(image, (self.raw_res/2, self.raw_res/2), scale, [self.raw_res, self.raw_res], rot=rot)
                     joint_2d = self.j2d_processing(ori_joint_2d.copy(), scale, rot) 
                     if ((joint_2d > 0).all() and (joint_2d < self.raw_res).all()):
                         break
-            
+                    loof_count += 1
+                image = crop(image, (self.raw_res/2, self.raw_res/2), scale, [self.raw_res, self.raw_res], rot=rot)
+
             if self.args.rot_j:
                 joint_3d = self.j3d_processing(joint_3d, rot)   
             joint_2d = joint_2d / self.raw_res
@@ -369,29 +373,29 @@ class Json_transform(Dataset):
                 while loof_count < 5:
                     r = min(2*90, max(-2*90, np.random.randn()*90))
                     scale = min(1+0.25, max(1-0.25, np.random.randn()*0.25+1))
-                    image = crop(ori_image.copy(), (self.res/2, self.res/2), scale, [self.res, self.res], rot=r)
                     joint_2d = self.j2d_processing(b.copy(), scale, r) 
                     if ((joint_2d > 0).all() and (joint_2d < self.res).all()):
                         break
                     loof_count += 1
                     if loof_count == 4:
+                        print("continue")
                         break
                 if loof_count == 4:
                     continue
             else:
                 joint_2d = b.copy()
-                image = ori_image.copy()
+                r = 0; scale = 1
         
             joint_2d = (joint_2d/self.res).tolist()        # normalize
             root =  os.path.join("../../datasets/part_60", '/'.join(self.root.split('/')[-2:]))
             if not os.path.isdir(os.path.join(root, name)):
                 mkdir(os.path.join(root, '/'.join(name.split('/')[:-1])))
                 
-            image = image / 255
-            plt.imshow(image)
-            plt.savefig(os.path.join(root, name))
+            # image = image / 255
+            # plt.imshow(image)
+            # plt.savefig(os.path.join(root, name))
             
-            k[f"{count}"] = {'joint_2d': joint_2d, 'joint_3d':joint.tolist(), "file_name": name}
+            k[f"{count}"] = {'joint_2d': joint_2d, 'joint_3d': joint.tolist(), "file_name": name, 'scale': scale, 'rot': r}
             count += 1
             pbar.update(1)
             if count == num:
