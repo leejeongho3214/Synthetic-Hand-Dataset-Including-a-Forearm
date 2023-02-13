@@ -30,6 +30,7 @@ def pre_arg(args, eval):
     args.drop_out = float(0.1)
     args.num_workers = int(4)
     args.img_scale_factor = int(1)
+    
     args.image_file_or_path = str('../../samples/unity/images/train/Capture0')
     args.train_yaml = str('../../datasets/freihand/train.yaml')
     args.val_yaml = str('../../datasets/freihand/test.yaml')
