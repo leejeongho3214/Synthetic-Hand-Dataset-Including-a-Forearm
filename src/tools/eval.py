@@ -4,7 +4,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import sys
 import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 import pip
 import argparse
 import json

@@ -16,7 +16,7 @@ from src.utils.geometric_layers import *
 from src.utils.visualize import *
 from src.utils.dataset_loader import Frei
 from tqdm import tqdm    
-from src.utils.bar import colored
+
 
 def dump(pred_out_path, xyz_pred_list, verts_pred_list):
     """ Save predictions into a json file. """
@@ -35,7 +35,7 @@ def dump(pred_out_path, xyz_pred_list, verts_pred_list):
 
 def main(args):
     root = 'output/ours'
-    n_l  = ["frei/3d_patch"]
+    n_l  = ["our_part/3d"]
     name_list = [os.path.join(root, n) for n in n_l]
     for name in name_list:
         # name = "output/ours/dart/3d"
