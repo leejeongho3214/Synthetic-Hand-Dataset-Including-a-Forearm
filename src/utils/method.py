@@ -180,6 +180,11 @@ class Runner(object):
                     pred_2d_joints, pred_3d_joints= self.model(images)
                     loss = reconstruction_error(np.array(pred_3d_joints.detach().cpu()), np.array(gt_3d_joints.detach().cpu()))
                     
+                    gt_2d_joint[:,:,1] = gt_2d_joint[:,:,1] * images.size(2) ## You Have to check whether weight and height is correct dimenstion
+                    gt_2d_joint[:,:,0] = gt_2d_joint[:,:,0] * images.size(3) 
+                    pred_2d_joints[:,:,1] = pred_2d_joints[:,:,1] * images.size(2) ## You Have to check whether weight and height is correct dimenstion
+                    pred_2d_joints[:,:,0] = pred_2d_joints[:,:,0] * images.size(3)
+                    
                     if iteration == 0 or iteration == int(len(self.valid_loader)/2) or iteration == len(self.valid_loader) - 1:
                         fig = plt.figure()
                         visualize_gt(images, gt_2d_joint, fig, iteration, self.epoch)

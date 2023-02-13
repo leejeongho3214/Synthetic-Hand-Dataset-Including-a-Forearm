@@ -23,7 +23,7 @@ from PIL import Image
 from torchvision import transforms
 
 np.random.seed(77)
-
+np.set_printoptions(precision=6, suppress=True)
 
 def build_dataset(args):   
     general_path = "../../datasets/general_512"
@@ -40,7 +40,6 @@ def build_dataset(args):
             args, args.val_yaml, False, is_train=False, scale_factor=args.img_scale_factor, s_j = standard_j) 
         
         if args.dataset == "both":
-            args.ratio_of_our = args.ratio_of_add
             o_dataset = CustomDataset_g(args, general_path + "/annotations/train", standard_j)
             train_dataset = ConcatDataset([train_dataset, o_dataset])
             
@@ -72,8 +71,10 @@ class CustomDataset_g(Dataset):
         self.img_path = os.path.join(self.root, f"images/{self.phase}")
         self.raw_res = 512
         self.img_res = 224
-        self.scale_factor = 0.25
+        self.scale_factor = 0.4
         self.rot_factor = 90 
+        self.args.logger.debug('phase: {} => noise_factor: {}, scale_factor: {}, rot_factor: {}, raw_res: {}, img_res: {}'.format(self.phase, self.__dict__.get('noise_factor'), self.__dict__.get('scale_factor'),
+                                                                                                                    self.__dict__.get('rot_factor'), self.__dict__.get('raw_res'), self.__dict__.get('img_res')))
         
     def __len__(self):
         return len(self.meta)
@@ -83,8 +84,7 @@ class CustomDataset_g(Dataset):
         image, joint_2d, joint_3d = self.aug(idx)
         image = self.img_preprocessing(idx, image)
 
-        transformed_img = transforms.Compose([transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                        std=[0.229, 0.224, 0.225]),
+        transformed_img = transforms.Compose([transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
                                             transforms.Resize((224, 224))])(image)
 
         return transformed_img, joint_2d, joint_3d
@@ -114,34 +114,32 @@ class CustomDataset_g(Dataset):
         
         return rot, scale
     
-    
     def aug(self, idx):
         name = self.meta[f"{idx}"]['file_name']
         image = cv2.imread(os.path.join(self.img_path, name))  # PIL image
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        joint_2d = np.array(self.meta[f"{idx}"]['joint_2d']) * self.raw_res
+        ori_joint_2d = np.array(self.meta[f"{idx}"]['joint_2d'])
         joint_3d = self.meta[f"{idx}"]['joint_3d']        
     
         if self.phase == "train":
-    
-            if idx < int(self.args.ratio_of_aug * self.__len__()):
-                rot, scale = self.get_value()
-            else:
-                rot = 0; scale = 1
-
             if self.args.crop:
-                while not ((joint_2d > 0).all() and (joint_2d < self.raw_res).all()):
-                    rot, scale = self.get_value()
+                while True:   
+                    if idx < int(self.args.ratio_of_aug * self.__len__()):
+                        rot, scale = self.get_value()
+                    else:
+                        rot, scale = 0, 1
                     image = crop(image, (self.raw_res/2, self.raw_res/2), scale, [self.raw_res, self.raw_res], rot=rot)
-                    joint_2d = self.j2d_processing(joint_2d.copy(), scale, rot) 
+                    joint_2d = self.j2d_processing(ori_joint_2d.copy(), scale, rot) 
+                    if ((joint_2d > 0).all() and (joint_2d < self.raw_res).all()):
+                        break
             
             if self.args.rot_j:
                 joint_3d = self.j3d_processing(joint_3d, rot)   
-            
             joint_2d = joint_2d / self.raw_res
             
         else:
-            joint_2d = joint_2d * (self.img_res / self.raw_res) 
+            
+            joint_2d = ori_joint_2d.copy() / self.raw_res
             
         joint_2d, joint_3d = torch.tensor(joint_2d).float(), torch.tensor(joint_3d).float()
         
@@ -327,6 +325,14 @@ class Json_transform(Dataset):
         self.root = f'{self.path}/{self.degree}/images/train'
         self.store_path = f'{self.path}/{self.degree}/annotations/train/CISLAB_train_data_update.json'
     
+    def j2d_processing(self, kp, scale, r):
+        """Process gt 2D keypoints and apply all augmentation transforms."""
+        nparts = kp.shape[0]
+        for i in range(nparts):
+            kp[i,0:2] = transform(kp[i,0:2]+1, (self.res/2, self.res/2), scale, 
+                                    [self.res, self.res], rot=r)
+        return kp
+
     def get_json_g(self, num):
         meta_list = self.meta['images'].copy()
         index = []
@@ -334,7 +340,6 @@ class Json_transform(Dataset):
         k = dict()
         count = 0
         for idx, j in enumerate(meta_list):
-            pbar.update(1)
             if j['camera'] == '0':
                 index.append(idx)
                 continue
@@ -345,46 +350,49 @@ class Json_transform(Dataset):
             camera = self.meta['images'][idx]['camera']
             id = self.meta['images'][idx]['frame_idx']
 
-            joint = torch.tensor(self.joint['0'][f'{id}']['world_coord'][:21])
+            joint = np.array(self.joint['0'][f'{id}']['world_coord'][:21], dtype = 'float32')
             focal_length = self.camera['0']['focal'][f'{camera}'][0]
-            translation = self.camera['0']['campos'][f'{camera}']
-            rot = self.camera['0']['camrot'][f'{camera}']
-            flag = False
+            translation = np.array(self.camera['0']['campos'][f'{camera}'], dtype = 'float32')
+            rot = np.array(self.camera['0']['camrot'][f'{camera}'], dtype = 'float32')
             name = j['file_name']
             ori_image = cv2.imread(os.path.join(self.root, name))
             ori_image = cv2.cvtColor(ori_image, cv2.COLOR_BGR2RGB)
-            
-            for i in range(21):
-                a = np.dot(np.array(rot, dtype='float32'),
-                           np.array(joint[i], dtype='float32') - np.array(translation, dtype='float32'))
-                a[:2] = a[:2] / a[2]
-                b = (a[:2] * focal_length + (self.res/2)) / self.res  # normalize
-                b = torch.tensor(b)
 
-                for u in b:
-                    if u > (self.res-1) or u < 0:
-                        index.append(idx)
-                        flag = True
-                        break
-                if flag:
-                    break
-
-                if i == 0: 
-                    joint_2d = b
-                elif i == 1:
-                    joint_2d = torch.stack([joint_2d, b], dim=0)
-                else:
-                    joint_2d = torch.concat([joint_2d, b.reshape(1, 2)], dim=0)
-
-            if flag:
+            a = np.einsum('ij, kj -> ki', rot, joint - translation)
+            a = a[:, :2] / a[:, 2][:, None]
+            b = (a * focal_length + (self.res/2))
+            if not ((50 < b).all() and (b < self.res - 50).all()):
                 continue
 
-            k[f"{count}"] = {'joint_2d': joint_2d.tolist(), 'joint_3d':joint.tolist(), "file_name": name}
+            if count < int(130000 * 0.6):
+                while True:
+                    r = min(2*90,
+                    max(-2*90, np.random.randn()*90))
+                    scale = min(1+0.25,
+                            max(1-0.25, np.random.randn()*0.25+1))
+                    image = crop(ori_image.copy(), (self.res/2, self.res/2), scale, [self.res, self.res], rot=r)
+                    joint_2d = self.j2d_processing(b.copy(), scale, r) 
+                    if ((joint_2d > 0).all() and (joint_2d < self.res).all()):
+                        break
+            else:
+                r, scale = 0, 1
+                image = ori_image.copy()
+        
+            joint_2d = (joint_2d/self.res).tolist()        # normalize
+            root =  os.path.join("../../datasets/part_60", '/'.join(self.root.split('/')[-2:]))
+            if not os.path.isdir(os.path.join(root, name)):
+                mkdir(os.path.join(root, '/'.join(name.split('/')[:-1])))
+                
+            image = image / 255
+            plt.imshow(image)
+            plt.savefig(os.path.join(root, name))
+            
+            k[f"{count}"] = {'joint_2d': joint_2d, 'joint_3d':joint.tolist(), "file_name": name}
             count += 1
+            pbar.update(1)
             if count == num:
                 break
-            if count == 1:
-                print(self.store_path)
+                
         with open(self.store_path, 'wb') as f:
 	        pickle.dump(k, f, protocol=pickle.HIGHEST_PROTOCOL)
         
@@ -577,9 +585,8 @@ class Json_e(Json_transform):
                 self.joint = json.load(st_json)
             with open(os.path.join(root, "annotations/train/CISLAB_train_data.json"), "r") as st_json:
                 self.meta = json.load(st_json)
-                
             self.root = os.path.join(root, "images/train")
-            self.store_path = os.path.join(root, "annotations/train/CISLAB_train_data_update_part.pkl")
+            self.store_path = os.path.join(root, "annotations/train/part.pkl")
             
         elif phase == 'val':
             root = "../../datasets/general_512"
@@ -589,9 +596,8 @@ class Json_e(Json_transform):
                 self.joint = json.load(st_json)
             with open(os.path.join(root, "annotations/val/CISLAB_val_data.json"), "r") as st_json:
                 self.meta = json.load(st_json)
-                
             self.root = os.path.join(root, "images/val")
-            self.store_path = os.path.join(root, "annotations/val/CISLAB_val_data_update_part.pkl")
+            self.store_path = os.path.join(root, "annotations/val/part.pkl")
     
 def main():   
     Json_e(phase = "train").get_json_g(130000)
