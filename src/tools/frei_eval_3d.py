@@ -34,10 +34,19 @@ def dump(pred_out_path, xyz_pred_list, verts_pred_list):
     print('Dumped %d joints and %d verts predictions to %s' % (len(xyz_pred_list), len(verts_pred_list), pred_out_path))
 
 def main(args):
-    root = 'output/ours'
-    n_l  = ["frei/3d_patch"]
-    name_list = [os.path.join(root, n) for n in n_l]
-    for name in name_list:
+    # root = 'output/ours'
+    # n_l  = ["frei/3d_patch"]
+    # model_list = [os.path.join(root, n) for n in n_l]
+    
+    model_path = "output/ours/our_part"
+    model_list = list()
+    for (root, _, files) in os.walk(model_path):
+        for file in files:
+            if '.bin' in file:
+                model_list.append('/'.join(root.split('/')[:-1]))
+                
+                
+    for name in model_list:
         # name = "output/ours/dart/3d"
         args.name = os.path.join(name, "checkpoint-good/state_dict.bin")
         args.model = args.name.split('/')[1]
