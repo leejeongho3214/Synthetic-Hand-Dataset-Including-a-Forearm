@@ -15,7 +15,7 @@ def parse_args(eval=False):
                         help = 'You write down to store the directory path',type=str)
     parser.add_argument("--dataset", default='ours', type=str, required=False)
     parser.add_argument("--count", default=10, type=int)
-    parser.add_argument("--ratio_of_aug", default=0.6, type=float,
+    parser.add_argument("--ratio_of_aug", default=1, type=float,
                         help="You can use color jitter to train data as many as you want, according to this ratio")
     parser.add_argument("--ratio_of_add", default=0, type=float,
                         help = "set ratio that how many you add our dataset")

@@ -64,14 +64,14 @@ class CustomDataset_g(Dataset):
         self.path = path
         self.phase = path.split("/")[-1]
         self.root = "/".join(path.split("/")[:-2])
-        with open(f"{path}/CISLAB_{self.phase}_data_update_part.pkl", "rb") as st_json:
+        with open(f"{path}/part.pkl", "rb") as st_json:
             self.meta = pickle.load(st_json)
         
         self.s_j = standard_j
         self.img_path = os.path.join(self.root, f"images/{self.phase}")
         self.raw_res = 512
         self.img_res = 224
-        self.scale_factor = 0.4
+        self.scale_factor = 0.25
         self.rot_factor = 90 
         self.args.logger.debug('phase: {} => noise_factor: {}, scale_factor: {}, rot_factor: {}, raw_res: {}, img_res: {}'.format(self.phase, self.__dict__.get('noise_factor'), self.__dict__.get('scale_factor'),
                                                                                                                     self.__dict__.get('rot_factor'), self.__dict__.get('raw_res'), self.__dict__.get('img_res')))
@@ -118,23 +118,14 @@ class CustomDataset_g(Dataset):
         name = self.meta[f"{idx}"]['file_name']
         image = cv2.imread(os.path.join(self.img_path, name))  # PIL image
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        ori_joint_2d = np.array(self.meta[f"{idx}"]['joint_2d'])
-        joint_3d = self.meta[f"{idx}"]['joint_3d']        
+        ori_joint_2d = np.array(self.meta[f"{idx}"]['joint_2d']) * self.raw_res
+        joint_3d = self.meta[f"{idx}"]['joint_3d']    
+        scale = self.meta[f"{idx}"]['scale']   
+        rot = self.meta[f"{idx}"]['rot']       
     
         if self.phase == "train":
             if self.args.crop:
-                loof_count = 0 
-                while loof_count < 5:   
-                    if idx < int(self.args.ratio_of_aug * self.__len__()):
-                        rot, scale = self.get_value()
-                    elif loof_count == 5:
-                        rot, scale = 0, 1
-                    else:
-                        rot, scale = 0, 1
-                    joint_2d = self.j2d_processing(ori_joint_2d.copy(), scale, rot) 
-                    if ((joint_2d > 0).all() and (joint_2d < self.raw_res).all()):
-                        break
-                    loof_count += 1
+                joint_2d = self.j2d_processing(ori_joint_2d.copy(), scale, rot) 
                 image = crop(image, (self.raw_res/2, self.raw_res/2), scale, [self.raw_res, self.raw_res], rot=rot)
 
             if self.args.rot_j:
@@ -387,9 +378,9 @@ class Json_transform(Dataset):
                 r = 0; scale = 1
         
             joint_2d = (joint_2d/self.res).tolist()        # normalize
-            root =  os.path.join("../../datasets/part_60", '/'.join(self.root.split('/')[-2:]))
-            if not os.path.isdir(os.path.join(root, name)):
-                mkdir(os.path.join(root, '/'.join(name.split('/')[:-1])))
+            # root =  os.path.join("../../datasets/part_60", '/'.join(self.root.split('/')[-2:]))
+            # if not os.path.isdir(os.path.join(root, name)):
+            #     mkdir(os.path.join(root, '/'.join(name.split('/')[:-1])))
                 
             # image = image / 255
             # plt.imshow(image)
