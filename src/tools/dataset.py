@@ -136,9 +136,13 @@ class CustomDataset_g(Dataset):
                         break
                     loof_count += 1
                 image = crop(image, (self.raw_res/2, self.raw_res/2), scale, [self.raw_res, self.raw_res], rot=rot)
+                
+            else:
+                joint_2d = ori_joint_2d.copy()
 
             if self.args.rot_j:
                 joint_3d = self.j3d_processing(joint_3d, rot)   
+                
             joint_2d = joint_2d / self.raw_res
             
         else:
