@@ -27,7 +27,6 @@ np.set_printoptions(precision=6, suppress=True)
 
 def build_dataset(args):   
     general_path = "../../datasets/general_512"
-  
     args.dataset = args.name.split("/")[1]
     
     standard_j =  [[1.8155813217163086, 0.15561437606811523, 1.1083018779754639], [2.406423807144165, 0.5383367538452148, 1.304732084274292], [2.731782913208008, 1.172149658203125, 1.335669994354248], [2.681248903274536, 1.7862586975097656, 1.2639415264129639], [2.3304858207702637, 2.234518527984619, 1.1211540699005127], [2.341385841369629, 1.37321138381958, 2.0816190242767334], [2.3071250915527344, 2.0882482528686523, 1.7858655452728271], [2.2974867820739746, 2.293468952178955, 1.3347842693328857], [2.31135630607605, 1.9055771827697754, 1.029522180557251], [1.851935863494873, 1.30698823928833, 2.1360342502593994], [1.8758153915405273, 2.124051094055176, 2.5652201175689697], [1.973258376121521, 2.431856632232666, 2.1032679080963135], [2.0731117725372314, 2.644174098968506, 1.616095781326294], [1.471063256263733, 1.2448792457580566, 2.0854008197784424], [1.4334478378295898, 1.9523506164550781, 1.5718071460723877], [1.6441740989685059, 1.7141218185424805, 1.1860997676849365], [1.760351300239563, 1.242896556854248, 1.305544137954712], [1.1308115720748901, 1.1045317649841309, 1.9674842357635498], [1.0435627698898315, 1.6727776527404785, 1.8200523853302002], [1.2601540088653564, 1.6069226264953613, 1.4762027263641357], [1.4999980926513672, 1.5507283210754395, 1.1099226474761963]]
@@ -64,14 +63,14 @@ class CustomDataset_g(Dataset):
         self.path = path
         self.phase = path.split("/")[-1]
         self.root = "/".join(path.split("/")[:-2])
-        with open(f"{path}/CISLAB_{self.phase}_data_update_part.pkl", "rb") as st_json:
+        with open(f"{path}/part.pkl", "rb") as st_json:
             self.meta = pickle.load(st_json)
         
         self.s_j = standard_j
         self.img_path = os.path.join(self.root, f"images/{self.phase}")
         self.raw_res = 512
         self.img_res = 224
-        self.scale_factor = 0.4
+        self.scale_factor = 0.25
         self.rot_factor = 90 
         self.args.logger.debug('phase: {} => noise_factor: {}, scale_factor: {}, rot_factor: {}, raw_res: {}, img_res: {}'.format(self.phase, self.__dict__.get('noise_factor'), self.__dict__.get('scale_factor'),
                                                                                                                     self.__dict__.get('rot_factor'), self.__dict__.get('raw_res'), self.__dict__.get('img_res')))
@@ -118,37 +117,26 @@ class CustomDataset_g(Dataset):
         name = self.meta[f"{idx}"]['file_name']
         image = cv2.imread(os.path.join(self.img_path, name))  # PIL image
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        ori_joint_2d = np.array(self.meta[f"{idx}"]['joint_2d'])
-        joint_3d = self.meta[f"{idx}"]['joint_3d']        
+        joint_2d = np.array(self.meta[f"{idx}"]['joint_2d']) * self.raw_res
+        joint_3d = self.meta[f"{idx}"]['joint_3d']    
+        scale = self.meta[f"{idx}"]['scale']   
+        rot = self.meta[f"{idx}"]['rot']       
+        bbox = np.array(self.meta[f"{idx}"]['bbox'], dtype = int)
     
         if self.phase == "train":
-            if self.args.crop:
-                loof_count = 0 
-                while loof_count < 5:   
-                    if idx < int(self.args.ratio_of_aug * self.__len__()):
-                        rot, scale = self.get_value()
-                    elif loof_count == 5:
-                        rot, scale = 0, 1
-                    else:
-                        rot, scale = 0, 1
-                    joint_2d = self.j2d_processing(ori_joint_2d.copy(), scale, rot) 
-                    if ((joint_2d > 0).all() and (joint_2d < self.raw_res).all()):
-                        break
-                    loof_count += 1
-                image = crop(image, (self.raw_res/2, self.raw_res/2), scale, [self.raw_res, self.raw_res], rot=rot)
-                
-            else:
-                joint_2d = ori_joint_2d.copy()
-
+            image = crop(image, (self.raw_res/2, self.raw_res/2), scale, [self.raw_res, self.raw_res], rot=rot)    
+            if self.args.arm:
+                new_image = np.zeros([512, 512, 3])
+                a = max(bbox[0, 1] - 70, 0)
+                b = min(bbox[1,1] + 70, 512)
+                c = max(bbox[0,0] - 70, 0)
+                d = min(bbox[1,0] + 70, 512)
+                new_image[a : b, c : d] = image[a : b, c: d]
+                image = new_image.copy()
             if self.args.rot_j:
                 joint_3d = self.j3d_processing(joint_3d, rot)   
-                
-            joint_2d = joint_2d / self.raw_res
             
-        else:
-            
-            joint_2d = ori_joint_2d.copy() / self.raw_res
-            
+        joint_2d = joint_2d / self.raw_res
         joint_2d, joint_3d = torch.tensor(joint_2d).float(), torch.tensor(joint_3d).float()
         
         return image, joint_2d, joint_3d
@@ -372,34 +360,33 @@ class Json_transform(Dataset):
             if not ((50 < b).all() and (b < self.res - 50).all()):
                 continue
 
-            if count < int(130000 * 0.6):
-                loof_count = 0 
-                while loof_count < 5:
-                    r = min(2*90, max(-2*90, np.random.randn()*90))
-                    scale = min(1+0.25, max(1-0.25, np.random.randn()*0.25+1))
-                    joint_2d = self.j2d_processing(b.copy(), scale, r) 
-                    if ((joint_2d > 0).all() and (joint_2d < self.res).all()):
-                        break
-                    loof_count += 1
-                    if loof_count == 4:
-                        print("continue")
-                        break
+            loof_count = 0 
+            while loof_count < 5:
+                r = min(2*90, max(-2*90, np.random.randn()*90))
+                scale = min(1+0.25, max(1-0.25, np.random.randn()*0.25+1))
+                joint_2d = self.j2d_processing(b.copy(), scale, r) 
+                if ((joint_2d > 0).all() and (joint_2d < self.res).all()):
+                    break
+                loof_count += 1
                 if loof_count == 4:
-                    continue
-            else:
-                joint_2d = b.copy()
-                r = 0; scale = 1
+                    print("continue")
+                    break
+            if loof_count == 4:
+                continue
+                
+            bbox = [[joint_2d[:, 0].min(), joint_2d[:, 1].min()] , [joint_2d[:, 0].max(), joint_2d[:, 1].max()]]
+            bbox_size = np.sqrt((joint_2d[:, 0].min() - joint_2d[:, 1].max())**2 + (joint_2d[:, 1].min() - joint_2d[:, 1].max())**2)
         
             joint_2d = (joint_2d/self.res).tolist()        # normalize
-            root =  os.path.join("../../datasets/part_60", '/'.join(self.root.split('/')[-2:]))
-            if not os.path.isdir(os.path.join(root, name)):
-                mkdir(os.path.join(root, '/'.join(name.split('/')[:-1])))
+            # root =  os.path.join("../../datasets/part_60", '/'.join(self.root.split('/')[-2:]))
+            # if not os.path.isdir(os.path.join(root, name)):
+            #     mkdir(os.path.join(root, '/'.join(name.split('/')[:-1])))
                 
             # image = image / 255
             # plt.imshow(image)
             # plt.savefig(os.path.join(root, name))
             
-            k[f"{count}"] = {'joint_2d': joint_2d, 'joint_3d': joint.tolist(), "file_name": name, 'scale': scale, 'rot': r}
+            k[f"{count}"] = {'joint_2d': joint_2d, 'joint_3d': joint.tolist(), "file_name": name, 'scale': scale, 'rot': r, 'bbox': bbox, 'bbox_size': bbox_size}
             count += 1
             pbar.update(1)
             if count == num:
