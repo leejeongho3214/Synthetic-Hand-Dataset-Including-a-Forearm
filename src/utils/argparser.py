@@ -28,7 +28,7 @@ def parse_args(eval=False):
     parser.add_argument("--loss_3d_re", default=0, type=float)
     parser.add_argument("--crop", action='store_true')
     parser.add_argument("--reset", action='store_true')
-    parser.add_argument("--scale", action='store_true')
+    parser.add_argument("--aug", action='store_true')
     parser.add_argument("--arm", action='store_true')
     parser.add_argument("--batch_size", default=32, type=int)
     args = parser.parse_args()

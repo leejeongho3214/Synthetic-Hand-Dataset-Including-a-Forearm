@@ -38,7 +38,7 @@ def main(args):
     # n_l  = ["frei/3d_patch"]
     # model_list = [os.path.join(root, n) for n in n_l]
     
-    model_path = "output/ours/our_part"
+    model_path = "output/ours/ours/3d_arm"
     model_list = list()
     for (root, _, files) in os.walk(model_path):
         for file in files:

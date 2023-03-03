@@ -63,7 +63,7 @@ class CustomDataset_g(Dataset):
         self.path = path
         self.phase = path.split("/")[-1]
         self.root = "/".join(path.split("/")[:-2])
-        with open(f"{path}/part.pkl", "rb") as st_json:
+        with open(f"{path}/full.pkl", "rb") as st_json:
             self.meta = pickle.load(st_json)
         
         self.s_j = standard_j
@@ -76,7 +76,7 @@ class CustomDataset_g(Dataset):
                                                                                                                     self.__dict__.get('rot_factor'), self.__dict__.get('raw_res'), self.__dict__.get('img_res')))
         
     def __len__(self):
-        return len(self.meta)
+        return len(self.meta) - 2
         
     def __getitem__(self, idx):
         
@@ -169,7 +169,7 @@ class CustomDataset_g(Dataset):
 class val_g_set(CustomDataset_g):
     def __init__(self,  *args):
         super().__init__(*args)
-        with open(f"{self.path}/CISLAB_{self.phase}_data_update_part.pkl", "rb") as st_json:
+        with open(f"{self.path}/full.pkl", "rb") as st_json:
             self.meta = pickle.load(st_json)
         self.img_path = os.path.join(self.root,f"images/{self.phase}" )
 
@@ -387,10 +387,11 @@ class Json_transform(Dataset):
             # plt.savefig(os.path.join(root, name))
             
             k[f"{count}"] = {'joint_2d': joint_2d, 'joint_3d': joint.tolist(), "file_name": name, 'scale': scale, 'rot': r, 'bbox': bbox, 'bbox_size': bbox_size}
-            count += 1
-            pbar.update(1)
             if count == num:
                 break
+            count += 1
+            pbar.update(1)
+
                 
         with open(self.store_path, 'wb') as f:
 	        pickle.dump(k, f, protocol=pickle.HIGHEST_PROTOCOL)
@@ -585,7 +586,7 @@ class Json_e(Json_transform):
             with open(os.path.join(root, "annotations/train/CISLAB_train_data.json"), "r") as st_json:
                 self.meta = json.load(st_json)
             self.root = os.path.join(root, "images/train")
-            self.store_path = os.path.join(root, "annotations/train/part.pkl")
+            self.store_path = os.path.join(root, "annotations/train/full.pkl")
             
         elif phase == 'val':
             root = "../../datasets/general_512"
@@ -596,10 +597,10 @@ class Json_e(Json_transform):
             with open(os.path.join(root, "annotations/val/CISLAB_val_data.json"), "r") as st_json:
                 self.meta = json.load(st_json)
             self.root = os.path.join(root, "images/val")
-            self.store_path = os.path.join(root, "annotations/val/part.pkl")
+            self.store_path = os.path.join(root, "annotations/val/full.pkl")
     
 def main():   
-    Json_e(phase = "train").get_json_g(130000)
+    Json_e(phase = "train").get_json_g(-1)
     Json_e(phase = "val").get_json_g(13000)
     print("ENDDDDDD")
     
