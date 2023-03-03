@@ -21,7 +21,8 @@ def main(args):
     testset_loader = data.DataLoader(dataset=eval_dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=False)
     print(len(eval_dataset))
     model_path = "final_model/ours/2d_color_0.3_0.13M"
-
+    model_list, pck_list = list(), list()
+    
     for (root, _, files) in os.walk(model_path):
         for file in files:
             if '.bin' in file:
