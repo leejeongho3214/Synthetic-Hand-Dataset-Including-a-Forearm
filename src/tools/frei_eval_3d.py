@@ -35,7 +35,7 @@ def dump(pred_out_path, xyz_pred_list, verts_pred_list):
 
 def main(args):
     root = 'output/ours'
-    n_l  = ["our_part/3d"]
+    n_l  = ["frei/3d_input_two_images_correlation_2d"]
     model_list = [os.path.join(root, n) for n in n_l]
     
     # model_path = "output/ours/our_part"

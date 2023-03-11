@@ -123,19 +123,31 @@ class CustomDataset_g(Dataset):
         rot = self.meta[f"{idx}"]['rot']       
         bbox = np.array(self.meta[f"{idx}"]['bbox'], dtype = int)
     
-        if self.phase == "train":
-            image = crop(image, (self.raw_res/2, self.raw_res/2), scale, [self.raw_res, self.raw_res], rot=rot)    
-            if self.args.arm:
-                new_image = np.zeros([512, 512, 3])
-                a = max(bbox[0, 1] - 70, 0)
-                b = min(bbox[1,1] + 70, 512)
-                c = max(bbox[0,0] - 70, 0)
-                d = min(bbox[1,0] + 70, 512)
-                new_image[a : b, c : d] = image[a : b, c: d]
-                image = new_image.copy()
-            if self.args.rot_j:
-                joint_3d = self.j3d_processing(joint_3d, rot)   
-            
+        # if self.phase == "train":
+        #     image = crop(image, (self.raw_res/2, self.raw_res/2), scale, [self.raw_res, self.raw_res], rot=rot)    
+        #     if self.args.arm:
+        #         new_image = np.zeros([512, 512, 3])
+        #         a = max(bbox[0, 1] - 70, 0)
+        #         b = min(bbox[1,1] + 70, 512)
+        #         c = max(bbox[0,0] - 70, 0)
+        #         d = min(bbox[1,0] + 70, 512)
+        #         new_image[a : b, c : d] = image[a : b, c: d]
+        #         image = new_image.copy()
+        #     if self.args.rot_j:
+        #         joint_3d = self.j3d_processing(joint_3d, rot)   
+
+        image = crop(image, (self.raw_res/2, self.raw_res/2), scale, [self.raw_res, self.raw_res], rot=rot)    
+        if self.args.arm:
+            new_image = np.zeros([512, 512, 3])
+            a = max(bbox[0, 1] - 70, 0)
+            b = min(bbox[1,1] + 70, 512)
+            c = max(bbox[0,0] - 70, 0)
+            d = min(bbox[1,0] + 70, 512)
+            new_image[a : b, c : d] = image[a : b, c: d]
+            image = new_image.copy()
+        if self.args.rot_j:
+            joint_3d = self.j3d_processing(joint_3d, rot)  
+        
         joint_2d = joint_2d / self.raw_res
         joint_2d, joint_3d = torch.tensor(joint_2d).float(), torch.tensor(joint_3d).float()
         
@@ -147,7 +159,6 @@ class CustomDataset_g(Dataset):
         for i in range(nparts):
             kp[i,0:2] = transform(kp[i,0:2]+1, (self.raw_res/2, self.raw_res/2), scale, 
                                     [self.raw_res, self.raw_res], rot=r)
-            
 
         return kp
 
