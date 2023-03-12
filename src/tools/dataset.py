@@ -33,10 +33,17 @@ def build_dataset(args):
     standard_j = torch.tensor(standard_j)
         
     if args.dataset == "frei":
-        train_dataset = make_hand_data_loader(
+        ori_train_dataset = make_hand_data_loader(
             args, args.train_yaml, False, is_train=True, scale_factor=args.img_scale_factor, s_j = standard_j) 
         test_dataset = make_hand_data_loader(
             args, args.val_yaml, False, is_train=False, scale_factor=args.img_scale_factor, s_j = standard_j) 
+        
+        aug_train_dataset = make_hand_data_loader(
+            args, args.train_yaml, False, is_train=True, scale_factor=args.img_scale_factor, s_j = standard_j) 
+
+        
+        train_dataset = ConcatDataset([ori_train_dataset, aug_train_dataset])
+        
         
         if args.dataset == "both":
             o_dataset = CustomDataset_g(args, general_path + "/annotations/train", standard_j)

@@ -114,21 +114,7 @@ class Runner(object):
                 adjust_learning_rate(self.optimizer, self.epoch, self.args)  
                 gt_2d_joint = gt_2d_joints.cuda(); gt_3d_joints = gt_3d_joints.cuda(); images = images.cuda()
               
-                
-                parents = [-1, 0, 1, 2, 3, 0, 5, 6, 7, 0, 9, 10, 11, 0, 13, 14, 15, 0, 17, 18, 19]
-                gt_3d_mid_joints = torch.ones(batch_size, 20, 3)
-                for i in range(20):
-                    gt_3d_mid_joints[:, i, :] =  (gt_3d_joints[:, i + 1, :] + gt_3d_joints[:, parents[i + 1], :]) / 2
-            
-                pred_2d_joints, pred_3d_joints= self.model(images)
-
-                pred_3d_mid_joints = torch.ones(batch_size, 20, 3)
-                for i in range(20):
-                    pred_3d_mid_joints[:, i, :] =  (pred_3d_joints[:, i + 1, :] + pred_3d_joints[:, parents[i + 1], :]) / 2
-                
                 loss_2d = keypoint_2d_loss(self.criterion_keypoints, pred_2d_joints, gt_2d_joint)
-                # loss_3d_mid = keypoint_3d_loss(self.criterion_keypoints, pred_3d_mid_joints, gt_3d_mid_joints)
-                # loss_3d_re = reconstruction_error(np.array(pred_3d_joints.detach().cpu()), np.array(gt_3d_joints.detach().cpu()))      
                 loss_3d = keypoint_3d_loss(self.criterion_keypoints, pred_3d_joints, gt_3d_joints)
                 
                 loss = loss_3d * self.args.loss_3d + loss_2d * self.args.loss_2d
