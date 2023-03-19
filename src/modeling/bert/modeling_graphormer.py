@@ -123,7 +123,11 @@ class GraphormerLayer(nn.Module):
         super(GraphormerLayer, self).__init__()
         self.attention = BertAttention(config)
         # self.has_graph_conv = config.graph_conv
-        self.has_graph_conv = False
+        self.has_graph_conv = True
+
+        if self.has_graph_conv == True:
+            self.graph_conv = GraphResBlock(config.hidden_size, config.hidden_size, mesh_type=self.mesh_type)
+
         self.mesh_type = config.mesh_type
         self.intermediate = BertIntermediate(config)
         self.output = BertOutput(config)
@@ -134,7 +138,21 @@ class GraphormerLayer(nn.Module):
                 head_mask, history_state)
         attention_output = attention_outputs[0]
 
-        joints_vertices = attention_output
+        if self.has_graph_conv==True:
+            if self.mesh_type == 'body':
+                joints = attention_output[:,0:14,:] 
+                vertices = attention_output[:,14:-49,:]
+                img_tokens = attention_output[:,-49:,:]
+
+            elif self.mesh_type == 'hand':
+                joints = attention_output[:,0:21,:]
+                vertices = attention_output[:,21:-49,:]
+                img_tokens = attention_output[:,-49:,:]
+
+            vertices = self.graph_conv(vertices)
+            joints_vertices = torch.cat([joints,vertices,img_tokens],dim=1)
+        else:
+            joints_vertices = attention_output
 
         intermediate_output = self.intermediate(joints_vertices)
         layer_output = self.output(intermediate_output, joints_vertices)

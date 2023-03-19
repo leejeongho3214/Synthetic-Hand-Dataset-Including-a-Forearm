@@ -1,5 +1,4 @@
 import torch
-from src.tools.dataset import save_checkpoint
 from src.utils.loss import adjust_learning_rate
 import numpy as np
 import time 
@@ -113,22 +112,10 @@ class Runner(object):
                 batch_size = images.size(0)
                 adjust_learning_rate(self.optimizer, self.epoch, self.args)  
                 gt_2d_joint = gt_2d_joints.cuda(); gt_3d_joints = gt_3d_joints.cuda(); images = images.cuda()
-              
-                
-                parents = [-1, 0, 1, 2, 3, 0, 5, 6, 7, 0, 9, 10, 11, 0, 13, 14, 15, 0, 17, 18, 19]
-                gt_3d_mid_joints = torch.ones(batch_size, 20, 3)
-                for i in range(20):
-                    gt_3d_mid_joints[:, i, :] =  (gt_3d_joints[:, i + 1, :] + gt_3d_joints[:, parents[i + 1], :]) / 2
             
                 pred_2d_joints, pred_3d_joints= self.model(images)
 
-                pred_3d_mid_joints = torch.ones(batch_size, 20, 3)
-                for i in range(20):
-                    pred_3d_mid_joints[:, i, :] =  (pred_3d_joints[:, i + 1, :] + pred_3d_joints[:, parents[i + 1], :]) / 2
-                
                 loss_2d = keypoint_2d_loss(self.criterion_keypoints, pred_2d_joints, gt_2d_joint)
-                # loss_3d_mid = keypoint_3d_loss(self.criterion_keypoints, pred_3d_mid_joints, gt_3d_mid_joints)
-                # loss_3d_re = reconstruction_error(np.array(pred_3d_joints.detach().cpu()), np.array(gt_3d_joints.detach().cpu()))      
                 loss_3d = keypoint_3d_loss(self.criterion_keypoints, pred_3d_joints, gt_3d_joints)
                 
                 loss = loss_3d * self.args.loss_3d + loss_2d * self.args.loss_2d
@@ -158,12 +145,7 @@ class Runner(object):
                 eta_seconds = self.batch_time.avg * ((self.len_total - iteration) + (self.args.epoch - self.epoch -1) * self.len_total)  
 
                 self.train_log(iteration, eta_seconds, end)
-                    
-                if iteration % 100 == 99:
-                    self.writer.add_scalar(f"Loss/train/{self.epoch}_epoch", self.log_losses.avg, iteration)
-                    
-                # elif iteration == len(self.train_loader) - 1:
-                #     self.writer.add_scalar("Loss/train", self.log_losses.avg, self.epoch)
+            self.writer.add_scalar(f"Loss/train", self.log_losses.avg, self.epoch)
                     
             return self.model, self.optimizer, self.batch_time
             
@@ -198,8 +180,7 @@ class Runner(object):
                     eta_seconds = self.batch_time.avg * ((len(self.valid_loader) - iteration) + (self.args.epoch - self.epoch -1) * self.len_total)
 
                     self.test_log(iteration, eta_seconds, end)
-                    if iteration == len(self.valid_loader) - 1:
-                        self.writer.add_scalar("Loss/valid", self.log_losses.avg, self.epoch)
+                self.writer.add_scalar("Loss/valid", self.log_losses.avg, self.epoch)
 
                 return self.log_losses.avg, self.count, self.pck_losses.avg * 100, self.batch_time
 
