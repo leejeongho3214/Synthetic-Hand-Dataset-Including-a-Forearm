@@ -107,17 +107,17 @@ def make_data_loader(args, yaml_file, is_distributed=True,
 
 #==============================================================================================
 
-def build_hand_dataset(yaml_file, args, is_train=True, scale_factor=1, s_j = None):
+def build_hand_dataset(yaml_file, args, is_train=True, scale_factor=1, s_j = None, aug = None):
     # print(yaml_file)
     if not op.isfile(yaml_file):
         yaml_file = op.join(args.data_dir, yaml_file)
         # code.interact(local=locals())
         assert op.isfile(yaml_file)
-    return HandMeshTSVYamlDataset(args, yaml_file, is_train, False, scale_factor, s_j)
+    return HandMeshTSVYamlDataset(args, yaml_file, is_train, False, scale_factor, s_j, aug)
 
 
 def make_hand_data_loader(args, yaml_file, is_distributed=False,
-        is_train=True, start_iter=0, scale_factor=1, s_j = None):
-    dataset = build_hand_dataset(yaml_file, args, is_train=is_train, scale_factor=scale_factor, s_j = s_j)
+        is_train=True, start_iter=0, scale_factor=1, s_j = None, aug = None):
+    dataset = build_hand_dataset(yaml_file, args, is_train=is_train, scale_factor=scale_factor, s_j = s_j, aug = aug)
     return dataset
 

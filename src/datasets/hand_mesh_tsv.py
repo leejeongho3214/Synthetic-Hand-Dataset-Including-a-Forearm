@@ -50,7 +50,7 @@ class GenerateHeatmap():
 
 class HandMeshTSVDataset(object):
     def __init__(self, args, img_file, label_file=None, hw_file=None,
-                 linelist_file=None, is_train=True, cv2_output=False, scale_factor=1):
+                 linelist_file=None, is_train=True, cv2_output=False, scale_factor=1, aug = None):
 
         self.args = args
         self.img_file = img_file
@@ -79,6 +79,7 @@ class HandMeshTSVDataset(object):
         self.joints_definition = ('Wrist', 'Thumb_1', 'Thumb_2', 'Thumb_3', 'Thumb_4', 'Index_1', 'Index_2', 'Index_3', 'Index_4', 'Middle_1', 
                                 'Middle_2', 'Middle_3', 'Middle_4', 'Ring_1', 'Ring_2', 'Ring_3', 'Ring_4', 'Pinky_1', 'Pinky_2', 'Pinky_3', 'Pinky_4')
         self.root_index = self.joints_definition.index('Wrist')
+        self.aug = aug
 
     def get_tsv_file(self, tsv_file):
         if tsv_file:
@@ -393,7 +394,7 @@ def vector_to_heatmaps(keypoints):
 class HandMeshTSVYamlDataset(HandMeshTSVDataset):
     """ TSVDataset taking a Yaml file for easy function call
     """
-    def __init__(self, args, yaml_file, is_train=True, cv2_output=False, scale_factor=1, s_j= None):
+    def __init__(self, args, yaml_file, is_train=True, cv2_output=False, scale_factor=1, s_j= None, aug = None):
         self.cfg = load_from_yaml_file(yaml_file)
         self.is_composite = self.cfg.get('composite', False)
         self.root = op.dirname(yaml_file)
@@ -414,4 +415,4 @@ class HandMeshTSVYamlDataset(HandMeshTSVDataset):
                                                 self.root)
 
         super(HandMeshTSVYamlDataset, self).__init__(
-            args, img_file, label_file, hw_file, linelist_file, is_train, cv2_output=cv2_output, scale_factor=scale_factor)
+            args, img_file, label_file, hw_file, linelist_file, is_train, cv2_output=cv2_output, scale_factor=scale_factor, aug = aug)
