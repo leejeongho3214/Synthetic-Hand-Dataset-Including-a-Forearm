@@ -26,7 +26,8 @@ np.random.seed(77)
 np.set_printoptions(precision=6, suppress=True)
 
 def build_dataset(args):   
-    general_path = "../../datasets/general_512"
+    # general_path = "../../datasets/general_512"
+    general_path = "../../datasets/w.o.bg"
     args.dataset = args.name.split("/")[1]
     
     standard_j =  [[1.8155813217163086, 0.15561437606811523, 1.1083018779754639], [2.406423807144165, 0.5383367538452148, 1.304732084274292], [2.731782913208008, 1.172149658203125, 1.335669994354248], [2.681248903274536, 1.7862586975097656, 1.2639415264129639], [2.3304858207702637, 2.234518527984619, 1.1211540699005127], [2.341385841369629, 1.37321138381958, 2.0816190242767334], [2.3071250915527344, 2.0882482528686523, 1.7858655452728271], [2.2974867820739746, 2.293468952178955, 1.3347842693328857], [2.31135630607605, 1.9055771827697754, 1.029522180557251], [1.851935863494873, 1.30698823928833, 2.1360342502593994], [1.8758153915405273, 2.124051094055176, 2.5652201175689697], [1.973258376121521, 2.431856632232666, 2.1032679080963135], [2.0731117725372314, 2.644174098968506, 1.616095781326294], [1.471063256263733, 1.2448792457580566, 2.0854008197784424], [1.4334478378295898, 1.9523506164550781, 1.5718071460723877], [1.6441740989685059, 1.7141218185424805, 1.1860997676849365], [1.760351300239563, 1.242896556854248, 1.305544137954712], [1.1308115720748901, 1.1045317649841309, 1.9674842357635498], [1.0435627698898315, 1.6727776527404785, 1.8200523853302002], [1.2601540088653564, 1.6069226264953613, 1.4762027263641357], [1.4999980926513672, 1.5507283210754395, 1.1099226474761963]]
@@ -37,11 +38,9 @@ def build_dataset(args):
             args, args.train_yaml, False, is_train=True, scale_factor=args.img_scale_factor, s_j = standard_j) 
         test_dataset = make_hand_data_loader(
             args, args.val_yaml, False, is_train=False, scale_factor=args.img_scale_factor, s_j = standard_j) 
-        
         aug_train_dataset = make_hand_data_loader(
             args, args.train_yaml, False, is_train=True, scale_factor=args.img_scale_factor, s_j = standard_j) 
 
-        
         train_dataset = ConcatDataset([ori_train_dataset, aug_train_dataset])
         
         
@@ -596,7 +595,7 @@ class Json_e(Json_transform):
                 self.store_path = os.path.join(root, "annotations/test/test_data_update.json")
             
         elif phase == 'train':
-            root = "../../datasets/general_512"
+            root = "../../datasets/w.o.bg"
             with open(os.path.join(root, "annotations/train/CISLAB_train_camera.json"), "r") as st_json:
                 self.camera = json.load(st_json)
             with open(os.path.join(root, "annotations/train/CISLAB_train_joint_3d.json"), "r") as st_json:
@@ -607,7 +606,7 @@ class Json_e(Json_transform):
             self.store_path = os.path.join(root, "annotations/train/full.pkl")
             
         elif phase == 'val':
-            root = "../../datasets/general_512"
+            root = "../../datasets/w.o.bg"
             with open(os.path.join(root, "annotations/val/CISLAB_val_camera.json"), "r") as st_json:
                 self.camera = json.load(st_json)
             with open(os.path.join(root, "annotations/val/CISLAB_val_joint_3d.json"), "r") as st_json:
@@ -618,7 +617,7 @@ class Json_e(Json_transform):
             self.store_path = os.path.join(root, "annotations/val/full.pkl")
     
 def main():   
-    Json_e(phase = "train").get_json_g(-1)
+    Json_e(phase = "train").get_json_g(130000)
     Json_e(phase = "val").get_json_g(13000)
     print("ENDDDDDD")
     

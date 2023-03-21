@@ -23,9 +23,9 @@ class Runner(object):
         self.valid_loader = valid_loader
         self.batch_time = batch_time
         self.now_loader = train_loader if phase == "TRAIN" else valid_loader
-        self.bar = Bar(colored(str(epoch)+'_'+phase, color='blue'), max=len(self.now_loader))
+        self.bar = Bar(colored(str(epoch) + '_' + phase, color='blue'), max=len(self.now_loader))
         self.model = model
-        self.optimizer = torch.optim.Adam(params=list(self.model.parameters()),
+        self.optimizer = torch.optim.Adam(params = list(self.model.parameters()),
                                  lr=args.lr,
                                  betas=(0.9, 0.999),
                                  weight_decay=0)
@@ -74,8 +74,7 @@ class Runner(object):
         tt = ' '.join(ctime(eta_seconds + end).split(' ')[1:-1])
         if iteration % (self.args.logging_steps / 2) == 0:
             self.args.logger.debug(
-                        ' '.join(
-                            ['Test =>> epoch: {ep}', 'iter: {iter}', '/{maxi}']
+                        ' '.join(['Test =>> epoch: {ep}', 'iter: {iter}', '/{maxi}']
                         ).format(ep=self.epoch, iter=iteration, maxi=len(self.now_loader))
                         + ' epe: {:.2f}mm, count: {} / {}, total_loss: {:.8f}, best_loss: {:.8f}'.format(
                             self.epe_losses.avg * 0.26,

@@ -127,7 +127,7 @@ class GraphConvolution(torch.nn.Module):
         device=torch.device('cuda')
         self.in_features = in_features
         self.out_features = out_features
-        adj_mat_size = (21, 21)
+
         # if mesh=='body':
         #     adj_indices = torch.load('../src/modeling/data/smpl_431_adjmat_indices.pt')
         #     adj_mat_value = torch.load('../src/modeling/data/smpl_431_adjmat_values.pt')
@@ -136,14 +136,10 @@ class GraphConvolution(torch.nn.Module):
         #     # adj_indices = torch.load('../modeling/data/mano_195_adjmat_indices.pt')
         #     # adj_mat_value = torch.load('../modeling/data/mano_195_adjmat_values.pt')
         #     # adj_mat_size = torch.load('../modeling/data/mano_195_adjmat_size.pt')
-
-        aa = torch.tensor(0).repeat(21)
-        for i in range(1, 21):
-            hh = torch.tensor(i).repeat(21)
-            aa = torch.cat([aa, hh], dim=0)
-        adj_indices = torch.arange(0, 21, 1).view(1, 21).repeat(1, 21)
-        adj_indices = torch.cat([aa.view(1, -1), adj_indices], dim=0)
-        adj_mat_value = torch.randint(0, 2, (1, 441))
+        adj_indices = torch.tensor([[0, 0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17, 17, 18, 18, 19, 19, 20],
+                        [1, 5, 9, 13, 17, 0, 2, 1, 3, 2, 4, 3, 0, 6, 5, 7, 6, 8, 7, 0, 10, 9, 11, 10, 12, 11, 0, 14, 13, 15, 14, 16, 15, 0, 18, 17, 19, 18, 20, 19]])
+        adj_mat_value = torch.ones(40)
+        adj_mat_size = (21, 21)
         self.adjmat = torch.sparse_coo_tensor(adj_indices, adj_mat_value, size=adj_mat_size).to(device)
 
         self.weight = torch.nn.Parameter(torch.FloatTensor(in_features, out_features))
