@@ -256,14 +256,11 @@ class HandMeshTSVDataset(object):
     def __getitem__(self, idx):
 
         img = self.get_image(idx)
-        img_key = self.get_img_key(idx)
         annotations = self.get_annotations(idx)
         annotations = annotations[0]
 
         center = annotations['center']
         scale = annotations['scale']
-        has_2d_joints = annotations['has_2d_joints']
-        has_3d_joints = annotations['has_3d_joints']
         joints_2d = np.asarray(annotations['2d_joints'])
         joints_3d = np.asarray(annotations['3d_joints'])
             
@@ -272,19 +269,14 @@ class HandMeshTSVDataset(object):
         if joints_3d.ndim==3:
             joints_3d = joints_3d[0]
 
-        # Get SMPL parameters, if available
-        has_smpl = np.asarray(annotations['has_smpl'])
-        pose = np.asarray(annotations['pose'])
-        betas = np.asarray(annotations['betas'])
-
         # Get augmentation parameters
         flip,pn,rot,sc = self.augm_params()
+
+        size = 224
 
         # Process image
         img = self.rgb_processing(img, center, sc*scale, rot, flip, pn)
         img = torch.from_numpy(img).float()
-        
-        size = 224
         img = transforms.Resize((size, size))(img)
         
         # Store image before normalization to use it in visualization
@@ -308,55 +300,12 @@ class HandMeshTSVDataset(object):
         else: 
             joints_3d_transformed = self.j3d_processing(joints_3d.copy(), rot, flip) 
         
-        
         # 2d pose augmentation
         joints_2d_transformed = self.j2d_processing(joints_2d.copy(), center, sc*scale, rot, flip)
+        joint_2d = ((torch.from_numpy(joints_2d_transformed).float()[:,:-1] * 100 + 112) / size).float()
+
         
-        ###################################
-        # Masking percantage
-        # We observe that 0% or 5% works better for 3D hand mesh
-        # We think this is probably becasue 3D vertices are quite sparse in the down-sampled hand mesh 
-        mvm_percent = 0.0 # or 0.05
-        ###################################
-
-        mjm_mask = np.ones((21,1))
-        if self.is_train:
-            num_joints = 21
-            pb = np.random.random_sample()
-            masked_num = int(pb * mvm_percent * num_joints) # at most x% of the joints could be masked
-            indices = np.random.choice(np.arange(num_joints),replace=False,size=masked_num)
-            mjm_mask[indices,:] = 0.0
-        mjm_mask = torch.from_numpy(mjm_mask).float()
-
-        mvm_mask = np.ones((195,1))
-        if self.is_train:
-            num_vertices = 195
-            pb = np.random.random_sample()
-            masked_num = int(pb * mvm_percent * num_vertices) # at most x% of the vertices could be masked
-            indices = np.random.choice(np.arange(num_vertices),replace=False,size=masked_num)
-            mvm_mask[indices,:] = 0.0
-        mvm_mask = torch.from_numpy(mvm_mask).float()
-        meta_data = {}
-        meta_data['ori_img'] = img
-        meta_data['pose'] = torch.from_numpy(self.pose_processing(pose, rot, flip)).float()
-        meta_data['betas'] = torch.from_numpy(betas).float()
-        meta_data['joints_3d'] = torch.from_numpy(joints_3d_transformed).float()
-        meta_data['has_3d_joints'] = has_3d_joints
-        meta_data['has_smpl'] = has_smpl
-        meta_data['mjm_mask'] = mjm_mask
-        meta_data['mvm_mask'] = mvm_mask
-
-        # Get 2D keypoints and apply augmentation transforms
-        meta_data['has_2d_joints'] = has_2d_joints
-        meta_data['joints_2d'] = torch.from_numpy(joints_2d_transformed).float()
-
-        meta_data['scale'] = float(sc * scale)
-        meta_data['center'] = np.asarray(center).astype(np.float32)
-        # transfromed_img = transforms.Resize((224, 224))(transfromed_img)
-
-        joint_2d = (meta_data['joints_2d'][:,:-1] * 100 + 112) * (size/224)
-        
-        return transfromed_img[(2,1,0),:,:], joint_2d, meta_data['joints_3d'][:, :3]
+        return transfromed_img[(2,1,0),:,:], joint_2d, torch.from_numpy(joints_3d_transformed).float()[:, :3]
     
 def blur_heatmaps(heatmaps):
     """Blurs heatmaps using GaussinaBlur of defined size"""

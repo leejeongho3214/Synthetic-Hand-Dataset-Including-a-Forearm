@@ -44,7 +44,7 @@ def pre_arg(args, eval):
     args.intermediate_size = int(-1)
     args.input_feat_dim = [2048,512,128]
     args.hidden_feat_dim = [1024,256,64]
-    args.which_gcn = [0,0,1]
+
     args.mesh_type = str('hand')
     args.run_eval_only = True
     args.device = str('cuda')

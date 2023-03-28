@@ -76,7 +76,7 @@ class GraphResBlock(torch.nn.Module):
         y = self.conv(y)
 
         trans_y = F.relu(self.norm2(y)).transpose(1,2)
-        y = self.lin2(trans_y).transpose(1,2)
+        y = self.lin2(trans_y).transpose(1,2)                       ## Unlike the conv layer, it use a only MLP layer without graph conv using the adjacency matrix
 
         z = x+y
 
@@ -166,9 +166,10 @@ class GraphConvolution(torch.nn.Module):
         else:
             output = []
             for i in range(x.shape[0]):
-                support = torch.matmul(x[i], self.weight)
+                support = torch.matmul(x[i], self.weight)       ## Adj matrix: 21 x 21 / x: 32 x 21 x 32 / weight: (32 x 32 -> input_feature D x output_feature D)
+                                                                ## support: adjust the dimension of input through the MLP layer 
                 # output.append(torch.matmul(self.adjmat, support))
-                output.append(spmm(self.adjmat, support))
+                output.append(spmm(self.adjmat, support))       ## Multiply the sparse matrix because of memory space
             output = torch.stack(output, dim=0)
             if self.bias is not None:
                 output = output + self.bias

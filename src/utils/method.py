@@ -110,13 +110,12 @@ class Runner(object):
             for iteration, (images, gt_2d_joints, gt_3d_joints) in enumerate(self.train_loader):
                 batch_size = images.size(0)
                 adjust_learning_rate(self.optimizer, self.epoch, self.args)  
-                gt_2d_joint = gt_2d_joints.cuda(); gt_3d_joints = gt_3d_joints.cuda(); images = images.cuda()
+                gt_2d_joint = (gt_2d_joints).cuda(); gt_3d_joints = gt_3d_joints.cuda(); images = images.cuda()
             
                 pred_2d_joints, pred_3d_joints= self.model(images)
 
                 loss_2d = keypoint_2d_loss(self.criterion_keypoints, pred_2d_joints, gt_2d_joint)
                 loss_3d = keypoint_3d_loss(self.criterion_keypoints, pred_3d_joints, gt_3d_joints)
-                
                 loss = loss_3d * self.args.loss_3d + loss_2d * self.args.loss_2d
                 
                 self.log_losses.update(loss.item(), batch_size)
@@ -131,12 +130,11 @@ class Runner(object):
                 pred_2d_joints[:,:,0] = pred_2d_joints[:,:,0] * images.size(3)
                 gt_2d_joint[:,:,1] = gt_2d_joint[:,:,1] * images.size(2) ## You Have to check whether weight and height is correct dimenstion
                 gt_2d_joint[:,:,0] = gt_2d_joint[:,:,0] * images.size(3) 
-                
 
                 if iteration == 0 or iteration == int(len(self.train_loader)/2) or iteration == len(self.train_loader) - 1:
                     fig = plt.figure()
-                    visualize_gt(images, gt_2d_joint, fig, iteration, self.epoch)
-                    visualize_pred(images, pred_2d_joints, fig, 'train', self.epoch, iteration, self.args, None)
+                    visualize_only_gt(images, gt_2d_joint, fig, 'train', self.epoch, iteration, self.args)
+                    
                     plt.close()
 
                 self.batch_time.update(time.time() - end)
@@ -155,7 +153,7 @@ class Runner(object):
                     batch_size = images.size(0)
                     
                     images = images.cuda()
-                    gt_2d_joint = gt_2d_joints.cuda()
+                    gt_2d_joint = (gt_2d_joints).cuda()
                     gt_3d_joints = gt_3d_joints.cuda()
 
                     pred_2d_joints, pred_3d_joints= self.model(images)
@@ -168,8 +166,7 @@ class Runner(object):
                     
                     if iteration == 0 or iteration == int(len(self.valid_loader)/2) or iteration == len(self.valid_loader) - 1:
                         fig = plt.figure()
-                        visualize_gt(images, gt_2d_joint, fig, iteration, self.epoch)
-                        visualize_pred(images, pred_2d_joints, fig, 'test', self.epoch, iteration, self.args, None)
+                        visualize_only_gt(images, gt_2d_joint, fig, 'test', self.epoch, iteration, self.args)
                         plt.close()
 
                     self.log_losses.update(loss.item(), batch_size)
@@ -179,6 +176,7 @@ class Runner(object):
                     eta_seconds = self.batch_time.avg * ((len(self.valid_loader) - iteration) + (self.args.epoch - self.epoch -1) * self.len_total)
 
                     self.test_log(iteration, eta_seconds, end)
+
                 self.writer.add_scalar("Loss/valid", self.log_losses.avg, self.epoch)
 
                 return self.log_losses.avg, self.count, self.pck_losses.avg * 100, self.batch_time

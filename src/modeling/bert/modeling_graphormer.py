@@ -124,7 +124,7 @@ class GraphormerLayer(nn.Module):
         self.attention = BertAttention(config)
         # self.has_graph_conv = config.graph_conv
         self.mesh_type = config.mesh_type
-        self.has_graph_conv = True
+        self.has_graph_conv = config.graph_conv
 
         if self.has_graph_conv == True:
             self.graph_conv = GraphResBlock(config.hidden_size, config.hidden_size, mesh_type=self.mesh_type)
@@ -156,8 +156,9 @@ class GraphormerLayer(nn.Module):
                 joints= attention_output[:, 0:21, :]
                 img_tokens = attention_output[:, 21:, :]
                 
-            vertices = self.graph_conv(joints)
-            joints_vertices = torch.cat([vertices, img_tokens],dim=1)
+            graph_joints = self.graph_conv(joints)
+            joints = joints + graph_joints
+            joints_vertices = torch.cat([joints, img_tokens],dim=1)
         else:
             joints_vertices = attention_output
 
