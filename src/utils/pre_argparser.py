@@ -38,7 +38,6 @@ def pre_arg(args, eval):
     args.model_name_or_path = str('../modeling/bert/bert-base-uncased/')
     args.config_name = str("")
     args.arch = "hrnet-w64"
-    args.num_hidden_layers = int(4)
     args.hidden_size = int(-1) 
     args.num_attention_heads = int(4)
     args.intermediate_size = int(-1)

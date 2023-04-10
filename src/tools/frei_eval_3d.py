@@ -1,8 +1,9 @@
 import os
 import sys
+import json
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"  # Arrange GPU devices starting from 0
-os.environ["CUDA_VISIBLE_DEVICES"]= "1" 
+os.environ["CUDA_VISIBLE_DEVICES"]= "0" 
 import numpy as np
 import torch
 from torch.utils import data
@@ -35,7 +36,7 @@ def dump(pred_out_path, xyz_pred_list, verts_pred_list):
 
 def main(args):
     root = 'output/ours'
-    n_l  = ["frei/3d_gcn_0_0_0"]
+    n_l  = ["frei/3d"]
     model_list = [os.path.join(root, n) for n in n_l]
     
     # model_path = "output/ours/our_part"
@@ -43,8 +44,7 @@ def main(args):
     # for (root, _, files) in os.walk(model_path):
     #     for file in files:
     #         if '.bin' in file:
-    #             model_list.append('/'.join(root.split('/')[:-1]))
-                
+    #             model_list.append('/'.join(root.split('/')[:-1]))           
                 
     for name in model_list:
         # name = "output/ours/dart/3d"
@@ -90,4 +90,3 @@ def main(args):
 if __name__ == "__main__":
     args= parse_args(eval = True)
     main(args)
-

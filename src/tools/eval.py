@@ -192,7 +192,8 @@ def main(gt_path, pred_path, output_dir, pred_file_name=None, set_name=None):
 
     # load predicted values
 
-    pred_file = _search_pred_file(pred_path, pred_file_name)
+    # pred_file = _search_pred_file(pred_path, pred_file_name)
+    pred_file = pred_file_name
     print('Loading predictions from %s' % pred_file)
     with open(pred_file, 'r') as fi:
         pred = json.load(fi)
@@ -216,7 +217,9 @@ def main(gt_path, pred_path, output_dir, pred_file_name=None, set_name=None):
         rng = range(db_size(set_name))
 
     # iterate over the dataset once
+    My_list = []
     for idx in rng:
+        
         if idx >= db_size(set_name):
             break
 
@@ -248,6 +251,7 @@ def main(gt_path, pred_path, output_dir, pred_file_name=None, set_name=None):
 
         # align predictions
         xyz_pred_aligned = align_w_scale(xyz, xyz_pred)
+        My_list.append([xyz.tolist(), xyz_pred_aligned.tolist()])
         if shape_is_mano:
             verts_pred_aligned = align_w_scale(verts, verts_pred)
         else:
@@ -269,13 +273,16 @@ def main(gt_path, pred_path, output_dir, pred_file_name=None, set_name=None):
                 verts_pred_aligned
             )
 
-
+    
     xyz_al_mean3d, _, xyz_al_auc3d, pck_xyz_al, thresh_xyz_al = eval_xyz_aligned.get_measures(0.0, 0.05, 100)
     print('Evaluation 3D KP ALIGNED results:')
     print('auc=%.3f, mean_kp3d_avg=%.2f cm' % (xyz_al_auc3d, xyz_al_mean3d * 100.0))
     
     name_list = pred_file.split('/')
     score_path = os.path.join("/".join(name_list[:-3]), f'general_scores.txt')
+    
+    with open(f'{"/".join(name_list[:-1])}/eval_joint_3d.json', "w") as fi:
+        json.dump(My_list, fi)
     
     if os.path.isfile(score_path):
         mode = "a"
