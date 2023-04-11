@@ -28,11 +28,11 @@ def parse_args(eval=False):
     parser.add_argument("--loss_3d_re", default=0, type=float)
     parser.add_argument("--crop", action='store_true')
     parser.add_argument("--reset", action='store_true')
+    parser.add_argument("--which_gcn", default='0, 0, 0', type = str)
     parser.add_argument("--aug", action='store_true')
     parser.add_argument("--arm", action='store_true')
-    parser.add_argument("--which_gcn", default= '0, 0, 0', type = str)
     parser.add_argument("--batch_size", default=32, type=int)
-    parser.add_argument("--num_hidden_layers", default=2, type=int)
+    parser.add_argument("--num_hidden_layers", default=4, type=int)
     args = parser.parse_args()
     args, logger = pre_arg(args, eval)
     args.logger = logger

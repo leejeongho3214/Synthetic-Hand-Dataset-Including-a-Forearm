@@ -13,7 +13,8 @@ def get_our_net(args):
     output_feat_dim = input_feat_dim[1:] + [3] ## origin => change to input_feat_dim
 
     # which encoder block to have graph convs
-    which_blk_graph = [int(item) for item in args.which_gcn.split(',')]
+    args.which_gcn =  args.which_gcn.split(',')
+    which_blk_graph = [int(item) for item in args.which_gcn]
     # init three transformer-encoder blocks in a loop
     for i in range(len(output_feat_dim)):
         config_class, model_class = BertConfig, Graphormer
