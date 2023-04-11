@@ -18,8 +18,6 @@ def parse_args(eval=False):
     parser.add_argument("--epoch", default=100, type=int) 
     parser.add_argument("--loss_2d", default=0, type=float)
     parser.add_argument("--loss_3d", default=1, type=float)
-    parser.add_argument("--loss_3d_mid", default=0, type=float)
-    parser.add_argument("--loss_3d_re", default=0, type=float)
     parser.add_argument("--reset", action='store_true')
     parser.add_argument("--which_gcn", default='0, 0, 0', type = str)
     parser.add_argument("--arm", action='store_true')
