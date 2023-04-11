@@ -119,7 +119,7 @@ class Runner(object):
                 loss_2d = keypoint_2d_loss(self.criterion_keypoints, pred_2d_joints, gt_2d_joint)
                 loss_3d = keypoint_3d_loss(self.criterion_keypoints, pred_3d_joints, gt_3d_joints)
                 
-                loss = loss_3d * self.args.loss_3d + loss_2d * self.args.loss_2d
+                loss = loss_3d * self.args.loss_3d + loss_2d * self.args.loss_2d 
                 
                 self.log_losses.update(loss.item(), batch_size)
                 self.log_2d_losses.update(loss_2d.item(), batch_size)

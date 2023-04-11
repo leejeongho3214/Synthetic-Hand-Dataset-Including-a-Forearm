@@ -27,7 +27,7 @@ def get_our_net(args):
         config.output_feature_dim = output_feat_dim[i]
         args.hidden_size = hidden_feat_dim[i]
         args.intermediate_size = int(args.hidden_size * 2)
-
+        
         if which_blk_graph[i] == 1:
             config.graph_conv = True
             # logger.info("Add Graph Conv")

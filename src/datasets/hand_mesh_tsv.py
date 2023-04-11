@@ -297,15 +297,15 @@ class HandMeshTSVDataset(object):
         self.s_j[:, 0]= -self.s_j[:, 0]
         self.s_j = self.s_j - self.s_j[0, :]
         
-        if self.args.set == "scale":
-            joints_3d_transformed = align_scale(joints_3d)
+        # if self.args.set == "scale":
+        #     joints_3d_transformed = align_scale(joints_3d)
             
-        elif self.args.set == "scale_rot":
-            joints_3d_transformed = align_scale_rot(self.s_j, joints_3d[:, :-1])
-            joints_3d_transformed = np.array(joints_3d_transformed)
+        # elif self.args.set == "scale_rot":
+        #     joints_3d_transformed = align_scale_rot(self.s_j, joints_3d[:, :-1])
+        #     joints_3d_transformed = np.array(joints_3d_transformed)
             
-        else: 
-            joints_3d_transformed = self.j3d_processing(joints_3d.copy(), rot, flip) 
+        # else: 
+        joints_3d_transformed = self.j3d_processing(joints_3d.copy(), rot, flip) 
         
         
         # 2d pose augmentation

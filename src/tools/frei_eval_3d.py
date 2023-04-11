@@ -57,32 +57,25 @@ def main(args):
         _model.cuda()
         pred_name = name.split("/")[-1]
         pred_out_path = os.path.join(name, f"pred_{pred_name}.json")
-        resp = True
-        # if os.path.isfile(pred_out_path):
-        #     print(colored("EXIST===> %s" % pred_out_path, "magenta"))
-        #     resp = True if input("Are you restart to infer?") == "o" else False
-        #     if resp: print("you select => o")
-        #     else: print("you select => x")
         
-        if resp:
-            test_dataset = Frei(args)
-            testset_loader = data.DataLoader(dataset=test_dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=False)
-            pbar = tqdm(total = len(testset_loader)) 
-            xyz_list, verts_list = list(), list()
-            
-            for images, _,  gt_3d_joints in testset_loader:
-                _model.eval()
-                with torch.no_grad():
-                    images = images.cuda()
-                    gt_3d_joints = gt_3d_joints.cuda()
-                    _, pred_3d_joints = _model(images)
-                    pred_3d_joints = np.array(pred_3d_joints.cpu())
-                    for xyz in pred_3d_joints:
-                        xyz_list.append(xyz)
-                        verts_list.append(np.zeros([778, 3]))
-                pbar.update(1)
-            pbar.close()
-            dump(pred_out_path, xyz_list, verts_list)
+        test_dataset = Frei(args)
+        testset_loader = data.DataLoader(dataset=test_dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=False)
+        pbar = tqdm(total = len(testset_loader)) 
+        xyz_list, verts_list = list(), list()
+        
+        for images, _,  gt_3d_joints in testset_loader:
+            _model.eval()
+            with torch.no_grad():
+                images = images.cuda()
+                gt_3d_joints = gt_3d_joints.cuda()
+                _, pred_3d_joints = _model(images)
+                pred_3d_joints = np.array(pred_3d_joints.cpu())
+                for xyz in pred_3d_joints:
+                    xyz_list.append(xyz)
+                    verts_list.append(np.zeros([778, 3]))
+            pbar.update(1)
+        pbar.close()
+        dump(pred_out_path, xyz_list, verts_list)
             
         os.system("python eval.py --pred_file_name %s" %pred_out_path)
             

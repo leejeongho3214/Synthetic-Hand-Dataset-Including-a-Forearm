@@ -91,10 +91,7 @@ class CustomDataset_g(Dataset):
     def img_preprocessing(self, idx, rgb_img):
         # in the rgb image we add pixel noise in a channel-wise manner
         if self.phase == 'train':
-            if idx < int(self.args.ratio_of_aug * self.__len__()):
-                pn = np.random.uniform(1-self.noise_factor, 1+self.noise_factor, 3)
-            else: 
-                pn = np.ones(3)
+            pn = np.random.uniform(1-self.noise_factor, 1+self.noise_factor, 3)
         else:
             pn = np.ones(3)
         rgb_img[:,:,0] = np.minimum(255.0, np.maximum(0.0, rgb_img[:,:,0]*pn[0]))
@@ -122,19 +119,6 @@ class CustomDataset_g(Dataset):
         scale = self.meta[f"{idx}"]['scale']   
         rot = self.meta[f"{idx}"]['rot']       
         bbox = np.array(self.meta[f"{idx}"]['bbox'], dtype = int)
-    
-        # if self.phase == "train":
-        #     image = crop(image, (self.raw_res/2, self.raw_res/2), scale, [self.raw_res, self.raw_res], rot=rot)    
-        #     if self.args.arm:
-        #         new_image = np.zeros([512, 512, 3])
-        #         a = max(bbox[0, 1] - 70, 0)
-        #         b = min(bbox[1,1] + 70, 512)
-        #         c = max(bbox[0,0] - 70, 0)
-        #         d = min(bbox[1,0] + 70, 512)
-        #         new_image[a : b, c : d] = image[a : b, c: d]
-        #         image = new_image.copy()
-        #     if self.args.rot_j:
-        #         joint_3d = self.j3d_processing(joint_3d, rot)   
 
         image = crop(image, (self.raw_res/2, self.raw_res/2), scale, [self.raw_res, self.raw_res], rot=rot)    
         if self.args.arm:
@@ -145,8 +129,8 @@ class CustomDataset_g(Dataset):
             d = min(bbox[1,0] + 70, 512)
             new_image[a : b, c : d] = image[a : b, c: d]
             image = new_image.copy()
-        if self.args.rot_j:
-            joint_3d = self.j3d_processing(joint_3d, rot)  
+            
+    #     joint_3d = self.j3d_processing(joint_3d, rot)  
         
         joint_2d = joint_2d / self.raw_res
         joint_2d, joint_3d = torch.tensor(joint_2d).float(), torch.tensor(joint_3d).float()

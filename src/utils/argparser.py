@@ -14,25 +14,18 @@ def parse_args(eval=False):
     parser.add_argument("name", default='None',
                         help = 'You write down to store the directory path',type=str)
     parser.add_argument("--dataset", default='ours', type=str, required=False)
-    parser.add_argument("--count", default=10, type=int)
-    parser.add_argument("--ratio_of_aug", default=1, type=float,
-                        help="You can use color jitter to train data as many as you want, according to this ratio")
-    parser.add_argument("--ratio_of_add", default=0, type=float,
-                        help = "set ratio that how many you add our dataset")
-    parser.add_argument("--set", default=None, type=str) 
-    parser.add_argument("--rot_j", action = "store_true")
+    parser.add_argument("--count", default=10, type=int) 
     parser.add_argument("--epoch", default=100, type=int) 
     parser.add_argument("--loss_2d", default=0, type=float)
     parser.add_argument("--loss_3d", default=1, type=float)
     parser.add_argument("--loss_3d_mid", default=0, type=float)
     parser.add_argument("--loss_3d_re", default=0, type=float)
-    parser.add_argument("--crop", action='store_true')
     parser.add_argument("--reset", action='store_true')
     parser.add_argument("--which_gcn", default='0, 0, 0', type = str)
-    parser.add_argument("--aug", action='store_true')
     parser.add_argument("--arm", action='store_true')
     parser.add_argument("--batch_size", default=32, type=int)
     parser.add_argument("--num_hidden_layers", default=4, type=int)
+    parser.add_argument("--gcn_token", default = None, type = str)
     args = parser.parse_args()
     args, logger = pre_arg(args, eval)
     args.logger = logger
@@ -56,10 +49,9 @@ def load_model(args):
     if args.name.split("/")[0] != "final_model":
         if args.reset: 
             if os.path.isfile(os.path.join(args.root_path, args.name,'checkpoint-good/state_dict.bin')):
-                if True if input("There is resume_point but do you want to delete?") == "o" else False:
-                    reset_folder(log_dir); reset_folder(os.path.join(args.root_path, args.name)); 
-                    print(colored("Ignore the check-point model", "green"))
-                    args.reset = "resume but init"
+                reset_folder(log_dir); reset_folder(os.path.join(args.root_path, args.name))
+                print(colored("Ignore the check-point model", "green"))
+                args.reset = "resume but init"
             else:
                 args.reset = "init"
         else: 
