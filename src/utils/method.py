@@ -160,14 +160,14 @@ class Runner(object):
         else:
             self.model.eval()
             with torch.no_grad():
-                for iteration, (images, gt_2d_joints, gt_3d_joints) in enumerate(self.valid_loader):
+                for iteration, (images, gt_2d_joints, gt_3d_joints, _) in enumerate(self.valid_loader):
                     batch_size = images.size(0)
                     
                     images = images.cuda()
                     gt_2d_joint = gt_2d_joints.cuda()
                     gt_3d_joints = gt_3d_joints.cuda()
 
-                    pred_2d_joints, pred_3d_joints, _ = self.model(images)
+                    pred_2d_joints, pred_3d_joints, _ , _= self.model(images)
                     loss = reconstruction_error(np.array(pred_3d_joints.detach().cpu()), np.array(gt_3d_joints.detach().cpu()))
                     
                     gt_2d_joint[:,:,1] = gt_2d_joint[:,:,1] * images.size(2) ## You Have to check whether weight and height is correct dimenstion
