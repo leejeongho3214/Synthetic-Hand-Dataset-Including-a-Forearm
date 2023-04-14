@@ -34,6 +34,7 @@ class Runner(object):
         self.criterion_keypoints = torch.nn.MSELoss(reduction='none').cuda(args.device)
         self.log_losses = AverageMeter()
         self.log_2d_losses = AverageMeter()
+        self.log_hrnet_losses = AverageMeter()
         self.log_3d_losses = AverageMeter()
         self.log_3d_re_losses = AverageMeter()
         self.pck_losses = AverageMeter()
@@ -109,21 +110,26 @@ class Runner(object):
     def our(self, end):
         if self.phase == 'TRAIN':
             self.model.train()
-            for iteration, (images, gt_2d_joints, gt_3d_joints) in enumerate(self.train_loader):
+            for iteration, (images, gt_2d_joints, gt_3d_joints, heatmap) in enumerate(self.train_loader):
                 batch_size = images.size(0)
                 adjust_learning_rate(self.optimizer, self.epoch, self.args)  
-                gt_2d_joint, gt_3d_joints, images = gt_2d_joints.cuda(), gt_3d_joints.cuda(), images.cuda()
+                gt_2d_joint, gt_3d_joints, images, heatmap = gt_2d_joints.cuda(), gt_3d_joints.cuda(), images.cuda(), heatmap.cuda()
                 
-                pred_2d_joints, pred_3d_joints= self.model(images)
+                pred_2d_joints, pred_3d_joints, pred_heatmap, pred_hrnet = self.model(images)
+                # pred_hrnet = torch.tensor(pred_hrnet * 4) # multiply 4 because of 56 x 56 heatmap
 
                 loss_2d = keypoint_2d_loss(self.criterion_keypoints, pred_2d_joints, gt_2d_joint)
+                # loss_hrnet = keypoint_2d_loss(self.criterion_keypoints, pred_hrnet.cuda(), gt_2d_joint)
                 loss_3d = keypoint_3d_loss(self.criterion_keypoints, pred_3d_joints, gt_3d_joints)
+                loss_hrnet = JointsMSELoss(use_target_weight=False).cuda()(pred_heatmap, heatmap, None)
                 
-                loss = loss_3d * self.args.loss_3d + loss_2d * self.args.loss_2d 
+                loss = loss_3d * self.args.loss_3d + loss_2d * self.args.loss_2d + loss_hrnet * self.args.loss_hrnet
                 
                 self.log_losses.update(loss.item(), batch_size)
                 self.log_2d_losses.update(loss_2d.item(), batch_size)
                 self.log_3d_losses.update(loss_3d.item(), batch_size)
+                self.log_hrnet_losses.update(loss_hrnet.item(), batch_size)
+                
 
                 self.optimizer.zero_grad()
                 loss.backward()
@@ -161,7 +167,7 @@ class Runner(object):
                     gt_2d_joint = gt_2d_joints.cuda()
                     gt_3d_joints = gt_3d_joints.cuda()
 
-                    pred_2d_joints, pred_3d_joints= self.model(images)
+                    pred_2d_joints, pred_3d_joints, _ = self.model(images)
                     loss = reconstruction_error(np.array(pred_3d_joints.detach().cpu()), np.array(gt_3d_joints.detach().cpu()))
                     
                     gt_2d_joint[:,:,1] = gt_2d_joint[:,:,1] * images.size(2) ## You Have to check whether weight and height is correct dimenstion

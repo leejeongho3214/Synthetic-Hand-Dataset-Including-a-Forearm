@@ -40,7 +40,7 @@ class Graphormer_Hand_Network(torch.nn.Module):
     def forward(self, images):
         batch_size = images.size(0)
 
-        image_feat, grid_feat = self.backbone(images)
+        image_feat, grid_feat, pred_heatmap, pred_hrnet = self.backbone(images)
         image_feat = image_feat.view(batch_size, 1, 2048).expand(-1, 21, -1)
 
         grid_feat = torch.flatten(grid_feat, start_dim=2)
@@ -58,4 +58,4 @@ class Graphormer_Hand_Network(torch.nn.Module):
         cam_param = cam_param.squeeze()
         pred_2d_joints = orthographic_projection(pred_3d_joints, cam_param)
         
-        return pred_2d_joints, pred_3d_joints
+        return pred_2d_joints, pred_3d_joints, pred_heatmap, pred_hrnet

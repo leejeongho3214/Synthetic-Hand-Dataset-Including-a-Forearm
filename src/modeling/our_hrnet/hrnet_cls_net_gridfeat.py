@@ -266,6 +266,7 @@ class HighResolutionNet(nn.Module):
                                bias=False)
         self.bn2 = nn.BatchNorm2d(64, momentum=BN_MOMENTUM)
         self.relu = nn.ReLU(inplace=True)
+        self.mlp = nn.Linear(64, 21, device = 'cuda')  # whether bias remove or remain~?
 
         self.stage1_cfg = cfg['MODEL']['EXTRA']['STAGE1']
         num_channels = self.stage1_cfg['NUM_CHANNELS'][0]
@@ -489,9 +490,40 @@ class HighResolutionNet(nn.Module):
             yy = F.avg_pool2d(yy, kernel_size=yy.size()
                                  [2:]).view(yy.size(0), -1)
 
-        # y = self.classifier(y)
-        return yy, y 
+        pred_heatmap = self.mlp(y_list[0].permute(0, 2, 3, 1)).permute(0, 3, 1, 2) # y_list[0] is a B x C x (res_input/4) x (res_input/4) as 32 x 64 x 56 x 56 and make a dimnesion of this heatmap as joint num to get a joint coord
+        pred_joints, _ = self.get_max_preds(np.array(pred_heatmap.detach().cpu()))
+         
+        return yy, y, pred_heatmap, pred_joints
+    
+    def get_max_preds(self, batch_heatmaps):
+        '''
+        get predictions from score maps
+        heatmaps: numpy.ndarray([batch_size, num_joints, height, width])
+        '''
+        assert isinstance(batch_heatmaps, np.ndarray), \
+            'batch_heatmaps should be numpy.ndarray'
+        assert batch_heatmaps.ndim == 4, 'batch_images should be 4-ndim'
 
+        batch_size = batch_heatmaps.shape[0]
+        num_joints = batch_heatmaps.shape[1]
+        width = batch_heatmaps.shape[3]
+        heatmaps_reshaped = batch_heatmaps.reshape((batch_size, num_joints, -1))
+        idx = np.argmax(heatmaps_reshaped, 2)
+        maxvals = np.amax(heatmaps_reshaped, 2)
+
+        maxvals = maxvals.reshape((batch_size, num_joints, 1))
+        idx = idx.reshape((batch_size, num_joints, 1))
+
+        preds = np.tile(idx, (1, 1, 2)).astype(np.float32)
+
+        preds[:, :, 0] = (preds[:, :, 0]) % width
+        preds[:, :, 1] = np.floor((preds[:, :, 1]) / width)
+
+        pred_mask = np.tile(np.greater(maxvals, 0.0), (1, 1, 2))
+        pred_mask = pred_mask.astype(np.float32)
+
+        preds *= pred_mask
+        return preds, maxvals
 
 
     def init_weights(self, pretrained='',):

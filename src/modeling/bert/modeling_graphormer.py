@@ -139,9 +139,8 @@ class GraphormerLayer(nn.Module):
         attention_output = attention_outputs[0]
 
         if self.has_graph_conv==True:
-            joints= attention_output[:, 0:21, :]
+            joints = attention_output[:, 0:21, :]
             img_tokens = attention_output[:, 21:, :]
-                
             graph_joints = self.graph_conv(joints)
             joints_vertices = torch.cat([graph_joints, img_tokens],dim=1)
         else:
