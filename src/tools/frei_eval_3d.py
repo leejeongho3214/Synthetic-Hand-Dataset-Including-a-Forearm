@@ -45,7 +45,6 @@ def main(args):
     #         if '.bin' in file:
     #             model_list.append('/'.join(root.split('/')[:-1]))
                 
-                
     for name in model_list:
         # name = "output/ours/dart/3d"
         args.name = os.path.join(name, "checkpoint-good/state_dict.bin")
