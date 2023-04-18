@@ -35,17 +35,9 @@ def dump(pred_out_path, xyz_pred_list, verts_pred_list):
 
 def main(args):
     root = 'output/ours'
-    n_l  = ["frei/3d_gcn_add_0_0_1_layer_3"]
+    n_l  = ["frei/3d_hrnet_axu_loss_heatmap_gcn_0_0_1_layer2"]
     model_list = [os.path.join(root, n) for n in n_l]
-    
-    # model_path = "output/ours/our_part"
-    # model_list = list()
-    # for (root, _, files) in os.walk(model_path):
-    #     for file in files:
-    #         if '.bin' in file:
-    #             model_list.append('/'.join(root.split('/')[:-1]))
-                
-                
+        
     for name in model_list:
         # name = "output/ours/dart/3d"
         args.name = os.path.join(name, "checkpoint-good/state_dict.bin")
@@ -68,7 +60,7 @@ def main(args):
             with torch.no_grad():
                 images = images.cuda()
                 gt_3d_joints = gt_3d_joints.cuda()
-                _, pred_3d_joints = _model(images)
+                _, pred_3d_joints, _, _ = _model(images)
                 pred_3d_joints = np.array(pred_3d_joints.cpu())
                 for xyz in pred_3d_joints:
                     xyz_list.append(xyz)
