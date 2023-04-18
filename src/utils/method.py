@@ -116,12 +116,11 @@ class Runner(object):
                 gt_2d_joint, gt_3d_joints, images, heatmap = gt_2d_joints.cuda(), gt_3d_joints.cuda(), images.cuda(), heatmap.cuda()
                 
                 pred_2d_joints, pred_3d_joints, pred_heatmap, pred_hrnet = self.model(images)
-                # pred_hrnet = torch.tensor(pred_hrnet * 4) # multiply 4 because of 56 x 56 heatmap
+                pred_hrnet = torch.tensor(pred_hrnet * 4) # multiply 4 because of 56 x 56 heatmap
 
-                loss_2d = keypoint_2d_loss(self.criterion_keypoints, pred_2d_joints, gt_2d_joint)
-                # loss_hrnet = keypoint_2d_loss(self.criterion_keypoints, pred_hrnet.cuda(), gt_2d_joint)
+                loss_2d = keypoint_2d_loss(self.criterion_keypoints, pred_2d_joints, gt_2d_joint)            
                 loss_3d = keypoint_3d_loss(self.criterion_keypoints, pred_3d_joints, gt_3d_joints)
-                loss_hrnet = JointsMSELoss(use_target_weight=False).cuda()(pred_heatmap, heatmap, None)
+                loss_hrnet = JointsMSELoss(use_target_weight=False).cuda()(pred_heatmap, heatmap, None) if self.args.heatmap else keypoint_2d_loss(self.criterion_keypoints, pred_hrnet.cuda(), gt_2d_joint) 
                 
                 loss = loss_3d * self.args.loss_3d + loss_2d * self.args.loss_2d + loss_hrnet * self.args.loss_hrnet
                 
