@@ -35,7 +35,7 @@ def dump(pred_out_path, xyz_pred_list, verts_pred_list):
 
 def main(args):
     root = 'output/ours'
-    n_l  = ["frei/3d_hrnet_axu_loss_heatmap_gcn_0_0_1_layer2"]
+    n_l  = ["frei/gcn/hrnet/loss/heatmap/add/gcn_0_0_1_layer_2"]
     model_list = [os.path.join(root, n) for n in n_l]
         
     for name in model_list:
