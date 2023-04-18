@@ -24,7 +24,6 @@ def parse_args(eval=False):
     parser.add_argument("--arm", action='store_true')
     parser.add_argument("--batch_size", default=32, type=int)
     parser.add_argument("--num_hidden_layers", default=4, type=int)
-    parser.add_argument("--gcn_token", default = None, type = str)
     args = parser.parse_args()
     args, logger = pre_arg(args, eval)
     args.logger = logger
