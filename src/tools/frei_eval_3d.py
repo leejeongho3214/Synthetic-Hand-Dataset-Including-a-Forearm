@@ -37,7 +37,7 @@ def main(args):
     n_l  = ["frei/gcn/hrnet/loss/heatmap/add/gcn_0_0_1_layer_2"]
     model_list = [os.path.join(root, n) for n in n_l]
     
-    # model_path = "output/ours/our_part"
+    # model_path = "src/tools/output/ours/frei/gcn/hrnet/loss/2d_joint"
     # model_list = list()
     # for (root, _, files) in os.walk(model_path):
     #     for file in files:
