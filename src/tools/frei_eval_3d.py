@@ -65,7 +65,7 @@ def main(args):
             _model.eval()
             with torch.no_grad():
                 images = images.cuda()
-                _, pred_3d_joints = _model(images)
+                _, pred_3d_joints, _, _ = _model(images)
                 pred_3d_joints = np.array(pred_3d_joints.cpu())
                 for idx, xyz in enumerate(pred_3d_joints):
                     xyz_list.append(xyz)
