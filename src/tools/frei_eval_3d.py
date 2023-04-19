@@ -18,20 +18,19 @@ from src.utils.dataset_loader import Frei
 from tqdm import tqdm    
 
 
-def dump(pred_out_path, xyz_pred_list, verts_pred_list):
+def dump(pred_out_path, xyz_pred_list, gt_list):
     """ Save predictions into a json file. """
     # make sure its only lists
     xyz_pred_list = [x.tolist() for x in xyz_pred_list]
-    verts_pred_list = [x.tolist() for x in verts_pred_list]
-
     # save to a json
     with open(pred_out_path, 'w') as fo:
         json.dump(
             [
                 xyz_pred_list,
-                verts_pred_list
+                gt_list
+                
             ], fo)
-    print('Dumped %d joints and %d verts predictions to %s' % (len(xyz_pred_list), len(verts_pred_list), pred_out_path))
+    print('Dumped %d joints to %s' % (len(xyz_pred_list),  pred_out_path))
 
 def main(args):
     root = 'output/ours'
@@ -60,21 +59,21 @@ def main(args):
         test_dataset = Frei(args)
         testset_loader = data.DataLoader(dataset=test_dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=False)
         pbar = tqdm(total = len(testset_loader)) 
-        xyz_list, verts_list = list(), list()
+        xyz_list, verts_list, gt_list = list(), list(), list()
         
         for images, _,  gt_3d_joints in testset_loader:
             _model.eval()
             with torch.no_grad():
                 images = images.cuda()
-                gt_3d_joints = gt_3d_joints.cuda()
                 _, pred_3d_joints = _model(images)
                 pred_3d_joints = np.array(pred_3d_joints.cpu())
-                for xyz in pred_3d_joints:
+                for idx, xyz in enumerate(pred_3d_joints):
                     xyz_list.append(xyz)
                     verts_list.append(np.zeros([778, 3]))
+                    gt_list.append(gt_3d_joints[idx].tolist())
             pbar.update(1)
         pbar.close()
-        dump(pred_out_path, xyz_list, verts_list)
+        dump(pred_out_path, xyz_list, gt_list)
             
         os.system("python eval.py --pred_file_name %s" %pred_out_path)
             
