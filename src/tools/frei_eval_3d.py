@@ -34,7 +34,7 @@ def dump(pred_out_path, xyz_pred_list, gt_list):
 
 def main(args):
     root = 'output/ours'
-    n_l  = ["frei/gcn/hrnet/loss/heatmap/add/gcn_0_0_1_layer_2"]
+    n_l  = ["frei/ori"]
     model_list = [os.path.join(root, n) for n in n_l]
     
     # model_path = "output/ours/our_part"
@@ -65,7 +65,7 @@ def main(args):
             _model.eval()
             with torch.no_grad():
                 images = images.cuda()
-                _, pred_3d_joints, _, _ = _model(images)
+                _, pred_3d_joints= _model(images)
                 pred_3d_joints = np.array(pred_3d_joints.cpu())
                 for idx, xyz in enumerate(pred_3d_joints):
                     xyz_list.append(xyz)

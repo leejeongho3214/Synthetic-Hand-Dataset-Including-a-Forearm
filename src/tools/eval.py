@@ -294,12 +294,7 @@ def main(gt_path, pred_path, output_dir, pred_file_name=None, set_name=None):
         
     with open(os.path.join("/".join(name_list[:-2]), f'max_error_index.json'), "w") as f:
         json.dump(max_index, f) 
-        
-    with open(os.path.join("/".join(name_list[:-2]), f'eval_joint_3d.json'), "w") as f:
-        json.dump(aligned_list, f) 
-        
-    with open(os.path.join("/".join(name_list[:-2]), f'gt_joint_3d.json'), "w") as f:
-        json.dump(gt_list, f) 
+
     
     if os.path.isfile(score_path):
         mode = "a"
