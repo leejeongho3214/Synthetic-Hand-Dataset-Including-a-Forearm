@@ -33,16 +33,8 @@ def dump(pred_out_path, xyz_pred_list, gt_list):
     print('Dumped %d joints to %s' % (len(xyz_pred_list),  pred_out_path))
 
 def main(args):
-    root = 'output/ours'
-    n_l  = ["frei/ori"]
-    model_list = [os.path.join(root, n) for n in n_l]
-    
-    # model_path = "src/tools/output/ours/frei/gcn/hrnet/loss/2d_joint"
-    # model_list = list()
-    # for (root, _, files) in os.walk(model_path):
-    #     for file in files:
-    #         if '.bin' in file:
-    #             model_list.append('/'.join(root.split('/')[:-1]))
+    n_l  = ["src/tools/output/ours/frei/gcn/hrnet/loss/heatmap/add/gcn_0_0_1_layer_1"]
+    model_list = ['/'.join(n.split('/')[2:]) for n in n_l]
                 
     for name in model_list:
         # name = "output/ours/dart/3d"
