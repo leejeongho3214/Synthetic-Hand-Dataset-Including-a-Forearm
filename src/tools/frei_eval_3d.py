@@ -33,10 +33,9 @@ def dump(pred_out_path, xyz_pred_list, gt_list):
     print('Dumped %d joints to %s' % (len(xyz_pred_list),  pred_out_path))
 
 def main(args):
-    root = 'output/ours'
-    n_l  = ["frei/gcn/hrnet/loss/heatmap/add/gcn_0_0_1_layer_2"]
-    model_list = [os.path.join(root, n) for n in n_l]
-        
+    n_l  = ["src/tools/output/ours/frei/gcn/hrnet/loss/heatmap/add/gcn_0_0_1_layer_1"]
+    model_list = ['/'.join(n.split('/')[2:]) for n in n_l]
+                
     for name in model_list:
         # name = "output/ours/dart/3d"
         args.name = os.path.join(name, "checkpoint-good/state_dict.bin")
