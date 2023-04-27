@@ -33,7 +33,7 @@ def dump(pred_out_path, xyz_pred_list, gt_list):
     print('Dumped %d joints to %s' % (len(xyz_pred_list),  pred_out_path))
 
 def main(args):
-    n_l  = ["src/tools/output/ours/frei/hrnet/gcn/concat_emb_joint/emb_3_layer1"]
+    n_l  = ["src/tools/output/ours/frei/hrnet/gcn/copy_img_feat/heatmap/add/gcn_0_0_1_layer_4"]
     model_list = ['/'.join(n.split('/')[2:]) for n in n_l]
                 
     for name in model_list:

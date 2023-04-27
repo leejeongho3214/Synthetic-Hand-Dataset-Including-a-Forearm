@@ -289,7 +289,7 @@ def main(gt_path, pred_path, output_dir, pred_file_name=None, set_name=None):
      
         
     name_list = pred_file.split('/')
-    score_path = os.path.join("/".join(name_list[:-3]), f'general_scores.txt')
+    score_path = os.path.join("/".join(name_list[:2]), f'general_scores.txt')
     
         
     with open(os.path.join("/".join(name_list[:-2]), f'max_error_index.json'), "w") as f:
