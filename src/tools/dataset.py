@@ -76,7 +76,7 @@ class CustomDataset_g(Dataset):
                                                                                                                     self.__dict__.get('rot_factor'), self.__dict__.get('raw_res'), self.__dict__.get('img_res')))
         
     def __len__(self):
-        return len(self.meta) - 2
+        return int((len(self.meta) - 2) * self.args.ratio_of_dataset)
         
     def __getitem__(self, idx):
         
@@ -87,7 +87,7 @@ class CustomDataset_g(Dataset):
                                             transforms.Resize((224, 224))])(image)
         heatmap = GenerateHeatmap(56, 21)(joint_2d / 4)
         
-        return transformed_img, joint_2d, joint_3d
+        return transformed_img, joint_2d, joint_3d, heatmap
     
     def img_preprocessing(self, idx, rgb_img):
         # in the rgb image we add pixel noise in a channel-wise manner
