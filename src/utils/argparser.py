@@ -24,6 +24,7 @@ def parse_args(eval=False):
     parser.add_argument("--which_gcn", default='0, 0, 0', help = 'Which encoder block you use', type = str)
     parser.add_argument("--arm", action='store_true', help = 'Whether you crop the forearm in image',)
     parser.add_argument("--batch_size", default=32, type=int)
+    parser.add_argument("--ratio_of_dataset", default=1.0, type=float)
     parser.add_argument("--num_hidden_layers", default=4, type=int, help = 'How many layer you use in a encoder blcok')
     args = parser.parse_args()
     args, logger = pre_arg(args, eval)
