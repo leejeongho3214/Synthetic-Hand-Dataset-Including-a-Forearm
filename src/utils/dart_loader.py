@@ -97,11 +97,10 @@ class DARTset():
                         max(-2*self.rot_factor, np.random.randn()*self.rot_factor))
                     joint = torch.tensor(self.j2d_processing(np.array(joint), scale, rot))
                 img = crop(img, [img.shape[1]/2, img.shape[1]/2], scale, [img.shape[1], img.shape[1]], rot = rot)
-                # if self.args.rot_j: joint_3d = torch.tensor(self.j3d_processing(self.get_joints_3d(idx), rot))
+                if self.args.rot_j: joint_3d = torch.tensor(self.j3d_processing(self.get_joints_3d(idx), rot))
             
         img = torch.from_numpy(img.transpose(2, 0, 1)).float()
         img = self.transform_func(img)
-        heatmap = GenerateHeatmap(56, 21)(joint / 4)
         
         # img = transforms.Resize([224, 224])(img)
         # ori_img = np.array(img.permute(1, 2, 0)).copy()
@@ -118,38 +117,7 @@ class DARTset():
         # plt.savefig("rot.jpg")
 
         return img, joint, joint_3d
-class GenerateHeatmap():
-    def __init__(self, output_res, num_parts):
-        self.output_res = output_res
-        self.num_parts = num_parts
-        sigma = self.output_res/64
-        self.sigma = sigma
-        size = 6*sigma + 3
-        x = np.arange(0, size, 1, float)
-        y = x[:, np.newaxis]
-        x0, y0 = 3*sigma + 1, 3*sigma + 1
-        self.g = np.exp(- ((x - x0) ** 2 + (y - y0) ** 2) / (2 * sigma ** 2))
 
-    def __call__(self, p):
-        hms = np.zeros(shape=(self.num_parts, self.output_res,
-                       self.output_res), dtype=np.float32)
-        sigma = self.sigma
-        for idx, pt in enumerate(p):
-            if pt[0] > 0:
-                x, y = int(pt[0]), int(pt[1])
-                if x < 0 or y < 0 or x >= self.output_res or y >= self.output_res:
-                    continue
-                ul = int(x - 3*sigma - 1), int(y - 3*sigma - 1)
-                br = int(x + 3*sigma + 2), int(y + 3*sigma + 2)
-
-                c, d = max(0, -ul[0]), min(br[0], self.output_res) - ul[0]
-                a, b = max(0, -ul[1]), min(br[1], self.output_res) - ul[1]
-
-                cc, dd = max(0, ul[0]), min(br[0], self.output_res)
-                aa, bb = max(0, ul[1]), min(br[1], self.output_res)
-                hms[idx, aa:bb, cc:dd] = np.maximum(
-                    hms[idx, aa:bb, cc:dd], self.g[a:b, c:d])
-        return hms
     def get_joints_3d(self, idx):
         joints = self.joints_3d[idx].copy()
         # * Transfer from UNITY coordinate system
@@ -214,7 +182,7 @@ class GenerateHeatmap():
 
         # in the rgb image we add pixel noise in a channel-wise manner
         if self.data_split == 'train':
-            if idx < self.__len__():
+            if idx < int(self.args.ratio_of_aug * self.__len__()):
                 pn = np.random.uniform(1-self.noise_factor, 1+self.noise_factor, 3)
             else: 
                 pn = np.ones(3)

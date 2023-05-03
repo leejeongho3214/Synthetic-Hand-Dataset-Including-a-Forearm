@@ -1,17 +1,14 @@
-import pickle
+# import pickle
+import pickle5 as pickle
 import sys
 from matplotlib import pyplot as plt
-from tqdm import tqdm
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 from src.utils.miscellaneous import mkdir
 from src.utils.comm import is_main_process
 from src.datasets.build import make_hand_data_loader
-import json
-import math
 import torch
 import os.path as op
-import random
 try:
     from src.utils.dart_loader import DARTset
 except:
@@ -26,7 +23,8 @@ np.random.seed(77)
 np.set_printoptions(precision=6, suppress=True)
 
 def build_dataset(args):   
-    general_path = "../../datasets/general_512"
+    # general_path = "../../datasets/general_512"
+    general_path = "../../datasets/without_bg_revision"
     args.dataset = args.name.split("/")[1]
     
     standard_j =  [[1.8155813217163086, 0.15561437606811523, 1.1083018779754639], [2.406423807144165, 0.5383367538452148, 1.304732084274292], [2.731782913208008, 1.172149658203125, 1.335669994354248], [2.681248903274536, 1.7862586975097656, 1.2639415264129639], [2.3304858207702637, 2.234518527984619, 1.1211540699005127], [2.341385841369629, 1.37321138381958, 2.0816190242767334], [2.3071250915527344, 2.0882482528686523, 1.7858655452728271], [2.2974867820739746, 2.293468952178955, 1.3347842693328857], [2.31135630607605, 1.9055771827697754, 1.029522180557251], [1.851935863494873, 1.30698823928833, 2.1360342502593994], [1.8758153915405273, 2.124051094055176, 2.5652201175689697], [1.973258376121521, 2.431856632232666, 2.1032679080963135], [2.0731117725372314, 2.644174098968506, 1.616095781326294], [1.471063256263733, 1.2448792457580566, 2.0854008197784424], [1.4334478378295898, 1.9523506164550781, 1.5718071460723877], [1.6441740989685059, 1.7141218185424805, 1.1860997676849365], [1.760351300239563, 1.242896556854248, 1.305544137954712], [1.1308115720748901, 1.1045317649841309, 1.9674842357635498], [1.0435627698898315, 1.6727776527404785, 1.8200523853302002], [1.2601540088653564, 1.6069226264953613, 1.4762027263641357], [1.4999980926513672, 1.5507283210754395, 1.1099226474761963]]
@@ -37,7 +35,7 @@ def build_dataset(args):
             args, args.train_yaml, False, is_train=True, scale_factor=args.img_scale_factor, s_j = standard_j) 
         test_dataset = make_hand_data_loader(
             args, args.val_yaml, False, is_train=False, scale_factor=args.img_scale_factor, s_j = standard_j) 
-        
+
         if args.dataset == "both":
             o_dataset = CustomDataset_g(args, general_path + "/annotations/train", standard_j)
             train_dataset = ConcatDataset([train_dataset, o_dataset])
@@ -63,9 +61,10 @@ class CustomDataset_g(Dataset):
         self.path = path
         self.phase = path.split("/")[-1]
         self.root = "/".join(path.split("/")[:-2])
-        with open(f"{path}/full.pkl", "rb") as st_json:
+        with open(f"{path}/revision_data.pkl", "rb") as st_json:
             self.meta = pickle.load(st_json)
-        
+        self.bg_path = "../../datasets/without_bg_revision/background"
+        self.bg_list = os.listdir(self.bg_path)
         self.s_j = standard_j
         self.img_path = os.path.join(self.root, f"images/{self.phase}")
         self.raw_res = 512
@@ -76,7 +75,7 @@ class CustomDataset_g(Dataset):
                                                                                                                     self.__dict__.get('rot_factor'), self.__dict__.get('raw_res'), self.__dict__.get('img_res')))
         
     def __len__(self):
-        return int((len(self.meta) - 2) * self.args.ratio_of_dataset)
+        return len(self.meta) - 1
         
     def __getitem__(self, idx):
         
@@ -85,16 +84,18 @@ class CustomDataset_g(Dataset):
 
         transformed_img = transforms.Compose([transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
                                             transforms.Resize((224, 224))])(image)
-        heatmap = GenerateHeatmap(56, 21)(joint_2d / 4)
-        
-        return transformed_img, joint_2d, joint_3d, heatmap
+        return transformed_img, joint_2d, joint_3d
     
     def img_preprocessing(self, idx, rgb_img):
         # in the rgb image we add pixel noise in a channel-wise manner
         if self.phase == 'train':
-            pn = np.random.uniform(1-self.noise_factor, 1+self.noise_factor, 3)
+            if idx < int(self.args.ratio_of_aug * self.__len__()):
+                pn = np.random.uniform(1-self.noise_factor, 1+self.noise_factor, 3)
+            else: 
+                pn = np.ones(3)
         else:
             pn = np.ones(3)
+            
         rgb_img[:,:,0] = np.minimum(255.0, np.maximum(0.0, rgb_img[:,:,0]*pn[0]))
         rgb_img[:,:,1] = np.minimum(255.0, np.maximum(0.0, rgb_img[:,:,1]*pn[1]))
         rgb_img[:,:,2] = np.minimum(255.0, np.maximum(0.0, rgb_img[:,:,2]*pn[2]))
@@ -112,40 +113,48 @@ class CustomDataset_g(Dataset):
         return rot, scale
     
     def aug(self, idx):
-        name = self.meta[f"{idx}"]['file_name']
+        name = '/'.join(self.meta[idx]['file_name'].split('/')[1:])
         image = cv2.imread(os.path.join(self.img_path, name))  # PIL image
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        joint_2d = np.array(self.meta[f"{idx}"]['joint_2d']) * self.raw_res
-        joint_3d = self.meta[f"{idx}"]['joint_3d']    
-        scale = self.meta[f"{idx}"]['scale']   
-        rot = self.meta[f"{idx}"]['rot']       
-        bbox = np.array(self.meta[f"{idx}"]['bbox'], dtype = int)
+        joint_2d = np.array(self.meta[idx]['joint_2d'])
+        joint_3d = self.meta[idx]['joint_3d']    
+        scale = self.meta[idx]['scale']   
+        rot = self.meta[idx]['rot']       
 
-        image = crop(image, (self.raw_res/2, self.raw_res/2), scale, [self.raw_res, self.raw_res], rot=rot)    
+        cropped_img = crop(image, (self.raw_res/2, self.raw_res/2), scale, [self.raw_res, self.raw_res], rot=rot)    
+        bg_img = cv2.imread(os.path.join(self.bg_path, self.bg_list[idx%len(self.bg_list)]))
+        bg_img = cv2.cvtColor(bg_img, cv2.COLOR_BGR2RGB)
+        bg_img = cv2.resize(bg_img, (512, 512))
+        
         if self.args.arm:
-            new_image = np.zeros([512, 512, 3])
-            a = max(bbox[0, 1] - 70, 0)
-            b = min(bbox[1,1] + 70, 512)
-            c = max(bbox[0,0] - 70, 0)
-            d = min(bbox[1,0] + 70, 512)
-            new_image[a : b, c : d] = image[a : b, c: d]
-            image = new_image.copy()
+            new_image = np.zeros((512, 512, 3))
             
-    #     joint_3d = self.j3d_processing(joint_3d, rot)  
+            index = np.where((cropped_img[:, :, 0] != 0) | (cropped_img[:, :, 1] != 0) | (cropped_img[:, :, 2] != 0))
+            index = np.array(index)
+            bbox_image = [min(index[0]), max(index[0]), min(index[1]), max(index[1])]
+            bbox = [min(joint_2d[:, 1]),  max(joint_2d[:, 1]), min(joint_2d[:, 0]), max(joint_2d[:, 0])]
+            dia_of_bbox = np.sqrt((bbox[0] - bbox[1]) ** 2 + (bbox[2] -bbox[3]) ** 2) / 512
+            dia_of_hand = np.sqrt((bbox_image[0] - bbox_image[1]) ** 2 + (bbox_image[2] - bbox_image[3]) ** 2) / 512
+            ratio_of_dia = dia_of_bbox / dia_of_hand
+            a = int(max(bbox[0] - (ratio_of_dia * 100), 0))
+            b = int(min(bbox[1] + (ratio_of_dia * 100), 512))
+            c = int(max(bbox[2] - (ratio_of_dia * 100), 0))
+            d = int(min(bbox[3] + (ratio_of_dia * 100), 512))
+            new_image[a : b, c : d] = cropped_img[a : b, c: d]
+            cropped_img = new_image.copy()
+            
+        index = np.where((cropped_img[:, :, 0] == 0) & (cropped_img[:, :, 1] == 0) & (cropped_img[:, :, 2] == 0))
+        cropped_img[index] = bg_img[index]
+
+        if self.args.rot_j:
+            joint_3d = self.j3d_processing(joint_3d, rot)  
         
         joint_2d = joint_2d / self.raw_res
         joint_2d, joint_3d = torch.tensor(joint_2d).float(), torch.tensor(joint_3d).float()
         
+        image = cv2.resize(cropped_img, (224, 224))
+        
         return image, joint_2d, joint_3d
-    
-    def j2d_processing(self, kp, scale, r):
-        """Process gt 2D keypoints and apply all augmentation transforms."""
-        nparts = kp.shape[0]
-        for i in range(nparts):
-            kp[i,0:2] = transform(kp[i,0:2]+1, (self.raw_res/2, self.raw_res/2), scale, 
-                                    [self.raw_res, self.raw_res], rot=r)
-
-        return kp
 
     def j3d_processing(self, S, r):
         """Process gt 3D keypoints and apply all augmentation transforms."""
@@ -165,7 +174,7 @@ class CustomDataset_g(Dataset):
 class val_g_set(CustomDataset_g):
     def __init__(self,  *args):
         super().__init__(*args)
-        with open(f"{self.path}/full.pkl", "rb") as st_json:
+        with open(f"{self.path}/revision_data.pkl", "rb") as st_json:
             self.meta = pickle.load(st_json)
         self.img_path = os.path.join(self.root,f"images/{self.phase}" )
 
@@ -185,10 +194,6 @@ class AverageMeter(object):
         self.sum += val * n
         self.count += n
         self.avg = self.sum / self.count
-
-def apply(img, aug, num=1, scale=1.5):
-    Y = [aug(img) for _ in range(num)]
-    return Y
 
 
 
@@ -219,39 +224,7 @@ def get_transform(center, scale, res, rot=0):
         t = np.dot(t_inv,np.dot(rot_mat,np.dot(t_mat,t)))
     return t
 
-class GenerateHeatmap():
-    def __init__(self, output_res, num_parts):
-        self.output_res = output_res
-        self.num_parts = num_parts
-        sigma = self.output_res/64
-        self.sigma = sigma
-        size = 6*sigma + 3
-        x = np.arange(0, size, 1, float)
-        y = x[:, np.newaxis]
-        x0, y0 = 3*sigma + 1, 3*sigma + 1
-        self.g = np.exp(- ((x - x0) ** 2 + (y - y0) ** 2) / (2 * sigma ** 2))
 
-    def __call__(self, p):
-        hms = np.zeros(shape=(self.num_parts, self.output_res,
-                       self.output_res), dtype=np.float32)
-        sigma = self.sigma
-        for idx, pt in enumerate(p):
-            if pt[0] > 0:
-                x, y = int(pt[0]), int(pt[1])
-                if x < 0 or y < 0 or x >= self.output_res or y >= self.output_res:
-                    continue
-                ul = int(x - 3*sigma - 1), int(y - 3*sigma - 1)
-                br = int(x + 3*sigma + 2), int(y + 3*sigma + 2)
-
-                c, d = max(0, -ul[0]), min(br[0], self.output_res) - ul[0]
-                a, b = max(0, -ul[1]), min(br[1], self.output_res) - ul[1]
-
-                cc, dd = max(0, ul[0]), min(br[0], self.output_res)
-                aa, bb = max(0, ul[1]), min(br[1], self.output_res)
-                hms[idx, aa:bb, cc:dd] = np.maximum(
-                    hms[idx, aa:bb, cc:dd], self.g[a:b, c:d])
-        return hms
-    
 def transform(pt, center, scale, res, invert=0, rot=0):
     """Transform pixel location to different reference."""
     t = get_transform(center, scale, res, rot=rot)
@@ -323,11 +296,11 @@ def myimrotate(img, angle, center=None, scale=1.0, border_value=0, auto_bound=Fa
     rotated = cv2.warpAffine(img, matrix, (w, h), borderValue=border_value)
     return rotated
 
-def myimresize(img, size, return_scale=False, interpolation='bilinear'):
+def myimresize(img, size, return_scale=False):
 
     h, w = img.shape[:2]
     resized_img = cv2.resize(
-        img, (size[0],size[1]), interpolation=cv2.INTER_LINEAR)
+        img, (size[0],size[1]))
     if not return_scale:
         return resized_img
     else:
@@ -335,196 +308,7 @@ def myimresize(img, size, return_scale=False, interpolation='bilinear'):
         h_scale = size[1] / h
         return resized_img, w_scale, h_scale
 
-class Json_transform(Dataset):
-
-    def __init__(self, degree, path):
-        self.degree = degree
-        self.path = path
-        with open(f"{path}/{degree}/annotations/train/CISLAB_train_camera.json", "r") as st_json:
-            self.camera = json.load(st_json)
-        with open(f"{path}/{degree}/annotations/train/CISLAB_train_joint_3d.json", "r") as st_json:
-            self.joint = json.load(st_json)
-        with open(f"{path}/{degree}/annotations/train/CISLAB_train_data.json", "r") as st_json:
-            self.meta = json.load(st_json)
-        self.root = f'{self.path}/{self.degree}/images/train'
-        self.store_path = f'{self.path}/{self.degree}/annotations/train/CISLAB_train_data_update.json'
-    
-    def j2d_processing(self, kp, scale, r):
-        """Process gt 2D keypoints and apply all augmentation transforms."""
-        nparts = kp.shape[0]
-        for i in range(nparts):
-            kp[i,0:2] = transform(kp[i,0:2]+1, (self.res/2, self.res/2), scale, 
-                                    [self.res, self.res], rot=r)
-        return kp
-
-    def get_json_g(self, num):
-        meta_list = self.meta['images'].copy()
-        index = []
-        pbar = tqdm(total = len(meta_list))
-        k = dict()
-        count = 0
-        for idx, j in enumerate(meta_list):
-            if j['camera'] == '0':
-                index.append(idx)
-                continue
-            
-            if int(j['camera']) < 41:
-                continue
-            
-            camera = self.meta['images'][idx]['camera']
-            id = self.meta['images'][idx]['frame_idx']
-
-            joint = np.array(self.joint['0'][f'{id}']['world_coord'][:21], dtype = 'float32')
-            focal_length = self.camera['0']['focal'][f'{camera}'][0]
-            translation = np.array(self.camera['0']['campos'][f'{camera}'], dtype = 'float32')
-            rot = np.array(self.camera['0']['camrot'][f'{camera}'], dtype = 'float32')
-            name = j['file_name']
-            ori_image = cv2.imread(os.path.join(self.root, name))
-            ori_image = cv2.cvtColor(ori_image, cv2.COLOR_BGR2RGB)
-
-            a = np.einsum('ij, kj -> ki', rot, joint - translation)
-            a = a[:, :2] / a[:, 2][:, None]
-            b = (a * focal_length + (self.res/2))
-            if not ((50 < b).all() and (b < self.res - 50).all()):
-                continue
-
-            loof_count = 0 
-            while loof_count < 5:
-                r = min(2*90, max(-2*90, np.random.randn()*90))
-                scale = min(1+0.25, max(1-0.25, np.random.randn()*0.25+1))
-                joint_2d = self.j2d_processing(b.copy(), scale, r) 
-                if ((joint_2d > 0).all() and (joint_2d < self.res).all()):
-                    break
-                loof_count += 1
-                if loof_count == 4:
-                    print("continue")
-                    break
-            if loof_count == 4:
-                continue
-                
-            bbox = [[joint_2d[:, 0].min(), joint_2d[:, 1].min()] , [joint_2d[:, 0].max(), joint_2d[:, 1].max()]]
-            bbox_size = np.sqrt((joint_2d[:, 0].min() - joint_2d[:, 1].max())**2 + (joint_2d[:, 1].min() - joint_2d[:, 1].max())**2)
-        
-            joint_2d = (joint_2d/self.res).tolist()        # normalize
-            # root =  os.path.join("../../datasets/part_60", '/'.join(self.root.split('/')[-2:]))
-            # if not os.path.isdir(os.path.join(root, name)):
-            #     mkdir(os.path.join(root, '/'.join(name.split('/')[:-1])))
-                
-            # image = image / 255
-            # plt.imshow(image)
-            # plt.savefig(os.path.join(root, name))
-            
-            k[f"{count}"] = {'joint_2d': joint_2d, 'joint_3d': joint.tolist(), "file_name": name, 'scale': scale, 'rot': r, 'bbox': bbox, 'bbox_size': bbox_size}
-            if count == num:
-                break
-            count += 1
-            pbar.update(1)
-
-                
-        with open(self.store_path, 'wb') as f:
-	        pickle.dump(k, f, protocol=pickle.HIGHEST_PROTOCOL)
-        
-    def get_json(self):
-        meta_list = self.meta['images'].copy()
-        index = []
-        pbar = tqdm(total = len(meta_list))
-        for idx, j in enumerate(meta_list):
-            pbar.update(1)
-            if j['camera'] == '0':
-                index.append(idx)
-                continue
-
-            camera = self.meta['images'][idx]['camera']
-            id = self.meta['images'][idx]['frame_idx']
-
-            joint = torch.tensor(self.joint['0'][f'{id}']['world_coord'][:21])
-            focal_length = self.camera['0']['focal'][f'{camera}'][0]
-            translation = self.camera['0']['campos'][f'{camera}']
-            rot = self.camera['0']['camrot'][f'{camera}']
-            flag = False
-            name = j['file_name']
-            ori_image = cv2.imread(os.path.join(self.root, name))
-            ori_image = cv2.cvtColor(ori_image, cv2.COLOR_BGR2RGB)
-
-            degrees = random.uniform(-20, 20)
-            rad = math.radians(degrees)
-            left_pixel, right_pixel = [79-112, -112], [174-112, -112]
-            left_rot = math.cos(
-                rad) * left_pixel[1] - math.sin(rad) * left_pixel[0] + 112
-            right_rot = math.cos(
-                rad) * right_pixel[1] - math.sin(rad) * right_pixel[0] + 112
-
-            if left_rot > 0:
-                move_y = left_rot
-
-            elif right_rot > 0:
-                move_y = right_rot
-
-            else:
-                move_y = 0
-            move_y2 = random.uniform(0, 40)
-
-            for i in range(21):
-                a = np.dot(np.array(rot, dtype='float32'),
-                           np.array(joint[i], dtype='float32') - np.array(translation, dtype='float32'))
-                a[:2] = a[:2] / a[2]
-                b = a[:2] * focal_length + 112
-                b = torch.tensor(b)
-
-                for u in b:
-                    if u > 223 or u < 0:
-                        index.append(idx)
-                        flag = True
-                        break
-                if flag:
-                    break
-
-                if i == 0:  # 112 is image center
-                    joint_2d = b
-                elif i == 1:
-                    joint_2d = torch.stack([joint_2d, b], dim=0)
-                else:
-                    joint_2d = torch.concat([joint_2d, b.reshape(1, 2)], dim=0)
-            if flag:
-                continue
-
-            d = joint_2d.clone()
-            x = joint_2d[:, 0] - 112
-            y = joint_2d[:, 1] - 112
-            joint_2d[:, 0] = math.cos(rad) * x + math.sin(rad) * y + 112
-            joint_2d[:, 1] = math.cos(
-                rad) * y - math.sin(rad) * x + 112 + move_y + move_y2
-
-            flag = False
-            for o in joint_2d:
-                if o[0] > 223 or o[1] > 223:
-                    flag = True
-                    index.append(idx)
-                    break
-            if flag:
-                continue
-                    
-            rot_image = i_rotate(ori_image, degrees, 0, move_y + move_y2, interpolation=False)
-            rot_image = Image.fromarray(rot_image)
-            
-            j['joint_2d'] = d.tolist()
-            j['joint_3d'] = joint.tolist()
-            j['rot_joint_2d'] = joint_2d.tolist()
-            j['degree'] = degrees
-            j['move'] = move_y + move_y2
-
-        count = 0
-        for w in index:
-            del self.meta['images'][w-count]
-            count += 1
-
-        with open(self.store_path, 'w') as f:
-            json.dump(self.meta, f)
-
-        print(
-            f"Done ===> {self.store_path}")
-        
-        
+   
 def save_checkpoint(model, args, epoch, optimizer, best_loss, count, ment, num_trial=10, logger=None):
 
     checkpoint_dir = op.join(args.output_dir, 'checkpoint-{}'.format(
@@ -562,77 +346,6 @@ def i_rotate(img, degree, move_x, move_y):
                             flags=cv2.INTER_LINEAR, borderMode=cv2.INTER_LINEAR)
 
     return result
-    
-class Json_e(Json_transform):
-    def __init__(self, phase):
-        root = "datasets/general_2M"
-        self.res = 512
-        self.rot_factor = 90
-        self.scale_factor = 0.5
-        if phase == 'eval':
-            try:
-                with open(os.path.join(root, "annotations/evaluation/evaluation_camera.json"), "r") as st_json:
-                    self.camera = json.load(st_json)       
-                with open(os.path.join(root, "annotations/evaluation/evaluation_joint_3d.json"), "r") as st_json:
-                    self.joint = json.load(st_json)
-                with open(os.path.join(root, "annotations/evaluation/evaluation_data.json"), "r") as st_json:
-                    self.meta = json.load(st_json)
-                    
-                self.root = os.path.join(root, "images/evaluation")
-                self.store_path = os.path.join(root, "annotations/evaluation/evaluation_data_update.json")
-                
-            except:
-                root = "../../datasets/ArmoHand"
-                with open(os.path.join(root, "annotations/evaluation/evaluation_camera.json"), "r") as st_json:
-                    self.camera = json.load(st_json)   
-                with open(os.path.join(root, "annotations/evaluation/evaluation_joint_3d.json"), "r") as st_json:
-                    self.joint = json.load(st_json)
-                with open(os.path.join(root, "annotations/evaluation/evaluation_data.json"), "r") as st_json:
-                    self.meta = json.load(st_json)
-                    
-                self.root = os.path.join(root, "images/evaluation")
-                self.store_path = os.path.join(root, "annotations/evaluation/evaluation_data_update.json")
-            
-        elif phase == 'test':
-                root = "../../../../../../data1/ArmoHand"
-                with open(os.path.join(root, "annotations/test/CISLAB_test_camera.json"), "r") as st_json:
-                    self.camera = json.load(st_json)   
-                with open(os.path.join(root, "annotations/test/CISLAB_test_joint_3d.json"), "r") as st_json:
-                    self.joint = json.load(st_json)
-                with open(os.path.join(root, "annotations/test/CISLAB_test_data.json"), "r") as st_json:
-                    self.meta = json.load(st_json)
-                    
-                self.root = os.path.join(root, "images/test")
-                self.store_path = os.path.join(root, "annotations/test/test_data_update.json")
-            
-        elif phase == 'train':
-            root = "../../datasets/general_512"
-            with open(os.path.join(root, "annotations/train/CISLAB_train_camera.json"), "r") as st_json:
-                self.camera = json.load(st_json)
-            with open(os.path.join(root, "annotations/train/CISLAB_train_joint_3d.json"), "r") as st_json:
-                self.joint = json.load(st_json)
-            with open(os.path.join(root, "annotations/train/CISLAB_train_data.json"), "r") as st_json:
-                self.meta = json.load(st_json)
-            self.root = os.path.join(root, "images/train")
-            self.store_path = os.path.join(root, "annotations/train/full.pkl")
-            
-        elif phase == 'val':
-            root = "../../datasets/general_512"
-            with open(os.path.join(root, "annotations/val/CISLAB_val_camera.json"), "r") as st_json:
-                self.camera = json.load(st_json)
-            with open(os.path.join(root, "annotations/val/CISLAB_val_joint_3d.json"), "r") as st_json:
-                self.joint = json.load(st_json)
-            with open(os.path.join(root, "annotations/val/CISLAB_val_data.json"), "r") as st_json:
-                self.meta = json.load(st_json)
-            self.root = os.path.join(root, "images/val")
-            self.store_path = os.path.join(root, "annotations/val/full.pkl")
-    
-def main():   
-    Json_e(phase = "train").get_json_g(-1)
-    Json_e(phase = "val").get_json_g(13000)
-    print("ENDDDDDD")
-    
-if __name__ == '__main__':
-    main()
+
     
         

@@ -122,7 +122,6 @@ class GraphormerLayer(nn.Module):
     def __init__(self, config):
         super(GraphormerLayer, self).__init__()
         self.attention = BertAttention(config)
-        # self.has_graph_conv = config.graph_conv
         self.mesh_type = config.mesh_type
         self.has_graph_conv = config.graph_conv
 
@@ -139,10 +138,25 @@ class GraphormerLayer(nn.Module):
         attention_output = attention_outputs[0]
 
         if self.has_graph_conv==True:
-            joints = attention_output[:, 0:21, :]
-            img_tokens = attention_output[:, 21:, :]
-            graph_joints = self.graph_conv(joints)
-            graph_joints = joints + graph_joints
+            if self.mesh_type == 'body':
+                joints = attention_output[:,0:14,:] 
+                vertices = attention_output[:,14:-49,:]
+                img_tokens = attention_output[:,-49:,:]
+
+            # elif self.mesh_type == 'hand':
+            #     joints = attention_output[:,0:21,:]
+            #     vertices = attention_output[:,21:-49,:]
+            #     img_tokens = attention_output[:,-49:,:]
+
+            # vertices = self.graph_conv(vertices)
+            # joints_vertices = torch.cat([joints,vertices,img_tokens],dim=1)
+            
+            elif self.mesh_type == "hand":
+                # joints= attention_output[:, 0:21, :]
+                graph_joints = attention_output[:, 0:21, :]
+                img_tokens = attention_output[:, 21:, :]
+                
+            graph_joints = self.graph_conv(graph_joints)
             joints_vertices = torch.cat([graph_joints, img_tokens],dim=1)
         else:
             joints_vertices = attention_output

@@ -192,7 +192,8 @@ def main(gt_path, pred_path, output_dir, pred_file_name=None, set_name=None):
 
     # load predicted values
 
-    pred_file = _search_pred_file(pred_path, pred_file_name)
+    # pred_file = _search_pred_file(pred_path, pred_file_name)
+    pred_file = pred_file_name
     print('Loading predictions from %s' % pred_file)
     with open(pred_file, 'r') as fi:
         pred = json.load(fi)
@@ -215,10 +216,10 @@ def main(gt_path, pred_path, output_dir, pred_file_name=None, set_name=None):
     except:
         rng = range(db_size(set_name))
 
-    aligned_list = list()
-    gt_list = list()
     # iterate over the dataset once
+    My_list = []
     for idx in rng:
+        
         if idx >= db_size(set_name):
             break
 
@@ -238,7 +239,7 @@ def main(gt_path, pred_path, output_dir, pred_file_name=None, set_name=None):
         if shape_is_mano is None:
             if verts_pred.shape[0] == verts.shape[0]:
                 shape_is_mano = True
-        else:
+            else:
                 shape_is_mano = False
 
         if shape_is_mano:
@@ -250,6 +251,7 @@ def main(gt_path, pred_path, output_dir, pred_file_name=None, set_name=None):
 
         # align predictions
         xyz_pred_aligned = align_w_scale(xyz, xyz_pred)
+        My_list.append([xyz.tolist(), xyz_pred_aligned.tolist()])
         if shape_is_mano:
             verts_pred_aligned = align_w_scale(verts, verts_pred)
         else:
@@ -270,31 +272,17 @@ def main(gt_path, pred_path, output_dir, pred_file_name=None, set_name=None):
                 np.ones_like(verts[:, 0]),
                 verts_pred_aligned
             )
-        aligned_list.append(xyz_pred_aligned.tolist())
-        gt_list.append(xyz.tolist())
 
-
-    error_list = np.empty(3960)
-    for i in range(len(eval_xyz_aligned.data[0])):
-        error = 0
-        for j in range(21):
-            error += eval_xyz_aligned.data[j][i]
-        error_list[i] = error
-        
-    max_index = error_list.argsort()[::-1][:10].tolist() ## order of error index from max to min
     
     xyz_al_mean3d, _, xyz_al_auc3d, pck_xyz_al, thresh_xyz_al = eval_xyz_aligned.get_measures(0.0, 0.05, 100)
     print('Evaluation 3D KP ALIGNED results:')
     print('auc=%.3f, mean_kp3d_avg=%.2f cm' % (xyz_al_auc3d, xyz_al_mean3d * 100.0))
-     
-        
-    name_list = pred_file.split('/')
-    score_path = os.path.join("/".join(name_list[:2]), f'general_scores.txt')
     
-        
-    with open(os.path.join("/".join(name_list[:-2]), f'max_error_index.json'), "w") as f:
-        json.dump(max_index, f) 
-
+    name_list = pred_file.split('/')
+    score_path = os.path.join("/".join(name_list[:-3]), f'general_scores.txt')
+    
+    with open(f'{"/".join(name_list[:-1])}/eval_joint_3d.json', "w") as fi:
+        json.dump(My_list, fi)
     
     if os.path.isfile(score_path):
         mode = "a"
@@ -309,7 +297,7 @@ def main(gt_path, pred_path, output_dir, pred_file_name=None, set_name=None):
     print(colored("Writting => %s" %score_path, "red"))
     return 
 
-
+   
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Show some samples from the dataset.')
