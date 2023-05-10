@@ -107,10 +107,12 @@ class Runner(object):
     def our(self, end):
         if self.phase == 'TRAIN':
             self.model.train()
-            for iteration, (images, gt_2d_joints, gt_3d_joints) in enumerate(self.train_loader):
+            for iteration, (images, gt_2d_joints, gt_3d_joints, _) in enumerate(self.train_loader):
                 batch_size = images.size(0)
                 adjust_learning_rate(self.optimizer, self.epoch, self.args)  
+
                 gt_2d_joint = (gt_2d_joints).cuda(); gt_3d_joints = gt_3d_joints.cuda(); images = images.cuda()
+                gt_2d_joint = gt_2d_joint / 224
             
                 pred_2d_joints, pred_3d_joints= self.model(images)
 
@@ -125,11 +127,6 @@ class Runner(object):
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
-
-                pred_2d_joints[:,:,1] = pred_2d_joints[:,:,1] * images.size(2) ## You Have to check whether weight and height is correct dimenstion
-                pred_2d_joints[:,:,0] = pred_2d_joints[:,:,0] * images.size(3)
-                gt_2d_joint[:,:,1] = gt_2d_joint[:,:,1] * images.size(2) ## You Have to check whether weight and height is correct dimenstion
-                gt_2d_joint[:,:,0] = gt_2d_joint[:,:,0] * images.size(3) 
 
                 if iteration == 0 or iteration == int(len(self.train_loader)/2) or iteration == len(self.train_loader) - 1:
                     fig = plt.figure()
@@ -149,7 +146,7 @@ class Runner(object):
         else:
             self.model.eval()
             with torch.no_grad():
-                for iteration, (images, gt_2d_joints, gt_3d_joints) in enumerate(self.valid_loader):
+                for iteration, (images, gt_2d_joints, gt_3d_joints, _) in enumerate(self.valid_loader):
                     batch_size = images.size(0)
                     
                     images = images.cuda()
@@ -158,11 +155,6 @@ class Runner(object):
 
                     pred_2d_joints, pred_3d_joints= self.model(images)
                     loss = reconstruction_error(np.array(pred_3d_joints.detach().cpu()), np.array(gt_3d_joints.detach().cpu()))
-                    
-                    gt_2d_joint[:,:,1] = gt_2d_joint[:,:,1] * images.size(2) ## You Have to check whether weight and height is correct dimenstion
-                    gt_2d_joint[:,:,0] = gt_2d_joint[:,:,0] * images.size(3) 
-                    pred_2d_joints[:,:,1] = pred_2d_joints[:,:,1] * images.size(2) ## You Have to check whether weight and height is correct dimenstion
-                    pred_2d_joints[:,:,0] = pred_2d_joints[:,:,0] * images.size(3)
                     
                     if iteration == 0 or iteration == int(len(self.valid_loader)/2) or iteration == len(self.valid_loader) - 1:
                         fig = plt.figure()

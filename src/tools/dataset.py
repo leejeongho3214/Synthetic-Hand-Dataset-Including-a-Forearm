@@ -75,7 +75,7 @@ class CustomDataset_g(Dataset):
                                                                                                                     self.__dict__.get('rot_factor'), self.__dict__.get('raw_res'), self.__dict__.get('img_res')))
         
     def __len__(self):
-        return len(self.meta) - 1
+        return int(self.args.ratio_of_dataset * (len(self.meta) - 1))
         
     def __getitem__(self, idx):
         
@@ -84,12 +84,16 @@ class CustomDataset_g(Dataset):
 
         transformed_img = transforms.Compose([transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
                                             transforms.Resize((224, 224))])(image)
-        return transformed_img, joint_2d, joint_3d
+        
+        joint_2d = joint_2d * 224
+        heatmap = GenerateHeatmap(56, 21)(joint_2d / 4)
+        
+        return transformed_img, joint_2d, joint_3d, heatmap
     
     def img_preprocessing(self, idx, rgb_img):
         # in the rgb image we add pixel noise in a channel-wise manner
         if self.phase == 'train':
-            if idx < int(self.args.ratio_of_aug * self.__len__()):
+            if idx < self.__len__():
                 pn = np.random.uniform(1-self.noise_factor, 1+self.noise_factor, 3)
             else: 
                 pn = np.ones(3)
@@ -146,8 +150,8 @@ class CustomDataset_g(Dataset):
         index = np.where((cropped_img[:, :, 0] == 0) & (cropped_img[:, :, 1] == 0) & (cropped_img[:, :, 2] == 0))
         cropped_img[index] = bg_img[index]
 
-        if self.args.rot_j:
-            joint_3d = self.j3d_processing(joint_3d, rot)  
+        # if self.args.rot_j:
+        #     joint_3d = self.j3d_processing(joint_3d, rot)  
         
         joint_2d = joint_2d / self.raw_res
         joint_2d, joint_3d = torch.tensor(joint_2d).float(), torch.tensor(joint_3d).float()
@@ -346,6 +350,39 @@ def i_rotate(img, degree, move_x, move_y):
                             flags=cv2.INTER_LINEAR, borderMode=cv2.INTER_LINEAR)
 
     return result
+
+class GenerateHeatmap():
+    def __init__(self, output_res, num_parts):
+        self.output_res = output_res
+        self.num_parts = num_parts
+        sigma = self.output_res/64
+        self.sigma = sigma
+        size = 6*sigma + 3
+        x = np.arange(0, size, 1, float)
+        y = x[:, np.newaxis]
+        x0, y0 = 3*sigma + 1, 3*sigma + 1
+        self.g = np.exp(- ((x - x0) ** 2 + (y - y0) ** 2) / (2 * sigma ** 2))
+
+    def __call__(self, p):
+        hms = np.zeros(shape=(self.num_parts, self.output_res,
+                       self.output_res), dtype=np.float32)
+        sigma = self.sigma
+        for idx, pt in enumerate(p):
+            if pt[0] > 0:
+                x, y = int(pt[0]), int(pt[1])
+                if x < 0 or y < 0 or x >= self.output_res or y >= self.output_res:
+                    continue
+                ul = int(x - 3*sigma - 1), int(y - 3*sigma - 1)
+                br = int(x + 3*sigma + 2), int(y + 3*sigma + 2)
+
+                c, d = max(0, -ul[0]), min(br[0], self.output_res) - ul[0]
+                a, b = max(0, -ul[1]), min(br[1], self.output_res) - ul[1]
+
+                cc, dd = max(0, ul[0]), min(br[0], self.output_res)
+                aa, bb = max(0, ul[1]), min(br[1], self.output_res)
+                hms[idx, aa:bb, cc:dd] = np.maximum(
+                    hms[idx, aa:bb, cc:dd], self.g[a:b, c:d])
+        return hms
 
     
         
