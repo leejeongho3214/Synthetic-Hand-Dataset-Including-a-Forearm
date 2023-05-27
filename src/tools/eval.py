@@ -205,8 +205,7 @@ def main(gt_path, pred_path, output_dir, pred_file_name=None, set_name=None):
     # init eval utils
     eval_xyz, eval_xyz_aligned = EvalUtil(), EvalUtil()
     eval_mesh_err, eval_mesh_err_aligned = EvalUtil(num_kp=778), EvalUtil(num_kp=778)
-    f_score, f_score_aligned = list(), list()
-    f_threshs = [0.005, 0.015]
+
 
     shape_is_mano = None
 

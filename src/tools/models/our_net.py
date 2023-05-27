@@ -27,6 +27,8 @@ def get_our_net(args):
         args.hidden_size = hidden_feat_dim[i]
         args.intermediate_size = int(args.hidden_size * 2)
 
+        assert which_blk_graph[i] != 1, "This is not branch for GCN"
+        
         if which_blk_graph[i] == 1:
             config.graph_conv = True
             # logger.info("Add Graph Conv")

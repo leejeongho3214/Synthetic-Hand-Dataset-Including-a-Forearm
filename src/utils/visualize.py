@@ -78,3 +78,5 @@ def visualize_only_gt(images, gt_2d_joint, fig, method = None, epoch = 0, iterat
         reset_folder(root)
     if not os.path.isdir(epoch_path): mkdir(epoch_path)
     plt.savefig(os.path.join(epoch_path, f'iter_{iteration}.jpg') , dpi = 2000)
+
+

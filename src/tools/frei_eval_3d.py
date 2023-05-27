@@ -3,7 +3,7 @@ import sys
 import json
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"  # Arrange GPU devices starting from 0
-os.environ["CUDA_VISIBLE_DEVICES"]= "0" 
+os.environ["CUDA_VISIBLE_DEVICES"]= "3" 
 import numpy as np
 import torch
 from torch.utils import data
@@ -35,7 +35,7 @@ def dump(pred_out_path, xyz_pred_list, verts_pred_list):
     print('Dumped %d joints and %d verts predictions to %s' % (len(xyz_pred_list), len(verts_pred_list), pred_out_path))
 
 def main(args):
-    n_l  = ["src/tools/output/ours/ours/3d_w_a_part_0.3_base"]
+    n_l  = ["src/tools/output/ours/ours/3d_w_o_a_base_0.1"]
     model_list = ['/'.join(n.split('/')[2:]) for n in n_l]
     
     # model_path = "output/ours/our_part"

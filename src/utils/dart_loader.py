@@ -83,21 +83,21 @@ class DARTset():
         scale_factor = 0.2
         joint, joint_3d = self.get_joints_2d(idx), self.get_joints_3d(idx)      ## get a joint location of image that is 224 x 224
         
-        ''' Use a augmentation in only train phase
-            And image resolution is 512 x 512 so don't confuse resolution before image resizing'''
-        if self.data_split == "train":
-            if idx < int(self.__len__() * 0.6):
-                scale = min(1.2 + scale_factor, max(1.3 - scale_factor, np.random.randn()* scale_factor + 1.1))
-                rot = min(2*self.rot_factor,
-                    max(-2*self.rot_factor, np.random.randn()*self.rot_factor))
-                joint = torch.tensor(self.j2d_processing(np.array(joint), scale, rot))
-                while not ((0 < joint.all()) and (joint.all() < 224)):
-                    scale = min(1.2 + scale_factor, max(1.3 - scale_factor, np.random.randn()* scale_factor + 1.1))
-                    rot = min(2*self.rot_factor,
-                        max(-2*self.rot_factor, np.random.randn()*self.rot_factor))
-                    joint = torch.tensor(self.j2d_processing(np.array(joint), scale, rot))
-                img = crop(img, [img.shape[1]/2, img.shape[1]/2], scale, [img.shape[1], img.shape[1]], rot = rot)
-                if self.args.rot_j: joint_3d = torch.tensor(self.j3d_processing(self.get_joints_3d(idx), rot))
+        # ''' Use a augmentation in only train phase
+        #     And image resolution is 512 x 512 so don't confuse resolution before image resizing'''
+        # if self.data_split == "train":
+        #     if idx < int(self.__len__() * 0.6):
+        #         scale = min(1.2 + scale_factor, max(1.3 - scale_factor, np.random.randn()* scale_factor + 1.1))
+        #         rot = min(2*self.rot_factor,
+        #             max(-2*self.rot_factor, np.random.randn()*self.rot_factor))
+        #         joint = torch.tensor(self.j2d_processing(np.array(joint), scale, rot))
+        #         while not ((0 < joint.all()) and (joint.all() < 224)):
+        #             scale = min(1.2 + scale_factor, max(1.3 - scale_factor, np.random.randn()* scale_factor + 1.1))
+        #             rot = min(2*self.rot_factor,
+        #                 max(-2*self.rot_factor, np.random.randn()*self.rot_factor))
+        #             joint = torch.tensor(self.j2d_processing(np.array(joint), scale, rot))
+        #         img = crop(img, [img.shape[1]/2, img.shape[1]/2], scale, [img.shape[1], img.shape[1]], rot = rot)
+        #         if self.args.rot_j: joint_3d = torch.tensor(self.j3d_processing(self.get_joints_3d(idx), rot))
             
         img = torch.from_numpy(img.transpose(2, 0, 1)).float()
         img = self.transform_func(img)
@@ -116,7 +116,7 @@ class DARTset():
         # plt.imshow(ori_img)
         # plt.savefig("rot.jpg")
 
-        return img, joint, joint_3d
+        return img, joint, joint_3d, joint_3d
 
     def get_joints_3d(self, idx):
         joints = self.joints_3d[idx].copy()
@@ -182,10 +182,7 @@ class DARTset():
 
         # in the rgb image we add pixel noise in a channel-wise manner
         if self.data_split == 'train':
-            if idx < int(self.args.ratio_of_aug * self.__len__()):
-                pn = np.random.uniform(1-self.noise_factor, 1+self.noise_factor, 3)
-            else: 
-                pn = np.ones(3)
+            pn = np.random.uniform(1-self.noise_factor, 1+self.noise_factor, 3)
         else:
             pn = np.ones(3)
             
