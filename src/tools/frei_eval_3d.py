@@ -35,7 +35,7 @@ def dump(pred_out_path, xyz_pred_list, verts_pred_list):
     print('Dumped %d joints and %d verts predictions to %s' % (len(xyz_pred_list), len(verts_pred_list), pred_out_path))
 
 def main(args):
-    n_l  = ["src/tools/output/ours/ours/3d_w_o_a_base_0.1"]
+    n_l  = ["src/tools/output/ours/frei/gcn/0_0_0/layer4"]
     model_list = ['/'.join(n.split('/')[2:]) for n in n_l]
     
     # model_path = "output/ours/our_part"
