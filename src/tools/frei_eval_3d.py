@@ -1,22 +1,23 @@
+from tqdm import tqdm
 import os
 import sys
-import json
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
-os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"  # Arrange GPU devices starting from 0
-os.environ["CUDA_VISIBLE_DEVICES"]= "3" 
-import numpy as np
-import torch
-from torch.utils import data
-torch.device('cuda')
-from src.tools.models.our_net import get_our_net
-from src.utils.argparser import parse_args
-import sys
-from dataset import *
-from src.utils.loss import *
-from src.utils.geometric_layers import *
-from src.utils.visualize import *
+sys.path.insert(0, os.path.abspath(
+os.path.join(os.path.dirname(__file__), '../..')))
+# Arrange GPU devices starting from 0
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"] = "3"
 from src.utils.dataset_loader import Frei
-from tqdm import tqdm    
+from src.utils.visualize import *
+from src.utils.geometric_layers import *
+from src.utils.loss import *
+from dataset import *
+from src.utils.argparser import parse_args
+from src.tools.models.our_net import get_our_net
+from torch.utils import data
+import torch
+import numpy as np
+import json
+
 
 
 def dump(pred_out_path, xyz_pred_list, verts_pred_list):
@@ -32,19 +33,21 @@ def dump(pred_out_path, xyz_pred_list, verts_pred_list):
                 xyz_pred_list,
                 verts_pred_list
             ], fo)
-    print('Dumped %d joints and %d verts predictions to %s' % (len(xyz_pred_list), len(verts_pred_list), pred_out_path))
+    print('Dumped %d joints and %d verts predictions to %s' %
+          (len(xyz_pred_list), len(verts_pred_list), pred_out_path))
+
 
 def main(args):
-    n_l  = ["src/tools/output/ours/frei/gcn/0_0_0/layer4"]
+    n_l = ["src/tools/output/ours/frei/gcn/0_0_0/layer4"]
     model_list = ['/'.join(n.split('/')[2:]) for n in n_l]
-    
+
     # model_path = "output/ours/our_part"
     # model_list = list()
     # for (root, _, files) in os.walk(model_path):
     #     for file in files:
     #         if '.bin' in file:
-    #             model_list.append('/'.join(root.split('/')[:-1]))           
-                
+    #             model_list.append('/'.join(root.split('/')[:-1]))
+
     for name in model_list:
         # name = "output/ours/dart/3d"
         args.name = os.path.join(name, "checkpoint-good/state_dict.bin")
@@ -55,12 +58,13 @@ def main(args):
         _model.cuda()
         pred_name = name.split("/")[-1]
         pred_out_path = os.path.join(name, f"pred_{pred_name}.json")
-        
+
         test_dataset = Frei(args)
-        testset_loader = data.DataLoader(dataset=test_dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=False)
-        pbar = tqdm(total = len(testset_loader)) 
+        testset_loader = data.DataLoader(
+            dataset=test_dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=False)
+        pbar = tqdm(total=len(testset_loader))
         xyz_list, verts_list = list(), list()
-        
+
         for images, _,  gt_3d_joints in testset_loader:
             _model.eval()
             with torch.no_grad():
@@ -74,10 +78,10 @@ def main(args):
             pbar.update(1)
         pbar.close()
         dump(pred_out_path, xyz_list, verts_list)
-            
-        os.system("python eval.py --pred_file_name %s" %pred_out_path)
-            
+
+        os.system("python eval.py --pred_file_name %s" % pred_out_path)
+
 
 if __name__ == "__main__":
-    args= parse_args(eval = True)
+    args = parse_args(eval=True)
     main(args)

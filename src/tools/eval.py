@@ -1,16 +1,21 @@
 from __future__ import print_function, unicode_literals
+import os
+import sys
+sys.path.insert(0, os.path.abspath(
+os.path.join(os.path.dirname(__file__), '../..')))
+from src.utils.bar import colored
+import numpy as np
+import json
+import argparse
+import pip
 import matplotlib
 
 import matplotlib.pyplot as plt
 import sys
 import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
-import pip
-import argparse
-import json
-import numpy as np
-from src.utils.bar import colored
+
 np.set_printoptions(precision=6, suppress=True)
+
 
 def install(package):
     if hasattr(pip, 'main'):
@@ -22,7 +27,8 @@ def install(package):
 #     import open3d as o3d
 # except:
 #     install('open3d-python')
-#     import open3d as o3d 
+#     import open3d as o3d
+
 
 try:
     from scipy.linalg import orthogonal_procrustes
@@ -127,7 +133,8 @@ def createHTML(outputDir, curve_list):
         plt.savefig(img_path, bbox_inches=0, dpi=300)
 
         # write image and create html embedding
-        data_uri1 = open(img_path, 'rb').read().encode('base64').replace('\n', '')
+        data_uri1 = open(img_path, 'rb').read().encode(
+            'base64').replace('\n', '')
         img_tag1 = 'src="data:image/png;base64,{0}"'.format(data_uri1)
         curve_data_list.append((item.text, img_tag1))
 
@@ -171,14 +178,16 @@ def _search_pred_file(pred_path, pred_file_name):
 
     # search for a file to use
     print('Trying to locate the prediction file automatically ...')
-    files = [os.path.join(pred_path, x) for x in os.listdir(pred_path) if x.endswith('.json')]
+    files = [os.path.join(pred_path, x)
+             for x in os.listdir(pred_path) if x.endswith('.json')]
     if len(files) == 1:
         pred_file_name = files[0]
         print('Found file "%s"' % pred_file_name)
         return pred_file_name
     else:
         print('Found %d candidate files for evaluation' % len(files))
-        raise Exception('Giving up, because its not clear which file to evaluate.')
+        raise Exception(
+            'Giving up, because its not clear which file to evaluate.')
 
 
 def main(gt_path, pred_path, output_dir, pred_file_name=None, set_name=None):
@@ -188,7 +197,8 @@ def main(gt_path, pred_path, output_dir, pred_file_name=None, set_name=None):
         set_name = 'evaluation'
 
     # load eval annotations
-    xyz_list, verts_list = json_load(os.path.join(gt_path, '%s_xyz.json' % set_name)), json_load(os.path.join(gt_path, '%s_verts.json' % set_name))
+    xyz_list, verts_list = json_load(os.path.join(gt_path, '%s_xyz.json' % set_name)), json_load(
+        os.path.join(gt_path, '%s_verts.json' % set_name))
 
     # load predicted values
 
@@ -204,8 +214,8 @@ def main(gt_path, pred_path, output_dir, pred_file_name=None, set_name=None):
 
     # init eval utils
     eval_xyz, eval_xyz_aligned = EvalUtil(), EvalUtil()
-    eval_mesh_err, eval_mesh_err_aligned = EvalUtil(num_kp=778), EvalUtil(num_kp=778)
-
+    eval_mesh_err, eval_mesh_err_aligned = EvalUtil(
+        num_kp=778), EvalUtil(num_kp=778)
 
     shape_is_mano = None
 
@@ -218,7 +228,7 @@ def main(gt_path, pred_path, output_dir, pred_file_name=None, set_name=None):
     # iterate over the dataset once
     My_list = []
     for idx in rng:
-        
+
         if idx >= db_size(set_name):
             break
 
@@ -272,34 +282,35 @@ def main(gt_path, pred_path, output_dir, pred_file_name=None, set_name=None):
                 verts_pred_aligned
             )
 
-    
-    xyz_al_mean3d, _, xyz_al_auc3d, pck_xyz_al, thresh_xyz_al = eval_xyz_aligned.get_measures(0.0, 0.05, 100)
+    xyz_al_mean3d, _, xyz_al_auc3d, pck_xyz_al, thresh_xyz_al = eval_xyz_aligned.get_measures(
+        0.0, 0.05, 100)
     print('Evaluation 3D KP ALIGNED results:')
-    print('auc=%.3f, mean_kp3d_avg=%.2f cm' % (xyz_al_auc3d, xyz_al_mean3d * 100.0))
-    
+    print('auc=%.3f, mean_kp3d_avg=%.2f cm' %
+          (xyz_al_auc3d, xyz_al_mean3d * 100.0))
+
     name_list = pred_file.split('/')
-    score_path = os.path.join("/".join(name_list[:-3]), f'general_scores.txt')
-    
+    score_path = os.path.join("/".join(name_list[:2]), f'general_scores.txt')
+
     with open(f'{"/".join(name_list[:-1])}/eval_joint_3d.json', "w") as fi:
         json.dump(My_list, fi)
-    
+
     if os.path.isfile(score_path):
         mode = "a"
     else:
         mode = "w"
-        
+
     with open(score_path, mode) as fo:
         xyz_al_mean3d *= 100
         fo.write("\nname: %s\n" % "/".join(name_list[:-1]))
         fo.write('xyz_al_mean3d: %.2f cm\n' % xyz_al_mean3d)
         fo.write("======" * 14)
-    print(colored("Writting => %s" %score_path, "red"))
-    return 
+    print(colored("Writting => %s" % score_path, "red"))
+    return
 
-   
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Show some samples from the dataset.')
+    parser = argparse.ArgumentParser(
+        description='Show some samples from the dataset.')
     parser.add_argument('--input_dir', type=str, default="../../datasets/frei_test", required=False,
                         help='Path to where prediction the submited result and the ground truth is.')
     parser.add_argument('--output_dir', type=str, default="../../freihand", required=False,
