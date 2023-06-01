@@ -167,12 +167,15 @@ class Runner(object):
                     batch_size = images.size(0)
 
                     images = images.cuda()
-                    gt_2d_joint = (gt_2d_joints).cuda()
+                    gt_2d_joint = gt_2d_joints.cuda()
                     gt_3d_joints = gt_3d_joints.cuda()
 
                     pred_2d_joints, pred_3d_joints = self.model(images)
-                    loss = reconstruction_error(
-                        np.array(pred_3d_joints.detach().cpu()), np.array(gt_3d_joints.detach().cpu()))
+                    loss_2d = keypoint_2d_loss(
+                        self.criterion_keypoints, pred_2d_joints, gt_2d_joint)
+                    loss_3d = keypoint_3d_loss(
+                        self.criterion_keypoints, pred_3d_joints, gt_3d_joints)
+                    loss = loss_3d * self.args.loss_3d + loss_2d * self.args.loss_2d
 
                     if iteration == 0 or iteration == int(len(self.valid_loader)/2) or iteration == len(self.valid_loader) - 1:
                         fig = plt.figure()

@@ -291,8 +291,8 @@ def main(gt_path, pred_path, output_dir, pred_file_name=None, set_name=None):
     name_list = pred_file.split('/')
     score_path = os.path.join("/".join(name_list[:2]), f'general_scores.txt')
 
-    with open(f'{"/".join(name_list[:-1])}/eval_joint_3d.json', "w") as fi:
-        json.dump(My_list, fi)
+    # with open(f'{"/".join(name_list[:-1])}/eval_joint_3d.json', "w") as fi:
+    #     json.dump(My_list, fi)
 
     if os.path.isfile(score_path):
         mode = "a"

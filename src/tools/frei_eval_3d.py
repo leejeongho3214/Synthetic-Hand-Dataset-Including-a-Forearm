@@ -1,8 +1,8 @@
 from tqdm import tqdm
 import os
 import sys
-sys.path.insert(0, os.path.abspath(
-os.path.join(os.path.dirname(__file__), '../..')))
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 # Arrange GPU devices starting from 0
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"] = "3"
@@ -19,27 +19,24 @@ import numpy as np
 import json
 
 
-
 def dump(pred_out_path, xyz_pred_list, verts_pred_list):
-    """ Save predictions into a json file. """
+    """Save predictions into a json file."""
     # make sure its only lists
     xyz_pred_list = [x.tolist() for x in xyz_pred_list]
     verts_pred_list = [x.tolist() for x in verts_pred_list]
 
     # save to a json
-    with open(pred_out_path, 'w') as fo:
-        json.dump(
-            [
-                xyz_pred_list,
-                verts_pred_list
-            ], fo)
-    print('Dumped %d joints and %d verts predictions to %s' %
-          (len(xyz_pred_list), len(verts_pred_list), pred_out_path))
+    with open(pred_out_path, "w") as fo:
+        json.dump([xyz_pred_list, verts_pred_list], fo)
+    print(
+        "Dumped %d joints and %d verts predictions to %s"
+        % (len(xyz_pred_list), len(verts_pred_list), pred_out_path)
+    )
 
 
 def main(args):
     n_l = ["src/tools/output/ours/frei/gcn/0_0_0/layer4"]
-    model_list = ['/'.join(n.split('/')[2:]) for n in n_l]
+    model_list = ["/".join(n.split("/")[2:]) for n in n_l]
 
     # model_path = "output/ours/our_part"
     # model_list = list()
@@ -51,21 +48,25 @@ def main(args):
     for name in model_list:
         # name = "output/ours/dart/3d"
         args.name = os.path.join(name, "checkpoint-good/state_dict.bin")
-        args.model = args.name.split('/')[1]
+        args.model = args.name.split("/")[1]
         _model = get_our_net(args)
         state_dict = torch.load(args.name)
-        _model.load_state_dict(state_dict['model_state_dict'], strict=False)
+        _model.load_state_dict(state_dict["model_state_dict"], strict=False)
         _model.cuda()
         pred_name = name.split("/")[-1]
         pred_out_path = os.path.join(name, f"pred_{pred_name}.json")
 
         test_dataset = Frei(args)
         testset_loader = data.DataLoader(
-            dataset=test_dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=False)
+            dataset=test_dataset,
+            batch_size=args.batch_size,
+            num_workers=args.num_workers,
+            shuffle=False,
+        )
         pbar = tqdm(total=len(testset_loader))
         xyz_list, verts_list = list(), list()
 
-        for images, _,  gt_3d_joints in testset_loader:
+        for images, _, gt_3d_joints in testset_loader:
             _model.eval()
             with torch.no_grad():
                 images = images.cuda()
