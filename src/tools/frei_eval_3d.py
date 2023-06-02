@@ -35,7 +35,7 @@ def dump(pred_out_path, xyz_pred_list, verts_pred_list):
 
 
 def main(args):
-    n_l = ["src/tools/output/ours/frei/gcn/0_0_0/layer4"]
+    n_l = ["src/tools/output/ours/frei/gcn/add/1_0_0/layer2"]
     model_list = ["/".join(n.split("/")[2:]) for n in n_l]
 
     # model_path = "output/ours/our_part"
