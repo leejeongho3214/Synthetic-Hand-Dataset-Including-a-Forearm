@@ -3,6 +3,7 @@ import pickle5 as pickle
 import sys
 from matplotlib import pyplot as plt
 import os
+from src.utils.dataset_loader import GAN
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 from src.utils.miscellaneous import mkdir
 from src.utils.comm import is_main_process
@@ -15,7 +16,7 @@ except:
     print("Not import dart")
 import cv2
 import numpy as np
-from torch.utils.data import Dataset, ConcatDataset
+from torch.utils.data import Dataset, ConcatDataset, random_split
 from PIL import Image
 from torchvision import transforms
 
@@ -23,7 +24,6 @@ np.random.seed(77)
 np.set_printoptions(precision=6, suppress=True)
 
 def build_dataset(args):   
-    # general_path = "../../datasets/general_512"
     general_path = "../../datasets/without_bg_revision"
     args.dataset = args.name.split("/")[1]
     
@@ -44,6 +44,10 @@ def build_dataset(args):
         train_dataset = DARTset(args, data_split='train')
         test_dataset = DARTset(args, data_split='test')
 
+    elif args.dataset == "GAN":
+        dataset = GAN(args)
+        train_dataset, test_dataset = random_split(dataset, [0.9, 0.1])
+        
     else:
         train_path = os.path.join(general_path, "annotations/train")
         eval_path = os.path.join(general_path, "annotations/val")

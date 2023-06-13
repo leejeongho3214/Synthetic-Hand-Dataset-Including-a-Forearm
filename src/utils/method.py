@@ -65,11 +65,6 @@ class Runner(object):
                                'loss: {total:.6f} \n'
                                ).format(name="/".join(self.args.name.split('/')[-2:]), count=self.count, iteration=iteration, exp=tt,
                                         data_loader=len(self.now_loader), total=self.log_losses.avg)
-        elif iteration == len(self.now_loader) - 1:
-            self.bar.suffix = ('({iteration}/{data_loader}) '
-                               'loss: {total:.6f} \n'
-                               ).format(name="/".join(self.args.name.split('/')[-2:]), count=self.count, iteration=iteration, exp=tt,
-                                        data_loader=len(self.now_loader), total=self.log_losses.avg)
         else:
             self.bar.suffix = ('({iteration}/{data_loader}) '
                                'loss: {total:.6f} '
@@ -98,13 +93,6 @@ class Runner(object):
                                'best_loss: {best_loss:.6f} \n'
                                ).format(name="/".join(self.args.name.split('/')[-2:]), count=self.count,  iteration=iteration, best_loss=self.best_loss,
                                         data_loader=len(self.now_loader), total=self.log_losses.avg)
-
-        elif iteration == len(self.now_loader) - 1:
-            self.bar.suffix = ('({iteration}/{data_loader}) '
-                               'val_loss: {total:.6f} \n'
-                               ).format(name="/".join(self.args.name.split('/')[-2:]), count=self.count,  iteration=iteration, best_loss=self.best_loss,
-                                        data_loader=len(self.now_loader), total=self.log_losses.avg)
-
         else:
             self.bar.suffix = ('({iteration}/{data_loader}) '
                                'loss: {total:.6f} '
@@ -115,14 +103,14 @@ class Runner(object):
     def our(self, end):
         if self.phase == 'TRAIN':
             self.model.train()
-            for iteration, (images, gt_2d_joints, gt_3d_joints, _) in enumerate(self.train_loader):
+            for iteration, (images, gt_2d_joints, gt_3d_joints) in enumerate(self.train_loader):
                 batch_size = images.size(0)
                 adjust_learning_rate(self.optimizer, self.epoch, self.args)
 
                 gt_2d_joint = (gt_2d_joints).cuda()
                 gt_3d_joints = gt_3d_joints.cuda()
                 images = images.cuda()
-                gt_2d_joint = gt_2d_joint / 224
+                
 
                 pred_2d_joints, pred_3d_joints = self.model(images)
 
@@ -163,7 +151,7 @@ class Runner(object):
         else:
             self.model.eval()
             with torch.no_grad():
-                for iteration, (images, gt_2d_joints, gt_3d_joints, _) in enumerate(self.valid_loader):
+                for iteration, (images, gt_2d_joints, gt_3d_joints) in enumerate(self.valid_loader):
                     batch_size = images.size(0)
 
                     images = images.cuda()
@@ -177,6 +165,7 @@ class Runner(object):
                         self.criterion_keypoints, pred_3d_joints, gt_3d_joints)
                     loss = loss_3d * self.args.loss_3d + loss_2d * self.args.loss_2d
 
+                    gt_2d_joint = gt_2d_joint * 224
                     if iteration == 0 or iteration == int(len(self.valid_loader)/2) or iteration == len(self.valid_loader) - 1:
                         fig = plt.figure()
                         visualize_only_gt(
