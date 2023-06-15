@@ -3,7 +3,7 @@ import pickle5 as pickle
 import sys
 from matplotlib import pyplot as plt
 import os
-from src.utils.dataset_loader import GAN
+from src.utils.dataset_loader import GAN, SyntheticHands
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 from src.utils.miscellaneous import mkdir
 from src.utils.comm import is_main_process
@@ -48,6 +48,10 @@ def build_dataset(args):
         dataset = GAN(args)
         train_dataset, test_dataset = random_split(dataset, [0.9, 0.1])
         
+    elif args.dataset == "SyntheticHands":
+        dataset = SyntheticHands(args)
+        train_dataset, test_dataset = random_split(dataset, [0.9, 0.1])
+        
     else:
         train_path = os.path.join(general_path, "annotations/train")
         eval_path = os.path.join(general_path, "annotations/val")
@@ -89,10 +93,7 @@ class CustomDataset_g(Dataset):
         transformed_img = transforms.Compose([transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
                                             transforms.Resize((224, 224))])(image)
         
-        joint_2d = joint_2d * 224
-        heatmap = GenerateHeatmap(56, 21)(joint_2d / 4)
-        
-        return transformed_img, joint_2d, joint_3d, heatmap
+        return transformed_img, joint_2d, joint_3d
     
     def img_preprocessing(self, idx, rgb_img):
         # in the rgb image we add pixel noise in a channel-wise manner

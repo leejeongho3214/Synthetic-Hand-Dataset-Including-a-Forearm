@@ -1,3 +1,4 @@
+import json
 import os
 import numpy as np
 from PIL import Image
@@ -13,7 +14,6 @@ class GAN(torch.utils.data.Dataset):
             for file in files:
                 if '.png' in file:
                     self.img_list.append(os.path.join(root , file))
-
             
     def __len__(self):
         return len(self.img_list)
@@ -43,11 +43,39 @@ class GAN(torch.utils.data.Dataset):
 
         return trans_image, anno_2d, anno_3d
     
-import os
-import json
-from PIL import Image
-from torchvision import transforms
-import torch
+class SyntheticHands(torch.utils.data.Dataset):
+    def __init__(self, args):
+        self.args = args
+        self.img_path = "../../datasets/SynthHands_Release"
+        self.img_list = list()
+        for (root, _, files) in os.walk(self.img_path):
+            for file in files:
+                if '_color.png' in file:
+                    self.img_list.append(os.path.join(root , file))
+      
+    def __len__(self):
+        return len(self.img_list)
+    
+    def __getitem__(self, idx):
+
+        size = 224
+        root = '/'.join(self.img_list[idx].split('/')[:8])
+        file_index = self.img_list[idx].split('/')[8].split('_')[0]
+
+        image = Image.open(self.img_list[idx]).convert("RGB")
+        anno_3d_txt = open(os.path.join(root, (file_index + "_joint_pos.txt")))
+        line_3d = anno_3d_txt.readline()
+        anno_3d = list(map(float, line_3d.strip().split(',')))
+        anno_3d = np.reshape(anno_3d, (21, 3)) 
+        
+        anno_3d = torch.tensor(anno_3d, dtype = torch.float32) / 1000
+        trans = transforms.Compose([transforms.Resize((size, size)),
+                                    transforms.ToTensor(),
+                                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+
+        trans_image = trans(image)
+
+        return trans_image, anno_3d, anno_3d
 
 class Frei(torch.utils.data.Dataset):
     def __init__(self, args):
@@ -66,8 +94,7 @@ class Frei(torch.utils.data.Dataset):
     def __getitem__(self, idx):
         anno_K = torch.tensor(self.anno_K[idx])
         anno_xyz = torch.tensor(self.anno_xyz[idx])
-        # anno_mano = torch.tensor(self.anno_mano[idx][0][:-3])
-        
+
         joint_2d = torch.matmul(anno_K, anno_xyz.T).T
         joint_2d = (joint_2d[:, :2].T / joint_2d[:, -1]).T
         
