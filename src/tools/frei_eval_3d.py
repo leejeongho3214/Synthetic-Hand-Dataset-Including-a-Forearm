@@ -35,7 +35,7 @@ def dump(pred_out_path, xyz_pred_list, verts_pred_list):
 
 
 def main(args):
-    n_l = ["src/tools/output/ours/GAN/base"]
+    n_l = ["src/tools/output/ours/ours/previous/3d_w_a_base"]
     model_list = ["/".join(n.split("/")[2:]) for n in n_l]
 
     # model_path = "output/ours/our_part"
