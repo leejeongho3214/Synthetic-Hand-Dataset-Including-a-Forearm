@@ -5,7 +5,7 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 # Arrange GPU devices starting from 0
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "3"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 from src.utils.dataset_loader import Frei
 from src.utils.visualize import *
 from src.utils.geometric_layers import *
@@ -35,7 +35,7 @@ def dump(pred_out_path, xyz_pred_list, verts_pred_list):
 
 
 def main(args):
-    n_l = ["src/tools/output/ours/ours/previous/3d_w_a_base"]
+    n_l = ["src/tools/output/ours/ours/previous/3d_w_a"]
     model_list = ["/".join(n.split("/")[2:]) for n in n_l]
 
     # model_path = "output/ours/our_part"
