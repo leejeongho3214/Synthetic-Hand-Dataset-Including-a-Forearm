@@ -24,7 +24,7 @@ np.random.seed(77)
 np.set_printoptions(precision=6, suppress=True)
 
 def build_dataset(args):   
-    general_path = "../../datasets/without_bg_revision"
+    general_path = "../../datasets/data_230710"
     args.dataset = args.name.split("/")[1]
     
     standard_j =  [[1.8155813217163086, 0.15561437606811523, 1.1083018779754639], [2.406423807144165, 0.5383367538452148, 1.304732084274292], [2.731782913208008, 1.172149658203125, 1.335669994354248], [2.681248903274536, 1.7862586975097656, 1.2639415264129639], [2.3304858207702637, 2.234518527984619, 1.1211540699005127], [2.341385841369629, 1.37321138381958, 2.0816190242767334], [2.3071250915527344, 2.0882482528686523, 1.7858655452728271], [2.2974867820739746, 2.293468952178955, 1.3347842693328857], [2.31135630607605, 1.9055771827697754, 1.029522180557251], [1.851935863494873, 1.30698823928833, 2.1360342502593994], [1.8758153915405273, 2.124051094055176, 2.5652201175689697], [1.973258376121521, 2.431856632232666, 2.1032679080963135], [2.0731117725372314, 2.644174098968506, 1.616095781326294], [1.471063256263733, 1.2448792457580566, 2.0854008197784424], [1.4334478378295898, 1.9523506164550781, 1.5718071460723877], [1.6441740989685059, 1.7141218185424805, 1.1860997676849365], [1.760351300239563, 1.242896556854248, 1.305544137954712], [1.1308115720748901, 1.1045317649841309, 1.9674842357635498], [1.0435627698898315, 1.6727776527404785, 1.8200523853302002], [1.2601540088653564, 1.6069226264953613, 1.4762027263641357], [1.4999980926513672, 1.5507283210754395, 1.1099226474761963]]
@@ -71,19 +71,20 @@ class CustomDataset_g(Dataset):
         self.root = "/".join(path.split("/")[:-2])
         with open(f"{path}/revision_data.pkl", "rb") as st_json:
             self.meta = pickle.load(st_json)
-        self.bg_path = "../../datasets/without_bg_revision/background"
+        self.bg_path = "../../datasets/data_230710/background"
         self.bg_list = os.listdir(self.bg_path)
         self.s_j = standard_j
         self.img_path = os.path.join(self.root, f"images/{self.phase}")
-        self.raw_res = 512
+        self.raw_res = 800
         self.img_res = 224
         self.scale_factor = 0.25
-        self.rot_factor = 90 
+        self.rot_factor = 90
+        self.ratio_of_dataset = args.ratio_of_dataset
         self.args.logger.debug('phase: {} => noise_factor: {}, scale_factor: {}, rot_factor: {}, raw_res: {}, img_res: {}'.format(self.phase, self.__dict__.get('noise_factor'), self.__dict__.get('scale_factor'),
                                                                                                                     self.__dict__.get('rot_factor'), self.__dict__.get('raw_res'), self.__dict__.get('img_res')))
         
     def __len__(self):
-        return int(self.args.ratio_of_dataset * (len(self.meta) - 1))
+        return int(self.ratio_of_dataset * (len(self.meta) - 1))
         
     def __getitem__(self, idx):
         
@@ -133,22 +134,22 @@ class CustomDataset_g(Dataset):
         cropped_img = crop(image, (self.raw_res/2, self.raw_res/2), scale, [self.raw_res, self.raw_res], rot=rot)    
         bg_img = cv2.imread(os.path.join(self.bg_path, self.bg_list[idx%len(self.bg_list)]))
         bg_img = cv2.cvtColor(bg_img, cv2.COLOR_BGR2RGB)
-        bg_img = cv2.resize(bg_img, (512, 512))
+        bg_img = cv2.resize(bg_img, (self.raw_res, self.raw_res))
         
         if self.args.arm:
-            new_image = np.zeros((512, 512, 3))
+            new_image = np.zeros((self.raw_res, self.raw_res, 3))
             
             index = np.where((cropped_img[:, :, 0] != 0) | (cropped_img[:, :, 1] != 0) | (cropped_img[:, :, 2] != 0))
             index = np.array(index)
             bbox_image = [min(index[0]), max(index[0]), min(index[1]), max(index[1])]
             bbox = [min(joint_2d[:, 1]),  max(joint_2d[:, 1]), min(joint_2d[:, 0]), max(joint_2d[:, 0])]
-            dia_of_bbox = np.sqrt((bbox[0] - bbox[1]) ** 2 + (bbox[2] -bbox[3]) ** 2) / 512
-            dia_of_hand = np.sqrt((bbox_image[0] - bbox_image[1]) ** 2 + (bbox_image[2] - bbox_image[3]) ** 2) / 512
+            dia_of_bbox = np.sqrt((bbox[0] - bbox[1]) ** 2 + (bbox[2] -bbox[3]) ** 2) / self.raw_res
+            dia_of_hand = np.sqrt((bbox_image[0] - bbox_image[1]) ** 2 + (bbox_image[2] - bbox_image[3]) ** 2) / self.raw_res
             ratio_of_dia = dia_of_bbox / dia_of_hand
             a = int(max(bbox[0] - (ratio_of_dia * 100), 0))
-            b = int(min(bbox[1] + (ratio_of_dia * 100), 512))
+            b = int(min(bbox[1] + (ratio_of_dia * 100), self.raw_res))
             c = int(max(bbox[2] - (ratio_of_dia * 100), 0))
-            d = int(min(bbox[3] + (ratio_of_dia * 100), 512))
+            d = int(min(bbox[3] + (ratio_of_dia * 100), self.raw_res))
             new_image[a : b, c : d] = cropped_img[a : b, c: d]
             cropped_img = new_image.copy()
             
@@ -186,6 +187,7 @@ class val_g_set(CustomDataset_g):
         with open(f"{self.path}/revision_data.pkl", "rb") as st_json:
             self.meta = pickle.load(st_json)
         self.img_path = os.path.join(self.root,f"images/{self.phase}" )
+        self.ratio_of_dataset = 1
 
 class AverageMeter(object):
 

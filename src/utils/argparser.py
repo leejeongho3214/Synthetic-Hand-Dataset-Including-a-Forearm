@@ -34,17 +34,15 @@ def parse_args(eval=False):
 
 
 def load_model(args):
+
     epoch = 0
     best_loss = np.inf
-    count = 0
-    args.num_gpus = int(os.environ['WORLD_SIZE']) if 'WORLD_SIZE' in os.environ else 1
-    os.environ['OMP_NUM_THREADS'] = str(args.num_workers)
-    args.device = torch.device(args.device)
-
-    _model = get_our_net(args) ## output: 21 x 2
+    count = 0 
         
     log_dir = f'tensorboard/{args.name}'
     writer = SummaryWriter(log_dir)
+    
+    _model = get_our_net(args) ## output: 21 x 2
     
     if args.name.split("/")[0] != "final_model":
         if args.reset: 

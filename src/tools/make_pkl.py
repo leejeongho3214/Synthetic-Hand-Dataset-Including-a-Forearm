@@ -28,28 +28,27 @@ np.set_printoptions(precision=6, suppress=True)
 
 
 class Json_3d(Dataset):
-
     def __init__(self, phase):
-        with open(f"../../datasets/without_bg_revision/annotations/{phase}/CISLAB_{phase}_camera.json", "r") as st_json:
+        with open(f"../../datasets/data_230710/annotations/{phase}/CISLAB_{phase}_camera.json", "r") as st_json:
             self.camera = json.load(st_json)
-        with open(f"../../datasets/without_bg_revision/annotations/{phase}/CISLAB_{phase}_joint_3d.json", "r") as st_json:
+        with open(f"../../datasets/data_230710/annotations/{phase}/CISLAB_{phase}_joint_3d.json", "r") as st_json:
             self.joint = json.load(st_json)
-        with open(f"../../datasets/without_bg_revision/annotations/{phase}/CISLAB_{phase}_data.json", "r") as st_json:
+        with open(f"../../datasets/data_230710/annotations/{phase}/CISLAB_{phase}_data.json", "r") as st_json:
             self.meta = json.load(st_json)
 
-        self.root = f'../../datasets/without_bg_revision/images/{phase}'
-        self.store_path = os.path.join(f'../../datasets/without_bg_revision/annotations/{phase}', "revision_data.pkl")
+        self.root = f'../../datasets/data_230710/images/{phase}'
+        self.store_path = os.path.join(f'../../datasets/data_230710/annotations/{phase}', "revision_data.pkl")
         self.dict = []
 
-    def j2d_processing(self, kp, scale, r):
+    def j2d_processing(self, kp, scale, r, raw_size):
         """Process gt 2D keypoints and apply all augmentation transforms."""
         nparts = kp.shape[0]
         for i in range(nparts):
-            kp[i, 0:2] = transform(kp[i, 0:2]+1, (512/2, 512/2), scale,
-                                   [512, 512], rot=r)
+            kp[i, 0:2] = transform(kp[i, 0:2]+1, (raw_size/2, raw_size/2), scale,
+                                   [raw_size, raw_size], rot=r)
         return kp
 
-    def get_json(self, num, store):
+    def get_json(self, num, store, img_size):
         pbar = tqdm(total=len(self.meta['images']))
         count = 0
 
@@ -70,17 +69,15 @@ class Json_3d(Dataset):
 
             calibrationed_joint = torch.einsum(
                 'ij, kj -> ki', rot, (joint_3d - translation))
-            calibrationed_joint[:, :2] = calibrationed_joint[:,
-                                                             :2]/(calibrationed_joint[:, 2][:, None].repeat(1, 2))
-            calibrationed_joint = calibrationed_joint[:,
-                                                      :2] * focal_length + 256
+            calibrationed_joint[:, :2] = calibrationed_joint[:, :2]/(calibrationed_joint[:, 2][:, None].repeat(1, 2))
+            calibrationed_joint = calibrationed_joint[:, :2] * focal_length + (img_size/2)
 
             image_path = os.path.join(
                 self.root, '/'.join(self.meta['images'][idx]['file_name'].split('/')[1:]))
             image = cv2.imread(image_path)
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-            if any(joint[idx] < 50 or joint[idx] > 470 for joint in calibrationed_joint for idx in range(2)):
+            if any(joint[idx] < 70 or joint[idx] > 740 for joint in calibrationed_joint for idx in range(2)):
                 continue
 
             loof_count = 0
@@ -88,8 +85,8 @@ class Json_3d(Dataset):
                 r = min(2*90, max(-2*90, np.random.randn()*90))
                 scale = min(1+0.25, max(1-0.25, np.random.randn()*0.25+1))
                 joint_2d = self.j2d_processing(
-                    np.array(calibrationed_joint), scale, r)
-                if not any(joint[idx] < 50 or joint[idx] > 470 for joint in joint_2d for idx in range(2)):
+                    np.array(calibrationed_joint), scale, r, img_size)
+                if not any(joint[idx] < 70 or joint[idx] > 740 for joint in joint_2d for idx in range(2)):
                     break
                 loof_count += 1
                 if loof_count == 4:
@@ -104,14 +101,14 @@ class Json_3d(Dataset):
                 (bbox[2] - bbox[0])**2 + (bbox[3] - bbox[1])**2)
 
             if store:
-                cropped_img = crop(image, (256, 256), scale, [512, 512], rot = r)
+                cropped_img = crop(image, (img_size/2, img_size/2), scale, [img_size, img_size], rot = r)
                 
-                bg_path = "../../datasets/without_bg_revision/background"
+                bg_path = "../../datasets/data_230710/background"
                 bg_list = os.listdir(bg_path)
                 bg_len = len(bg_list)
                 bg_img = cv2.imread(os.path.join(bg_path, bg_list[idx%bg_len]))
                 bg_img = cv2.cvtColor(bg_img, cv2.COLOR_BGR2RGB)
-                bg_img = cv2.resize(bg_img, (512, 512))
+                bg_img = cv2.resize(bg_img, (img_size, img_size))
                 
                 index = np.where((cropped_img[:, :, 0] == 0) & (cropped_img[:, :, 1] == 0) & (cropped_img[:, :, 2] == 0))
                 cropped_img[index] = bg_img[index]
@@ -316,8 +313,9 @@ def visualize_bbox(image, bbox):
 
 def main():
     img_store = False
-    Json_3d(phase="train").get_json(-1, img_store)
-    Json_3d(phase="val").get_json(-1, img_store)
+    img_size = 800
+    Json_3d(phase="train").get_json(-1, img_store, img_size)
+    Json_3d(phase="val").get_json(-1, img_store, img_size)
     print("ENDDDDDD")
 
 

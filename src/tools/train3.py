@@ -11,19 +11,14 @@ from src.utils.argparser import parse_args, load_model, train, valid
 from dataset import *
 from src.utils.bar import colored
 
-def main(args):
-
-    train_dataset, val_dataset = build_dataset(args)
-
-    trainset_loader = data.DataLoader(dataset=train_dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True)
-    valset_loader = data.DataLoader(dataset=val_dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=False)
-
-    _model, best_loss, epo, count, writer = load_model(args)
-    pck_l = 0; batch_time = AverageMeter()
-    print(colored("Train_len: {}, Val_len: {}".format(len(train_dataset), len(val_dataset)), "blue"))
-    args.logger.debug("Train_len: {}, Val_len: {}".format(len(train_dataset), len(val_dataset)))
+def worker(world_rank, world_size, nodes_size, args, trainset_loader, valset_loader, epo):
+    if world_size > 1:
+        torch.distributed.init_process_group(
+            backend="nccl", init_method="tcp://localhost:23456" if nodes_size == 1 else "env://",
+            rank=world_rank, world_size=world_size)
+        torch.cuda.set_device(args.device)
+    
     for epoch in range(epo, args.epoch):
-
         Graphormer_model, optimizer, batch_time, best_loss = train(args, trainset_loader, valset_loader, _model, epoch, best_loss, len(train_dataset), count, writer, pck_l, len(trainset_loader)+len(valset_loader), batch_time)
         loss, count, pck, batch_time = valid(args, trainset_loader, valset_loader, Graphormer_model, epoch, count, best_loss, len(train_dataset),  writer, batch_time, len(trainset_loader)+len(valset_loader), pck_l)
         pck_l = max(pck, pck_l)
@@ -42,6 +37,33 @@ def main(args):
                 break
         gc.collect()
         torch.cuda.empty_cache()
+
+def main(args):
+
+    train_dataset, val_dataset = build_dataset(args)
+
+    trainset_loader = data.DataLoader(dataset=train_dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True)
+    valset_loader = data.DataLoader(dataset=val_dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=False)
+
+    _model, best_loss, epo, count, writer = load_model(args)
+    pck_l = 0; batch_time = AverageMeter()
+    print(colored("Train_len: {}, Val_len: {}".format(len(train_dataset), len(val_dataset)), "blue"))
+    args.logger.debug("Train_len: {}, Val_len: {}".format(len(train_dataset), len(val_dataset)))
+    
+    device_ids = list(map(int, args.device_ids.split(",")))
+    nprocs = len(device_ids)
+    
+    if nprocs > 1:
+        torch.multiprocessing.spawn(
+            worker, args=(nprocs, 1, args,  trainset_loader, valset_loader, epo), nprocs=nprocs,
+            join=True)
+    elif nprocs == 1:
+        worker(device_ids[0], nprocs, 1, args, trainset_loader, valset_loader, epo)
+    else:
+        assert False
+    
+    
+
   
 
 if __name__ == "__main__":

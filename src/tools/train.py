@@ -29,6 +29,7 @@ def main(args):
     )
 
     _model, best_loss, epo, count, writer = load_model(args)
+    
     pck_l = 0
     batch_time = AverageMeter()
     print(
