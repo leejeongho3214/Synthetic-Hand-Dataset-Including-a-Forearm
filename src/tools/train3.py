@@ -13,7 +13,7 @@ from src.utils.argparser import parse_args, load_model, train, valid
 from dataset import *
 from src.utils.bar import colored
 
-def worker(world_rank, world_size, nodes_size, args, trainset_loader, valset_loader):
+def worker(world_rank, world_size, nodes_size, args, trainset_loader, valset_loader, train_dataset, val_dataset):
 
     _model, best_loss, epo, count, writer = load_model(args)
     pck_l = 0; batch_time = AverageMeter()
