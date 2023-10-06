@@ -284,7 +284,7 @@ class HandMeshTSVDataset(object):
         # Process image
         img = self.rgb_processing(img, center, sc*scale, rot, flip, pn)
         img = torch.from_numpy(img).float()
-        img = transforms.Resize((size, size))(img)
+        img = transforms.Resize((size, size), antialias=True)(img)
 
         # Store image before normalization to use it in visualization
         transfromed_img = self.normalize_img(img)
@@ -293,9 +293,6 @@ class HandMeshTSVDataset(object):
         root_coord = joints_3d[self.root_index, :-1]
         joints_3d[:, :-1] = joints_3d[:, :-1] - root_coord[None, :]
         # 3d pose augmentation (random flip + rotation, consistent to image and SMPL)
-
-        self.s_j[:, 0] = -self.s_j[:, 0]
-        self.s_j = self.s_j - self.s_j[0, :]
 
         joints_3d_transformed = self.j3d_processing(
             joints_3d.copy(), rot, flip)
@@ -306,7 +303,7 @@ class HandMeshTSVDataset(object):
         joint_2d = ((torch.from_numpy(joints_2d_transformed).float()[
                     :, :-1] * 100 + 112) / size).float()
 
-        return transfromed_img[(2, 1, 0), :, :], joint_2d, torch.from_numpy(joints_3d_transformed).float()[:, :3], torch.from_numpy(joints_3d_transformed).float()[:, :3]
+        return transfromed_img[(2, 1, 0), :, :], joint_2d, torch.from_numpy(joints_3d_transformed).float()[:, :3]
 
 
 def blur_heatmaps(heatmaps):

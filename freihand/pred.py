@@ -1,4 +1,5 @@
 from __future__ import print_function, unicode_literals
+import numpy as np
 import argparse
 from tqdm import tqdm
 import torch

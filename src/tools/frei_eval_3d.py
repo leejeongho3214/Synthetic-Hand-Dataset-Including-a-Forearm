@@ -1,22 +1,21 @@
-from tqdm import tqdm
 import os
+import json
+import numpy as np
 import sys
 
+os.environ["MKL_THREADING_LAYER"] = "GNU"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
-# Arrange GPU devices starting from 0
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-from src.utils.dataset_loader import Frei
-from src.utils.visualize import *
-from src.utils.geometric_layers import *
-from src.utils.loss import *
-from dataset import *
-from src.utils.argparser import parse_args
-from src.tools.models.our_net import get_our_net
-from torch.utils import data
 import torch
-import numpy as np
-import json
+from torch.utils import data
+from src.tools.models.our_net import get_our_net
+from src.utils.argparser import parse_args
+from dataset import *
+from src.utils.loss import *
+from src.utils.geometric_layers import *
+from src.utils.visualize import *
+from src.utils.dataset_loader import Frei
+from tqdm import tqdm
 
 
 def dump(pred_out_path, xyz_pred_list, verts_pred_list):
@@ -35,15 +34,8 @@ def dump(pred_out_path, xyz_pred_list, verts_pred_list):
 
 
 def main(args):
-    n_l = ["src/tools/output/ours/ours/previous/3d_w_a"]
+    n_l = ["src/tools/output/ours/frei/base"]
     model_list = ["/".join(n.split("/")[2:]) for n in n_l]
-
-    # model_path = "output/ours/our_part"
-    # model_list = list()
-    # for (root, _, files) in os.walk(model_path):
-    #     for file in files:
-    #         if '.bin' in file:
-    #             model_list.append('/'.join(root.split('/')[:-1]))
 
     for name in model_list:
         # name = "output/ours/dart/3d"
@@ -66,12 +58,25 @@ def main(args):
         pbar = tqdm(total=len(testset_loader))
         xyz_list, verts_list = list(), list()
 
-        for images, _, gt_3d_joints in testset_loader:
+        for idx,(images, _, gt_3d_joints) in enumerate(testset_loader):
             _model.eval()
+            starter, ender = torch.cuda.Event(enable_timing=True), torch.cuda.Event(enable_timing=True)
+            repetitions = 300
+            timings=np.zeros((repetitions,1))
             with torch.no_grad():
                 images = images.cuda()
                 gt_3d_joints = gt_3d_joints.cuda()
+                starter.record()
                 _, pred_3d_joints = _model(images)
+                ender.record()
+
+                torch.cuda.synchronize()
+                curr_time = starter.elapsed_time(ender)
+                if idx > 100:
+                    timings[idx] = curr_time
+
+                print(curr_time)
+
                 pred_3d_joints = np.array(pred_3d_joints.cpu())
                 for xyz in pred_3d_joints:
                     xyz_list.append(xyz)
