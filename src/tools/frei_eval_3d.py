@@ -58,25 +58,12 @@ def main(args):
         pbar = tqdm(total=len(testset_loader))
         xyz_list, verts_list = list(), list()
 
-        for idx,(images, _, gt_3d_joints) in enumerate(testset_loader):
+        for idx, (images, _, gt_3d_joints) in enumerate(testset_loader):
             _model.eval()
-            starter, ender = torch.cuda.Event(enable_timing=True), torch.cuda.Event(enable_timing=True)
-            repetitions = 300
-            timings=np.zeros((repetitions,1))
             with torch.no_grad():
                 images = images.cuda()
                 gt_3d_joints = gt_3d_joints.cuda()
-                starter.record()
                 _, pred_3d_joints = _model(images)
-                ender.record()
-
-                torch.cuda.synchronize()
-                curr_time = starter.elapsed_time(ender)
-                if idx > 100:
-                    timings[idx] = curr_time
-
-                print(curr_time)
-
                 pred_3d_joints = np.array(pred_3d_joints.cpu())
                 for xyz in pred_3d_joints:
                     xyz_list.append(xyz)

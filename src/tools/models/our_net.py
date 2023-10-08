@@ -20,7 +20,7 @@ def get_our_net(args):
         config = config_class.from_pretrained(args.config_name if args.config_name \
                                                 else args.model_name_or_path)
 
-        config.output_attentions = False
+        config.output_attentions = True
         config.hidden_dropout_prob = args.drop_out
         config.img_feature_dim = input_feat_dim[i]
         config.output_feature_dim = output_feat_dim[i]
