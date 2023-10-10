@@ -29,7 +29,6 @@ np.set_printoptions(precision=6, suppress=True)
 
 def build_dataset(args):
     general_path = "../../datasets/data_230710"
-    args.dataset = args.name.split("/")[1]
 
     if args.dataset == "frei":
         train_dataset = make_hand_data_loader(
@@ -91,6 +90,7 @@ class CustomDataset_g(Dataset):
             self.ratio_of_dataset = self.args.ratio_of_dataset
         else:
             self.ratio_of_dataset = 1
+            
         self.args.logger.debug(
             "phase: {} => noise_factor: {}, scale_factor: {}, rot_factor: {}, raw_res: {}, img_res: {}".format(
                 self.phase,
