@@ -12,6 +12,8 @@ def pre_arg(args, eval):
     if args.reset or not os.path.isfile(os.path.join(output_dir,'checkpoint-good/state_dict.bin')): reset_file(os.path.join(output_dir, "log.txt"))
     if not output_dir.split('/')[1] == "output" and not os.path.isfile((output_dir)):  mkdir(output_dir); logger = setup_logger(args.name, output_dir, get_rank())
     else: logger = None
+    
+    args.dataset = args.name.split("/")[0]
     logger.debug(args)
     if not eval: print(colored(args, "yellow"))
     args.root_path = 'output'

@@ -24,15 +24,15 @@ def orthographic_projection(X, camera):
 
 
 class Graphormer_Hand_Network(torch.nn.Module):
-    '''
+    """
     End-to-end Graphormer network for hand pose and mesh reconstruction from a single image.
-    '''
+    """
 
     def __init__(self, config, backbone, trans_encoder):
         super(Graphormer_Hand_Network, self).__init__()
         self.config = config
         self.backbone = backbone
-        self.cam_param_fc = torch.nn.Linear(3, 1)    
+        self.cam_param_fc = torch.nn.Linear(3, 1)
         self.cam_param_fc2 = torch.nn.Linear(21, 3)
         self.trans_encoder = trans_encoder
         self.grid_feat_dim = torch.nn.Linear(1024, 2048)
@@ -57,5 +57,5 @@ class Graphormer_Hand_Network(torch.nn.Module):
         cam_param = x.transpose(1, 2)
         cam_param = cam_param.squeeze()
         pred_2d_joints = orthographic_projection(pred_3d_joints, cam_param)
-        
+
         return pred_2d_joints, pred_3d_joints

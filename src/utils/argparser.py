@@ -27,7 +27,7 @@ def parse_args(eval=False):
     parser.add_argument("--count", default=4, type=int)
     parser.add_argument("--epoch", default=100, type=int)
     parser.add_argument(
-        "--loss_hrnet", default=0, type=float, help="Multiple this value to hrnet loss"
+        "--loss_aux", default=0, type=float, help="Multiple this value to hrnet loss"
     )
     parser.add_argument(
         "--heatmap", action="store_true", help="Use a 2d joint loss, but heatmap loss"
@@ -42,7 +42,7 @@ def parse_args(eval=False):
         "--reset", action="store_true", help="Delete the checkpoint folder"
     )
     parser.add_argument(
-        "--which_gcn", default="0, 0, 0", help="Which encoder block you use", type=str
+        "--which_gcn", default="0, 0, 1", help="Which encoder block you use", type=str
     )
     parser.add_argument(
         "--arm",
@@ -71,8 +71,7 @@ def load_model(args):
     epoch = 0
     best_loss = np.inf
     count = 0
-    args.num_gpus = int(os.environ["WORLD_SIZE"]) if "WORLD_SIZE" in os.environ else 1
-    os.environ["OMP_NUM_THREADS"] = str(args.num_workers)
+    args.num_gpus = 1
     args.device = torch.device(args.device)
 
     _model = get_our_net(args)  ## output: 21 x 2
@@ -80,44 +79,24 @@ def load_model(args):
     log_dir = f"tensorboard/{args.name}"
     writer = SummaryWriter(log_dir)
 
-    if args.name.split("/")[0] != "final_model":
-        if args.reset:
-            if os.path.isfile(
-                os.path.join(
-                    args.root_path, args.name, "checkpoint-good/state_dict.bin"
-                )
-            ):
-                reset_folder(log_dir)
-                reset_folder(os.path.join(args.root_path, args.name))
-                print(colored("Ignore the check-point model", "green"))
-                args.reset = "resume but init"
-            else:
-                args.reset = "init"
-        else:
-            if os.path.isfile(
-                os.path.join(
-                    args.root_path, args.name, "checkpoint-good/state_dict.bin"
-                )
-            ):
-                best_loss, epoch, _model, count = resume_checkpoint(
-                    _model,
-                    os.path.join(
-                        args.root_path, args.name, "checkpoint-good/state_dict.bin"
-                    ),
-                )
-                args.logger.debug(
-                    "Loading ===> %s" % os.path.join(args.root_path, args.name)
-                )
-                print(
-                    colored(
-                        "Loading ===> %s" % os.path.join(args.root_path, args.name),
-                        "green",
-                    )
-                )
-                args.reset = "resume"
-            else:
-                reset_folder(log_dir)
-                args.reset = "init"
+    if os.path.isfile(
+        os.path.join(args.root_path, args.name, "checkpoint-good/state_dict.bin")
+    ) and not args.reset:
+        best_loss, epoch, _model, count = resume_checkpoint(
+            _model,
+            os.path.join(args.root_path, args.name, "checkpoint-good/state_dict.bin"),
+        )
+        args.logger.debug("Loading ===> %s" % os.path.join(args.root_path, args.name))
+        print(
+            colored(
+                "Loading ===> %s" % os.path.join(args.root_path, args.name),
+                "green",
+            )
+        )
+        args.reset = "resume"
+    else:
+        reset_folder(log_dir)
+        args.reset = "init"
 
     _model.to(args.device)
 

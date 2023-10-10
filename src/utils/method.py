@@ -195,18 +195,6 @@ class Runner(object):
                     or iteration == int(len(self.train_loader) / 2)
                     or iteration == len(self.train_loader) - 1
                 ):
-                    # fig = plt.figure()
-                    # visualize_only_gt(
-                    #     images,
-                    #     gt_2d_joint,
-                    #     fig,
-                    #     "train",
-                    #     self.epoch,
-                    #     iteration,
-                    #     self.args,
-                    # )
-                    # plt.close()
-
                     visualize_3d(
                         images,
                         gt_2d_joint,
@@ -244,13 +232,11 @@ class Runner(object):
                     gt_3d_joints = gt_3d_joints.cuda()
 
                     pred_2d_joints, pred_3d_joints = self.model(images)
-                    loss_2d = keypoint_2d_loss(
-                        self.criterion_keypoints, pred_2d_joints, gt_2d_joint
-                    )
+
                     loss_3d = keypoint_3d_loss(
                         self.criterion_keypoints, pred_3d_joints, gt_3d_joints
                     )
-                    loss = loss_3d * self.args.loss_3d + loss_2d * self.args.loss_2d
+                    loss = loss_3d * self.args.loss_3d
 
                     gt_2d_joint = gt_2d_joint * 224
                     if (
