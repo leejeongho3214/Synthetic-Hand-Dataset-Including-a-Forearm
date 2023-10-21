@@ -10,6 +10,7 @@ import logging
 import math
 import os
 import code
+import numpy as np
 import torch
 from torch import nn
 from .modeling_bert import BertPreTrainedModel, BertEmbeddings, BertPooler, BertIntermediate, BertOutput, BertSelfOutput
@@ -119,13 +120,12 @@ class BertAttention(nn.Module):
 
 
 class GraphormerLayer(nn.Module):
-    def __init__(self, config):
+    def __init__(self, config, idx):
         super(GraphormerLayer, self).__init__()
         self.attention = BertAttention(config)
         self.mesh_type = config.mesh_type
         self.has_graph_conv = config.graph_conv
-
-        if self.has_graph_conv == True:
+        if self.has_graph_conv == True and idx in list(np.arange(config.num_hidden_layers)[-(config.graph_num):]):
             self.graph_conv = GraphResBlock(config.hidden_size, config.hidden_size, mesh_type=self.mesh_type)
 
         self.intermediate = BertIntermediate(config)
@@ -136,8 +136,16 @@ class GraphormerLayer(nn.Module):
         attention_outputs = self.attention(hidden_states, attention_mask,
                 head_mask, history_state)
         attention_output = attention_outputs[0]
-        joints_vertices = attention_output
-
+        
+        if self.has_graph_conv==True:
+            joints = attention_output[:, 0:21, :]
+            graph_joints = attention_output[:, 21: 42, :]
+            img_tokens = attention_output[:, 42:, :]
+            graph_joints = self.graph_conv(graph_joints)
+            joints_vertices = torch.cat([joints, graph_joints, img_tokens],dim=1)
+        else:
+            joints_vertices = attention_output
+            
         intermediate_output = self.intermediate(joints_vertices)
         layer_output = self.output(intermediate_output, joints_vertices)
         outputs = (layer_output,) + attention_outputs[1:]  # add attentions if we output them
@@ -153,7 +161,7 @@ class GraphormerEncoder(nn.Module):
         super(GraphormerEncoder, self).__init__()
         self.output_attentions = config.output_attentions
         self.output_hidden_states = config.output_hidden_states
-        self.layer = nn.ModuleList([GraphormerLayer(config) for _ in range(config.num_hidden_layers)])
+        self.layer = nn.ModuleList([GraphormerLayer(config, idx) for idx in range(config.num_hidden_layers)])
 
     def forward(self, hidden_states, attention_mask, head_mask=None,
                 encoder_history_states=None):

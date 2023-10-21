@@ -328,4 +328,38 @@ def reconstruction_error(S1, S2, reduction='mean'):
         re = re.sum()
     return re
 
+from scipy.linalg import orthogonal_procrustes
 
+def _get_epe(self, kp_id):
+    """ Returns end point error for one keypoint. """
+    if len(self.data[kp_id]) == 0:
+        return None, None
+
+    data = np.array(self.data[kp_id])
+    epe_mean = np.mean(data)
+    return epe_mean
+
+def align_w_scale(mtx1, mtx2, return_trafo=False):
+    """ Align the predicted entity in some optimality sense with the ground truth. """
+    # center
+    t1 = mtx1.mean(0)
+    t2 = mtx2.mean(0)
+    mtx1_t = mtx1 - t1
+    mtx2_t = mtx2 - t2
+
+    # scale
+    s1 = np.linalg.norm(mtx1_t) + 1e-8
+    mtx1_t /= s1
+    s2 = np.linalg.norm(mtx2_t) + 1e-8
+    mtx2_t /= s2
+
+    # orth alignment
+    R, s = orthogonal_procrustes(mtx1_t, mtx2_t)
+
+    # apply trafos to the second matrix
+    mtx2_t = np.dot(mtx2_t, R.T) * s
+    mtx2_t = mtx2_t * s1 + t1
+    if return_trafo:
+        return R, s, s1, t1 - t2
+    else:
+        return mtx2_t

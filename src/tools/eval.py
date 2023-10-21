@@ -283,7 +283,7 @@ def main(gt_path, pred_path, output_dir, pred_file_name=None, set_name=None):
             )
 
     xyz_al_mean3d, _, xyz_al_auc3d, pck_xyz_al, thresh_xyz_al = eval_xyz_aligned.get_measures(
-        0.0, 0.05, 100)
+        0.0, 0.05, 30)
     print('Evaluation 3D KP ALIGNED results:')
     print('auc=%.3f, mean_kp3d_avg=%.2f cm' %
           (xyz_al_auc3d, xyz_al_mean3d * 100.0))
@@ -302,7 +302,7 @@ def main(gt_path, pred_path, output_dir, pred_file_name=None, set_name=None):
     with open(score_path, mode) as fo:
         xyz_al_mean3d *= 100
         fo.write("\nname: %s\n" % "/".join(name_list[:-1]))
-        fo.write('xyz_al_mean3d: %.2f cm\n' % xyz_al_mean3d)
+        fo.write('auc=%.3f, xyz_al_mean3d: %.2f cm\n' % (xyz_al_auc3d, xyz_al_mean3d))
         fo.write("======" * 14)
     print(colored("Writting => %s" % score_path, "red"))
     return

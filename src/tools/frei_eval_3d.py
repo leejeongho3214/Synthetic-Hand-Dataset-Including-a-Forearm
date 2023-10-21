@@ -34,11 +34,10 @@ def dump(pred_out_path, xyz_pred_list, verts_pred_list):
 
 
 def main(args):
-    n_l = ["src/tools/output/ours/frei/base"]
+    n_l = ["src/tools/output/frei/aux_gcn_loss_0.3_h_3"]
     model_list = ["/".join(n.split("/")[2:]) for n in n_l]
 
     for name in model_list:
-        # name = "output/ours/dart/3d"
         args.name = os.path.join(name, "checkpoint-good/state_dict.bin")
         args.model = args.name.split("/")[1]
         _model = get_our_net(args)
@@ -63,7 +62,7 @@ def main(args):
             with torch.no_grad():
                 images = images.cuda()
                 gt_3d_joints = gt_3d_joints.cuda()
-                _, pred_3d_joints = _model(images)
+                _, pred_3d_joints, _ = _model(images)
                 pred_3d_joints = np.array(pred_3d_joints.cpu())
                 for xyz in pred_3d_joints:
                     xyz_list.append(xyz)

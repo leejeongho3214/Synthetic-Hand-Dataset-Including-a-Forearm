@@ -1,11 +1,8 @@
 import gc
 import os
-import sys
 
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # Arrange GPU devices starting from 0
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
-os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
+
 from torch.utils import data
 from src.utils.argparser import parse_args, load_model, train, valid
 from dataset import *
@@ -69,6 +66,7 @@ def main(args):
             len(trainset_loader) + len(valset_loader),
             pck_l,
         )
+
         pck_l = max(pck, pck_l)
         is_best = loss < best_loss
         best_loss = min(loss, best_loss)

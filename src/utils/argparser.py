@@ -26,11 +26,9 @@ def parse_args(eval=False):
     )
     parser.add_argument("--count", default=4, type=int)
     parser.add_argument("--epoch", default=100, type=int)
+    parser.add_argument("--graph_num", default=4, type=int)
     parser.add_argument(
-        "--loss_aux", default=0, type=float, help="Multiple this value to hrnet loss"
-    )
-    parser.add_argument(
-        "--heatmap", action="store_true", help="Use a 2d joint loss, but heatmap loss"
+        "--loss_aux", default=1, type=float, help="Multiple this value to hrnet loss"
     )
     parser.add_argument(
         "--loss_2d", default=0, help="Multiple this value to 2d loss", type=float
@@ -44,6 +42,8 @@ def parse_args(eval=False):
     parser.add_argument(
         "--which_gcn", default="0, 0, 1", help="Which encoder block you use", type=str
     )
+    parser.add_argument("--backbone", default="hrnet", type=str)
+
     parser.add_argument(
         "--arm",
         action="store_true",
@@ -81,7 +81,7 @@ def load_model(args):
 
     if os.path.isfile(
         os.path.join(args.root_path, args.name, "checkpoint-good/state_dict.bin")
-    ) and not args.reset:
+    ):
         best_loss, epoch, _model, count = resume_checkpoint(
             _model,
             os.path.join(args.root_path, args.name, "checkpoint-good/state_dict.bin"),
@@ -95,7 +95,6 @@ def load_model(args):
         )
         args.reset = "resume"
     else:
-        reset_folder(log_dir)
         args.reset = "init"
 
     _model.to(args.device)

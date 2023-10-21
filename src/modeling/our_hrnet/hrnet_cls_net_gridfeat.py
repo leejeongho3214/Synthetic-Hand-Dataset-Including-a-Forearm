@@ -266,6 +266,8 @@ class HighResolutionNet(nn.Module):
                                bias=False)
         self.bn2 = nn.BatchNorm2d(64, momentum=BN_MOMENTUM)
         self.relu = nn.ReLU(inplace=True)
+        
+        self.mlp = nn.Linear(64, 21, device= 'cuda')
 
         self.stage1_cfg = cfg['MODEL']['EXTRA']['STAGE1']
         num_channels = self.stage1_cfg['NUM_CHANNELS'][0]
@@ -474,6 +476,8 @@ class HighResolutionNet(nn.Module):
             else:
                 x_list.append(y_list[i])
         y_list = self.stage4(x_list)
+        
+        aux_heatmap = self.mlp(y_list[0].permute(0, 2, 3, 1)).permute(0, 3, 1,2)
 
         # Classification Head
         y = self.incre_modules[0](y_list[0])
@@ -490,7 +494,7 @@ class HighResolutionNet(nn.Module):
                                  [2:]).view(yy.size(0), -1)
 
         # y = self.classifier(y)
-        return yy, y 
+        return yy, y, aux_heatmap
 
 
 

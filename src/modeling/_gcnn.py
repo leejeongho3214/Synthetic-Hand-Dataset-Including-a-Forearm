@@ -128,14 +128,6 @@ class GraphConvolution(torch.nn.Module):
         self.in_features = in_features
         self.out_features = out_features
 
-        # if mesh=='body':
-        #     adj_indices = torch.load('../src/modeling/data/smpl_431_adjmat_indices.pt')
-        #     adj_mat_value = torch.load('../src/modeling/data/smpl_431_adjmat_values.pt')
-        #     adj_mat_size = torch.load('../src/modeling/data/smpl_431_adjmat_size.pt')
-        # elif mesh=='hand':
-        #     # adj_indices = torch.load('../modeling/data/mano_195_adjmat_indices.pt')
-        #     # adj_mat_value = torch.load('../modeling/data/mano_195_adjmat_values.pt')
-        #     # adj_mat_size = torch.load('../modeling/data/mano_195_adjmat_size.pt')
         adj_indices = torch.tensor([[0, 0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17, 17, 18, 18, 19, 19, 20],
                         [1, 5, 9, 13, 17, 0, 2, 1, 3, 2, 4, 3, 0, 6, 5, 7, 6, 8, 7, 0, 10, 9, 11, 10, 12, 11, 0, 14, 13, 15, 14, 16, 15, 0, 18, 17, 19, 18, 20, 19]])
         adj_mat_value = torch.ones(40)
@@ -143,6 +135,7 @@ class GraphConvolution(torch.nn.Module):
         self.adjmat = torch.sparse_coo_tensor(adj_indices, adj_mat_value, size=adj_mat_size).to(device)
 
         self.weight = torch.nn.Parameter(torch.FloatTensor(in_features, out_features))
+        
         if bias:
             self.bias = torch.nn.Parameter(torch.FloatTensor(out_features))
         else:

@@ -54,7 +54,7 @@ class Runner(object):
         self.log_losses = AverageMeter()
         self.log_2d_losses = AverageMeter()
         self.log_3d_losses = AverageMeter()
-        self.log_3d_re_losses = AverageMeter()
+        self.log_aux_losses = AverageMeter()
         self.pck_losses = AverageMeter()
         self.epe_losses = AverageMeter()
 
@@ -78,10 +78,9 @@ class Runner(object):
                     count=self.count,
                     max_count=self.args.count,
                 )
-                + " 2d_loss: {:.8f}, 3d_loss: {:.8f}, 3d_re_loss:{:.8f} ,pck: {:.2f}%, total_loss: {:.8f}, best_loss: {:.8f}".format(
+                + " 2d_loss: {:.8f}, 3d_loss: {:.8f}, pck: {:.2f}%, total_loss: {:.8f}, best_loss: {:.8f}".format(
                     self.log_2d_losses.avg,
                     self.log_3d_losses.avg,
-                    self.log_3d_re_losses.avg,
                     self.pck,
                     self.log_losses.avg,
                     self.best_loss,
@@ -116,21 +115,48 @@ class Runner(object):
         self.bar.next()
 
     def test_log(self, iteration, eta_seconds, end):
-        tt = " ".join(ctime(eta_seconds + end).split(" ")[1:-1])
-        if iteration % (self.args.logging_steps / 2) == 0:
-            self.args.logger.debug(
-                " ".join(["Test =>> epoch: {ep}", "iter: {iter}", "/{maxi}"]).format(
-                    ep=self.epoch, iter=iteration, maxi=len(self.now_loader)
-                )
-                + " epe: {:.2f}mm, count: {} / {}, total_loss: {:.8f}, best_loss: {:.8f}".format(
-                    self.epe_losses.avg * 0.26,
-                    int(self.count),
-                    self.args.count,
-                    self.log_losses.avg,
-                    self.best_loss,
-                )
-            )
+        # tt = " ".join(ctime(eta_seconds + end).split(" ")[1:-1])
+        # if iteration % (self.args.logging_steps / 2) == 0:
+        #     self.args.logger.debug(
+        #         " ".join(["Test =>> epoch: {ep}", "iter: {iter}", "/{maxi}"]).format(
+        #             ep=self.epoch, iter=iteration, maxi=len(self.now_loader)
+        #         )
+        #         + " epe: {:.2f}mm, count: {} / {}, total_loss: {:.8f}, best_loss: {:.8f}".format(
+        #             self.epe_losses.avg * 0.26,
+        #             int(self.count),
+        #             self.args.count,
+        #             self.log_losses.avg,
+        #             self.best_loss,
+        #         )
+        #     )
 
+        # if iteration == 0:
+        #     self.bar.suffix = (
+        #         "({iteration}/{data_loader}) "
+        #         "name: {name} | "
+        #         "count: {count} | "
+        #         "best_loss: {best_loss:.6f} \n"
+        #     ).format(
+        #         name="/".join(self.args.name.split("/")[-2:]),
+        #         count=self.count,
+        #         iteration=iteration,
+        #         best_loss=self.best_loss,
+        #         data_loader=len(self.now_loader),
+        #         total=self.log_losses.avg,
+        #     )
+        # else:
+        #     self.bar.suffix = (
+        #         "({iteration}/{data_loader}) " "loss: {total:.6f} "
+        #     ).format(
+        #         name="/".join(self.args.name.split("/")[-2:]),
+        #         count=self.count,
+        #         iteration=iteration,
+        #         best_loss=self.best_loss,
+        #         data_loader=len(self.now_loader),
+        #         total=self.log_losses.avg,
+        #     )
+        # self.bar.next()
+        
         if iteration == 0:
             self.bar.suffix = (
                 "({iteration}/{data_loader}) "
@@ -161,17 +187,20 @@ class Runner(object):
     def our(self, end):
         if self.phase == "TRAIN":
             self.model.train()
-            for iteration, (images, gt_2d_joints, gt_3d_joints) in enumerate(
+            for iteration, (images, gt_2d_joints, gt_3d_joints, heatmap) in enumerate(
                 self.train_loader
             ):
                 batch_size = images.size(0)
                 adjust_learning_rate(self.optimizer, self.epoch, self.args)
 
-                gt_2d_joint = (gt_2d_joints).cuda()
-                gt_3d_joints = gt_3d_joints.cuda()
-                images = images.cuda()
+                gt_2d_joint, gt_3d_joints, images, heatmap = (
+                    gt_2d_joints.cuda(),
+                    gt_3d_joints.cuda(),
+                    images.cuda(),
+                    heatmap.cuda(),
+                )
 
-                pred_2d_joints, pred_3d_joints = self.model(images)
+                pred_2d_joints, pred_3d_joints, aux_pred = self.model(images)
 
                 loss_2d = keypoint_2d_loss(
                     self.criterion_keypoints, pred_2d_joints, gt_2d_joint
@@ -179,17 +208,24 @@ class Runner(object):
                 loss_3d = keypoint_3d_loss(
                     self.criterion_keypoints, pred_3d_joints, gt_3d_joints
                 )
-                loss = loss_3d * self.args.loss_3d + loss_2d * self.args.loss_2d
+                loss_aux = JointsMSELoss(use_target_weight=False).cuda()(
+                    aux_pred, heatmap, None
+                )
+                loss = (
+                    loss_3d * self.args.loss_3d
+                    + loss_2d * self.args.loss_2d
+                    + loss_aux * self.args.loss_aux
+                )
 
                 self.log_losses.update(loss.item(), batch_size)
                 self.log_2d_losses.update(loss_2d.item(), batch_size)
                 self.log_3d_losses.update(loss_3d.item(), batch_size)
+                self.log_aux_losses.update(loss_aux.item(), batch_size)
 
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
 
-                gt_2d_joint = gt_2d_joint * 224
                 if (
                     iteration == 0
                     or iteration == int(len(self.train_loader) / 2)
@@ -197,7 +233,7 @@ class Runner(object):
                 ):
                     visualize_3d(
                         images,
-                        gt_2d_joint,
+                        gt_2d_joint * 224,
                         gt_3d_joints,
                         pred_3d_joints,
                         "train",
@@ -214,6 +250,9 @@ class Runner(object):
                 )
 
                 self.train_log(iteration, eta_seconds, end)
+                
+                return self.model, self.optimizer, self.batch_time
+
 
             self.writer.add_scalar(f"Loss/train", self.log_losses.avg, self.epoch)
 
@@ -222,23 +261,28 @@ class Runner(object):
         else:
             self.model.eval()
             with torch.no_grad():
-                for iteration, (images, gt_2d_joints, gt_3d_joints) in enumerate(
+                for iteration, (images, gt_2d_joints, gt_3d_joints, _) in enumerate(
                     self.valid_loader
                 ):
                     batch_size = images.size(0)
 
-                    images = images.cuda()
-                    gt_2d_joint = gt_2d_joints.cuda()
-                    gt_3d_joints = gt_3d_joints.cuda()
-
-                    pred_2d_joints, pred_3d_joints = self.model(images)
-
-                    loss_3d = keypoint_3d_loss(
-                        self.criterion_keypoints, pred_3d_joints, gt_3d_joints
+                    images, gt_2d_joint, gt_3d_joints = (
+                        images.cuda(),
+                        gt_2d_joints.cuda(),
+                        gt_3d_joints.cuda(),
                     )
-                    loss = loss_3d * self.args.loss_3d
 
-                    gt_2d_joint = gt_2d_joint * 224
+                    pred_2d_joints, pred_3d_joints, _ = self.model(images)
+
+                    # loss = keypoint_3d_loss(
+                    #     self.criterion_keypoints, pred_3d_joints, gt_3d_joints
+                    # )
+                    # self.log_losses.update(loss.item(), batch_size)
+                    
+                    for i in range(32):
+                        loss = align_w_scale(gt_3d_joints[i].detach().cpu().numpy(), pred_3d_joints[i].detach().cpu().numpy())
+                        self.log_losses.update(loss.mean(), 1)
+
                     if (
                         iteration == 0
                         or iteration == int(len(self.valid_loader) / 2)
@@ -246,7 +290,7 @@ class Runner(object):
                     ):
                         visualize_3d(
                             images,
-                            gt_2d_joint,
+                            gt_2d_joint * 224,
                             gt_3d_joints,
                             pred_3d_joints,
                             "test",
@@ -255,7 +299,7 @@ class Runner(object):
                             self.args,
                         )
 
-                    self.log_losses.update(loss.item(), batch_size)
+                    
                     self.batch_time.update(time.time() - end)
 
                     end = time.time()
