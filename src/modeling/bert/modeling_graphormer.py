@@ -125,9 +125,10 @@ class GraphormerLayer(nn.Module):
         self.attention = BertAttention(config)
         self.mesh_type = config.mesh_type
         self.has_graph_conv = config.graph_conv
+        self.do_graph = False
         if self.has_graph_conv == True and idx in list(np.arange(config.num_hidden_layers)[-(config.graph_num):]):
             self.graph_conv = GraphResBlock(config.hidden_size, config.hidden_size, mesh_type=self.mesh_type)
-
+            self.do_graph = True
         self.intermediate = BertIntermediate(config)
         self.output = BertOutput(config)
 
@@ -137,7 +138,7 @@ class GraphormerLayer(nn.Module):
                 head_mask, history_state)
         attention_output = attention_outputs[0]
         
-        if self.has_graph_conv==True:
+        if self.has_graph_conv==True and self.do_graph:
             joints = attention_output[:, 0:21, :]
             graph_joints = attention_output[:, 21: 42, :]
             img_tokens = attention_output[:, 42:, :]

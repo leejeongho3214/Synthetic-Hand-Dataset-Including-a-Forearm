@@ -223,6 +223,7 @@ class HandMeshTSVDataset(object):
         """Process gt 3D keypoints and apply all augmentation transforms."""
         # in-plane rotation
         rot_mat = np.eye(3)
+        S = S.astype("float32")
         if not r == 0:
             rot_rad = -r * np.pi / 180
             sn, cs = np.sin(rot_rad), np.cos(rot_rad)
@@ -233,7 +234,6 @@ class HandMeshTSVDataset(object):
         # flip the x coordinates
         if f:
             S = flip_kp(S)
-        S = S.astype("float32")
         return S
 
     def pose_processing(self, pose, r, f):
@@ -311,7 +311,7 @@ class HandMeshTSVDataset(object):
 
         center = annotations["center"]
         scale = annotations["scale"]
-        joints_2d = np.asarray(annotations["2d_joints"]) 
+        joints_2d = np.asarray(annotations["2d_joints"])
         # joints_2d = np.asarray(annotations["2d_joints"]) if self.is_train else np.asarray(annotations["hrnet_2d_joints"]) / 224
         joints_3d = np.asarray(annotations["3d_joints"])
 
@@ -355,7 +355,8 @@ class HandMeshTSVDataset(object):
         return (
             transfromed_img[(2, 1, 0), :, :],
             joint_2d,
-            torch.from_numpy(joints_3d_transformed).float()[:, :3],
+            torch.from_numpy(np.asarray(annotations["3d_joints"])).float()[:, :3],
+            # torch.from_numpy(joints_3d_transformed).float()[:, :3],
             heatmap,
         )
 

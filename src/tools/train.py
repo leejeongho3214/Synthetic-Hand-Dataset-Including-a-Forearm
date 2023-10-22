@@ -1,7 +1,7 @@
 import gc
 import os
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 from torch.utils import data
 from src.utils.argparser import parse_args, load_model, train, valid
@@ -26,7 +26,6 @@ def main(args):
     )
 
     _model, best_loss, epo, count, writer = load_model(args)
-    pck_l = 0
     batch_time = AverageMeter()
     print(
         colored(
@@ -48,11 +47,10 @@ def main(args):
             len(train_dataset),
             count,
             writer,
-            pck_l,
             len(trainset_loader) + len(valset_loader),
             batch_time,
         )
-        loss, count, pck, batch_time = valid(
+        loss, count, batch_time = valid(
             args,
             trainset_loader,
             valset_loader,
@@ -64,10 +62,8 @@ def main(args):
             writer,
             batch_time,
             len(trainset_loader) + len(valset_loader),
-            pck_l,
         )
         
-        pck_l = max(pck, pck_l)
         is_best = loss < best_loss
         best_loss = min(loss, best_loss)
 

@@ -4,7 +4,7 @@ import numpy as np
 import sys
 
 os.environ["MKL_THREADING_LAYER"] = "GNU"
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "3"
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 import torch
 from torch.utils import data
@@ -34,7 +34,7 @@ def dump(pred_out_path, xyz_pred_list, verts_pred_list):
 
 
 def main(args):
-    n_l = ["src/tools/output/frei/aux_gcn_loss_0.3_h_3"]
+    n_l = ["src/tools/output/frei/aux_gcn_loss_1_h_2"]
     model_list = ["/".join(n.split("/")[2:]) for n in n_l]
 
     for name in model_list:
@@ -54,10 +54,11 @@ def main(args):
             num_workers=args.num_workers,
             shuffle=False,
         )
+        
         pbar = tqdm(total=len(testset_loader))
         xyz_list, verts_list = list(), list()
 
-        for idx, (images, _, gt_3d_joints) in enumerate(testset_loader):
+        for idx, (images, _, gt_3d_joints, _) in enumerate(testset_loader):
             _model.eval()
             with torch.no_grad():
                 images = images.cuda()

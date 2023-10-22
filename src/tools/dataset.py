@@ -15,8 +15,8 @@ import pickle5 as pickle
 import sys
 from matplotlib import pyplot as plt
 import os
-from src.utils.dataset_loader import GAN, SyntheticHands
-
+from src.utils.dataset_loader import GAN, Frei, SyntheticHands
+from src.utils.dataset_utils import GenerateHeatmap
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 try:
     from src.utils.dart_loader import DARTset
@@ -38,13 +38,7 @@ def build_dataset(args):
             is_train=True,
             scale_factor=args.img_scale_factor,
         )
-        test_dataset = make_hand_data_loader(
-            args,
-            args.val_yaml,
-            False,
-            is_train=False,
-            scale_factor=args.img_scale_factor,
-        )
+        test_dataset = Frei(args)
 
         if args.dataset == "both":
             o_dataset = CustomDataset_g(args, general_path + "/annotations/train")
@@ -78,7 +72,7 @@ class CustomDataset_g(Dataset):
         self.path = path
         self.phase = path.split("/")[-1]
         self.root = "/".join(path.split("/")[:-2])
-        self.pkl_path = f"{path}/new_anno.pkl"
+        self.pkl_path = f"{path}/anno.pkl"
         self.bg_path = "../../datasets/data_230710/background"
         self.bg_list = os.listdir(self.bg_path)
         self.img_path = os.path.join(self.root, f"images/{self.phase}")
@@ -102,31 +96,34 @@ class CustomDataset_g(Dataset):
             )
         )
 
-        if (
-            self.args.name.split("/")[-1] == "center"
-        ):  ## _n means just none. If this cache is about center, the name have just blank space.
-            self.cache_path = os.path.join(
-                self.path, f"cache_{self.scale_factor}_new.pkl"
-            )
-        else:
-            self.cache_path = os.path.join(
-                self.path, f"cache_{self.scale_factor}_new_n.pkl"
-            )
+        # if (
+        #     self.args.name.split("/")[-1] == "center"
+        # ):  ## _n means just none. If this cache is about center, the name have just blank space.
+        #     self.cache_path = os.path.join(
+        #         self.path, f"cache_{self.scale_factor}_new.pkl"
+        #     )
+        # else:
+        #     self.cache_path = os.path.join(
+        #         self.path, f"cache_{self.scale_factor}_new_n.pkl"
+        #     )
 
-        if self.args.cache and os.path.exists(self.cache_path):
-            with open(self.cache_path, "rb") as st_json:
-                self.meta = pickle.load(st_json)
-                if self.phase == "train":
-                    print(
-                        colored(
-                            f"Loading the cache file {self.cache_path.split('/')[-1]}",
-                            "green",
-                        )
-                    )
-        else:
-            with open(self.pkl_path, "rb") as st_json:
-                self.meta = pickle.load(st_json)
-            self.meta = self.make_cache()
+        # if self.args.cache and os.path.exists(self.cache_path):
+        #     with open(self.cache_path, "rb") as st_json:
+        #         self.meta = pickle.load(st_json)
+        #         if self.phase == "train":
+        #             print(
+        #                 colored(
+        #                     f"Loading the cache file {self.cache_path.split('/')[-1]}",
+        #                     "green",
+        #                 )
+        #             )
+        # else:
+        #     with open(self.pkl_path, "rb") as st_json:
+        #         self.meta = pickle.load(st_json)
+            # self.meta = self.make_cache()
+            
+        with open(self.pkl_path, "rb") as st_json:
+            self.meta = pickle.load(st_json)
 
     def __len__(self):
         return int(self.ratio_of_dataset * (len(self.meta) - 1))
@@ -220,6 +217,12 @@ class CustomDataset_g(Dataset):
                 transforms.Resize((224, 224), antialias=True),
             ]
         )(image)
+        
+        heatmap = GenerateHeatmap(56, 21)(
+            (torch.from_numpy(joint_2d).float()[:, :-1] * 100 + 112) / 4
+        )
+        
+        
 
         return transformed_img, joint_2d, joint_3d
 
@@ -270,7 +273,10 @@ class CustomDataset_g(Dataset):
         image = cv2.imread(os.path.join(self.img_path, name))  # PIL image
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         joint_2d = np.array(self.meta[idx]["joint_2d"])
-        joint_3d = self.meta[idx]["joint_3d"]
+        joint_3d = np.array(self.meta[idx]["camera_coor_3d"])
+        
+        
+        joint_3d_transformed = joint_3d - joint_3d[0]
         scale = self.meta[idx]["scale"]
         rot = self.meta[idx]["rot"]
         bbox = self.meta[idx]["bbox"]
@@ -381,7 +387,7 @@ class CustomDataset_g(Dataset):
 
         image = cv2.resize(cropped_img, (224, 224), interpolation=cv2.INTER_AREA)
 
-        return image, joint_2d, joint_3d
+        return image, joint_2d, joint_3d_transformed
 
     def j3d_processing(self, S, r):
         """Process gt 3D keypoints and apply all augmentation transforms."""
@@ -579,37 +585,3 @@ def i_rotate(img, degree, move_x, move_y):
     return result
 
 
-class GenerateHeatmap:
-    def __init__(self, output_res, num_parts):
-        self.output_res = output_res
-        self.num_parts = num_parts
-        sigma = self.output_res / 64
-        self.sigma = sigma
-        size = 6 * sigma + 3
-        x = np.arange(0, size, 1, float)
-        y = x[:, np.newaxis]
-        x0, y0 = 3 * sigma + 1, 3 * sigma + 1
-        self.g = np.exp(-((x - x0) ** 2 + (y - y0) ** 2) / (2 * sigma**2))
-
-    def __call__(self, p):
-        hms = np.zeros(
-            shape=(self.num_parts, self.output_res, self.output_res), dtype=np.float32
-        )
-        sigma = self.sigma
-        for idx, pt in enumerate(p):
-            if pt[0] > 0:
-                x, y = int(pt[0]), int(pt[1])
-                if x < 0 or y < 0 or x >= self.output_res or y >= self.output_res:
-                    continue
-                ul = int(x - 3 * sigma - 1), int(y - 3 * sigma - 1)
-                br = int(x + 3 * sigma + 2), int(y + 3 * sigma + 2)
-
-                c, d = max(0, -ul[0]), min(br[0], self.output_res) - ul[0]
-                a, b = max(0, -ul[1]), min(br[1], self.output_res) - ul[1]
-
-                cc, dd = max(0, ul[0]), min(br[0], self.output_res)
-                aa, bb = max(0, ul[1]), min(br[1], self.output_res)
-                hms[idx, aa:bb, cc:dd] = np.maximum(
-                    hms[idx, aa:bb, cc:dd], self.g[a:b, c:d]
-                )
-        return hms

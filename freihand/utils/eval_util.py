@@ -77,7 +77,7 @@ class EvalUtil:
             # pck/auc
             pck_curve = list()
             for t in thresholds:
-                pck = self._getx_pck(part_id, t)
+                pck = self._get_pck(part_id, t)
                 pck_curve.append(pck)
 
             pck_curve = np.array(pck_curve)

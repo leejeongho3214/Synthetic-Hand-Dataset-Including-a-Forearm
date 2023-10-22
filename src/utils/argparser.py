@@ -79,6 +79,9 @@ def load_model(args):
     log_dir = f"tensorboard/{args.name}"
     writer = SummaryWriter(log_dir)
 
+    if args.reset:
+        reset_folder(os.path.join(args.root_path, args.name))
+
     if os.path.isfile(
         os.path.join(args.root_path, args.name, "checkpoint-good/state_dict.bin")
     ):
@@ -112,7 +115,6 @@ def train(
     data_len,
     count,
     writer,
-    pck,
     len_total,
     batch_time,
 ):
@@ -129,7 +131,6 @@ def train(
         data_len,
         len_total,
         count,
-        pck,
         best_loss,
         writer,
     )
@@ -151,7 +152,6 @@ def valid(
     writer,
     batch_time,
     len_total,
-    pck,
 ):
     end = time.time()
     phase = "VALID"
@@ -166,11 +166,10 @@ def valid(
         data_len,
         len_total,
         count,
-        pck,
         best_loss,
         writer,
     )
 
-    loss, count, pck, batch_time = runner.our(end)
+    loss, count, batch_time = runner.our(end)
 
-    return loss, count, pck, batch_time
+    return loss, count,  batch_time

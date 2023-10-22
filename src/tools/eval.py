@@ -283,7 +283,7 @@ def main(gt_path, pred_path, output_dir, pred_file_name=None, set_name=None):
             )
 
     xyz_al_mean3d, _, xyz_al_auc3d, pck_xyz_al, thresh_xyz_al = eval_xyz_aligned.get_measures(
-        0.0, 0.05, 30)
+        0.0, 0.05, 100)
     print('Evaluation 3D KP ALIGNED results:')
     print('auc=%.3f, mean_kp3d_avg=%.2f cm' %
           (xyz_al_auc3d, xyz_al_mean3d * 100.0))

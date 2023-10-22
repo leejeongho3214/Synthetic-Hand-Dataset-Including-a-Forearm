@@ -22,7 +22,6 @@ class Runner(object):
         data_len,
         len_total,
         count,
-        pck,
         best_loss,
         writer,
     ):
@@ -31,7 +30,6 @@ class Runner(object):
         self.len_data = data_len
         self.len_total = len_total
         self.count = count
-        self.pck = pck
         self.best_loss = best_loss
         self.phase = phase
         self.writer = writer
@@ -52,6 +50,7 @@ class Runner(object):
         self.epoch = epoch
         self.criterion_keypoints = torch.nn.MSELoss(reduction="none").cuda(args.device)
         self.log_losses = AverageMeter()
+        self.epe = list()
         self.log_2d_losses = AverageMeter()
         self.log_3d_losses = AverageMeter()
         self.log_aux_losses = AverageMeter()
@@ -65,10 +64,10 @@ class Runner(object):
             self.args.logger.debug(
                 " ".join(
                     [
-                        "dataset_length: {len}",
+                        "Train =>>",
                         "epoch: {ep}",
                         "iter: {iter}",
-                        "/{maxi}, count: {count}/{max_count}",
+                        "/{maxi}, count: {count}/{max_count} ",
                     ]
                 ).format(
                     len=self.len_data,
@@ -78,11 +77,8 @@ class Runner(object):
                     count=self.count,
                     max_count=self.args.count,
                 )
-                + " 2d_loss: {:.8f}, 3d_loss: {:.8f}, pck: {:.2f}%, total_loss: {:.8f}, best_loss: {:.8f}".format(
-                    self.log_2d_losses.avg,
+                + "3d_loss: {:.8f}, best_epe: {:.8f}".format(
                     self.log_3d_losses.avg,
-                    self.pck,
-                    self.log_losses.avg,
                     self.best_loss,
                 )
             )
@@ -92,14 +88,14 @@ class Runner(object):
                 "({iteration}/{data_loader}) "
                 "name: {name} | "
                 "count: {count} | "
-                "loss: {total:.6f} \n"
+                "EPE: {epe:.6f} cm\n"
             ).format(
                 name="/".join(self.args.name.split("/")[-2:]),
                 count=self.count,
                 iteration=iteration,
                 exp=tt,
                 data_loader=len(self.now_loader),
-                total=self.log_losses.avg,
+                epe=self.best_loss * 100,
             )
         else:
             self.bar.suffix = (
@@ -116,19 +112,19 @@ class Runner(object):
 
     def test_log(self, iteration, eta_seconds, end):
         # tt = " ".join(ctime(eta_seconds + end).split(" ")[1:-1])
-        # if iteration % (self.args.logging_steps / 2) == 0:
-        #     self.args.logger.debug(
-        #         " ".join(["Test =>> epoch: {ep}", "iter: {iter}", "/{maxi}"]).format(
-        #             ep=self.epoch, iter=iteration, maxi=len(self.now_loader)
-        #         )
-        #         + " epe: {:.2f}mm, count: {} / {}, total_loss: {:.8f}, best_loss: {:.8f}".format(
-        #             self.epe_losses.avg * 0.26,
-        #             int(self.count),
-        #             self.args.count,
-        #             self.log_losses.avg,
-        #             self.best_loss,
-        #         )
-        #     )
+        epe = np.array(self.epe).mean()
+        if iteration % (self.args.logging_steps / 2) == 0:
+            self.args.logger.debug(
+                " ".join(["Test =>> epoch: {ep}", "iter: {iter}", "/{maxi}"]).format(
+                    ep=self.epoch, iter=iteration, maxi=len(self.now_loader)
+                )
+                + " epe: {:.2f}cm, count: {} / {}, best_epe: {:.8f}".format(
+                    epe * 100,
+                    int(self.count),
+                    self.args.count,
+                    self.best_loss * 100,
+                )
+            )
 
         # if iteration == 0:
         #     self.bar.suffix = (
@@ -162,7 +158,7 @@ class Runner(object):
                 "({iteration}/{data_loader}) "
                 "name: {name} | "
                 "count: {count} | "
-                "best_loss: {best_loss:.6f} \n"
+                "best_epe: {best_loss:.6f} \n"
             ).format(
                 name="/".join(self.args.name.split("/")[-2:]),
                 count=self.count,
@@ -173,16 +169,18 @@ class Runner(object):
             )
         else:
             self.bar.suffix = (
-                "({iteration}/{data_loader}) " "loss: {total:.6f} "
+                "({iteration}/{data_loader}) " "epe: {total:.6f} cm"
             ).format(
                 name="/".join(self.args.name.split("/")[-2:]),
                 count=self.count,
                 iteration=iteration,
                 best_loss=self.best_loss,
                 data_loader=len(self.now_loader),
-                total=self.log_losses.avg,
+                total=epe * 100,
             )
         self.bar.next()
+        
+        return epe
 
     def our(self, end):
         if self.phase == "TRAIN":
@@ -250,10 +248,6 @@ class Runner(object):
                 )
 
                 self.train_log(iteration, eta_seconds, end)
-                
-                return self.model, self.optimizer, self.batch_time
-
-
             self.writer.add_scalar(f"Loss/train", self.log_losses.avg, self.epoch)
 
             return self.model, self.optimizer, self.batch_time
@@ -279,9 +273,16 @@ class Runner(object):
                     # )
                     # self.log_losses.update(loss.item(), batch_size)
                     
-                    for i in range(32):
-                        loss = align_w_scale(gt_3d_joints[i].detach().cpu().numpy(), pred_3d_joints[i].detach().cpu().numpy())
-                        self.log_losses.update(loss.mean(), 1)
+                    for i in range(batch_size):
+                        gt = gt_3d_joints[i].detach().cpu().numpy()
+                        pred = pred_3d_joints[i].detach().cpu().numpy()
+                        aligned_pred = align_w_scale(gt, pred)
+                        
+                        gt = np.squeeze(gt)
+                        aligned_pred = np.squeeze(aligned_pred)
+                        diff = gt - aligned_pred
+                        euclidean_dist = np.sqrt(np.sum(np.square(diff), axis=1))
+                        self.epe.append(euclidean_dist)
 
                     if (
                         iteration == 0
@@ -308,13 +309,12 @@ class Runner(object):
                         + (self.args.epoch - self.epoch - 1) * self.len_total
                     )
 
-                    self.test_log(iteration, eta_seconds, end)
+                    epe = self.test_log(iteration, eta_seconds, end)
 
                 self.writer.add_scalar("Loss/valid", self.log_losses.avg, self.epoch)
 
                 return (
-                    self.log_losses.avg,
+                    epe,
                     self.count,
-                    self.pck_losses.avg * 100,
                     self.batch_time,
                 )

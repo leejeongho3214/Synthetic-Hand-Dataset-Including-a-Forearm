@@ -44,7 +44,7 @@ class Json_3d(Dataset):
         self.raw_img = raw_img
         self.root = f"../../datasets/data_230710/images/{phase}"
         self.store_path = os.path.join(
-            f"../../datasets/data_230710/annotations/{phase}", "example.pkl"
+            f"../../datasets/data_230710/annotations/{phase}", "anno.pkl"
         )
         self.dict = []
 
@@ -122,6 +122,8 @@ class Json_3d(Dataset):
                     "bbox_size": bbox_size,
                     "world_coord_3d": world_coord_3d.tolist(),
                     "focal": focal_length.tolist(),
+                    "rot": rot.tolist(),
+                    # "scale"
                 }
             )
             if count == num:
@@ -334,8 +336,8 @@ def visualize_bbox(image, bbox):
 
 def main():
     raw_image = 800
-    Json_3d(raw_image, phase="train").get_json(100)
-    Json_3d(raw_image, phase="val").get_json(100)
+    Json_3d(raw_image, phase="train").get_json(-1)
+    Json_3d(raw_image, phase="val").get_json(-1)
     print("ENDDDDDD")
 
 
