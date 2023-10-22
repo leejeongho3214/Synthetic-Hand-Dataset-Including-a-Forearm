@@ -104,6 +104,23 @@ class Json_3d(Dataset):
             ):
                 continue
 
+            loof_count = 0
+            while loof_count < 5:
+                r = min(2 * 90, max(-2 * 90, np.random.randn() * 90))
+                scale = min(1 + 0.25, max(1 - 0.25, np.random.randn() * 0.25 + 1))
+                joint_2d = self.j2d_processing(np.array(calibrationed_joint), scale, r)
+                if not any(
+                    joint[idx] < self.raw_img * 0.1 or joint[idx] > self.raw_img * 0.9
+                    for joint in calibrationed_joint
+                    for idx in range(2)
+                ):
+                    break
+                loof_count += 1
+                if loof_count == 4:
+                    break
+            if loof_count == 4:
+                continue
+
             joint_2d = np.array(calibrationed_joint)
             bbox = [
                 min(joint_2d[:, 0]),
@@ -122,8 +139,8 @@ class Json_3d(Dataset):
                     "bbox_size": bbox_size,
                     "world_coord_3d": world_coord_3d.tolist(),
                     "focal": focal_length.tolist(),
-                    "rot": rot.tolist(),
-                    # "scale"
+                    "rot": int(r),
+                    "scale": round(scale, 4),
                 }
             )
             if count == num:
