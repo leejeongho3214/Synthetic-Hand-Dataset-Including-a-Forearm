@@ -219,12 +219,10 @@ class CustomDataset_g(Dataset):
         )(image)
         
         heatmap = GenerateHeatmap(56, 21)(
-            (torch.from_numpy(joint_2d).float()[:, :-1] * 100 + 112) / 4
+            (joint_2d * 224) / 4
         )
-        
-        
-
-        return transformed_img, joint_2d, joint_3d
+  
+        return transformed_img, joint_2d, joint_3d, heatmap
 
     def img_preprocessing(self, idx, rgb_img):
         # in the rgb image we add pixel noise in a channel-wise manner
@@ -276,7 +274,7 @@ class CustomDataset_g(Dataset):
         joint_3d = np.array(self.meta[idx]["camera_coor_3d"])
         
         
-        joint_3d_transformed = joint_3d - joint_3d[0]
+        joint_3d_transformed = torch.tensor(joint_3d - joint_3d[0]).float()
         scale = self.meta[idx]["scale"]
         rot = self.meta[idx]["rot"]
         bbox = self.meta[idx]["bbox"]

@@ -94,6 +94,10 @@ class Json_3d(Dataset):
                 self.root,
                 "/".join(self.meta["images"][idx]["file_name"].split("/")[1:]),
             )
+            
+            if not os.path.isfile(image_path):
+                continue
+            
             image = cv2.imread(image_path)
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 

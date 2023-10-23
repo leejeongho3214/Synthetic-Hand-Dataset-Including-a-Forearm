@@ -1,7 +1,7 @@
 import gc
 import os
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 from torch.utils import data
 from src.utils.argparser import parse_args, load_model, train, valid

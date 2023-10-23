@@ -494,6 +494,7 @@ class HighResolutionNet(nn.Module):
                                  [2:]).view(yy.size(0), -1)
 
         # y = self.classifier(y)
+
         return yy, y, aux_heatmap
 
 

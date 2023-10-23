@@ -139,11 +139,10 @@ class GraphormerLayer(nn.Module):
         attention_output = attention_outputs[0]
         
         if self.has_graph_conv==True and self.do_graph:
-            joints = attention_output[:, 0:21, :]
-            graph_joints = attention_output[:, 21: 42, :]
-            img_tokens = attention_output[:, 42:, :]
-            graph_joints = self.graph_conv(graph_joints)
-            joints_vertices = torch.cat([joints, graph_joints, img_tokens],dim=1)
+            joints = attention_output[:, :21, :]
+            grid_token = attention_output[:, 21: , :]
+            graph_joints= self.graph_conv(joints) + joints
+            joints_vertices = torch.cat([graph_joints, grid_token], dim = 1)
         else:
             joints_vertices = attention_output
             

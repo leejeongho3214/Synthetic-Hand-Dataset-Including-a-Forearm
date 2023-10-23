@@ -282,17 +282,18 @@ def main(gt_path, pred_path, output_dir, pred_file_name=None, set_name=None):
                 verts_pred_aligned
             )
 
-    xyz_al_mean3d, _, xyz_al_auc3d, pck_xyz_al, thresh_xyz_al = eval_xyz_aligned.get_measures(
+    xyz_al_mean3d, _, xyz_al_auc3d, pck_xyz_al, thresh_xyz_al, pck_list = eval_xyz_aligned.get_measures(
         0.0, 0.05, 100)
+    want = np.array(pck_list).mean(axis=0)
     print('Evaluation 3D KP ALIGNED results:')
     print('auc=%.3f, mean_kp3d_avg=%.2f cm' %
           (xyz_al_auc3d, xyz_al_mean3d * 100.0))
 
+    with open('mesh.json', 'w') as f:
+        json.dump(list(want), f)
+    
     name_list = pred_file.split('/')
     score_path = os.path.join("/".join(name_list[:2]), f'general_scores.txt')
-
-    # with open(f'{"/".join(name_list[:-1])}/eval_joint_3d.json', "w") as fi:
-    #     json.dump(My_list, fi)
 
     if os.path.isfile(score_path):
         mode = "a"
@@ -327,3 +328,22 @@ if __name__ == '__main__':
         args.pred_file_name,
         set_name='evaluation'
     )
+
+import pandas as pd
+
+new_index = np.arange(0, 50, 0.5)
+df = pd.DataFrame(want, index = new_index)
+df.index.stop = 50
+plt.figure(figsize=(15, 8))  # 그래프의 크기 설정 (선택사항)
+plt.scatter(df.index, df, label='Data', s=10, color='blue', marker='o')  # s는 점의 크기
+
+plt.plot(df, linewidth=1, label='Line')
+plt.grid(True)
+plt.title('3D PCK on pose(FreiHAND)')
+plt.xlabel('error (mm)')
+plt.ylabel('3D PCK of joint')
+
+# 범례 추가
+plt.legend(loc='best', labels=['MeshGraphormer(ICCV2021): AUC=0.874', 'Ours: AUC=0.865'])
+
+plt.savefig('a')
