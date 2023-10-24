@@ -17,6 +17,7 @@ from matplotlib import pyplot as plt
 import os
 from src.utils.dataset_loader import GAN, Frei, SyntheticHands
 from src.utils.dataset_utils import GenerateHeatmap
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 try:
     from src.utils.dart_loader import DARTset
@@ -38,7 +39,13 @@ def build_dataset(args):
             is_train=True,
             scale_factor=args.img_scale_factor,
         )
-        test_dataset = Frei(args)
+        test_dataset = make_hand_data_loader(
+            args,
+            args.val_yaml,
+            False,
+            is_train=False,
+            scale_factor=args.img_scale_factor
+        )
 
         if args.dataset == "both":
             o_dataset = CustomDataset_g(args, general_path + "/annotations/train")
@@ -84,7 +91,7 @@ class CustomDataset_g(Dataset):
             self.ratio_of_dataset = self.args.ratio_of_dataset
         else:
             self.ratio_of_dataset = 1
-            
+
         self.args.logger.debug(
             "phase: {} => noise_factor: {}, scale_factor: {}, rot_factor: {}, raw_res: {}, img_res: {}".format(
                 self.phase,
@@ -120,8 +127,8 @@ class CustomDataset_g(Dataset):
         # else:
         #     with open(self.pkl_path, "rb") as st_json:
         #         self.meta = pickle.load(st_json)
-            # self.meta = self.make_cache()
-            
+        # self.meta = self.make_cache()
+
         with open(self.pkl_path, "rb") as st_json:
             self.meta = pickle.load(st_json)
 
@@ -217,11 +224,9 @@ class CustomDataset_g(Dataset):
                 transforms.Resize((224, 224), antialias=True),
             ]
         )(image)
-        
-        heatmap = GenerateHeatmap(56, 21)(
-            (joint_2d * 224) / 4
-        )
-  
+
+        heatmap = GenerateHeatmap(56, 21)((joint_2d * 224) / 4)
+
         return transformed_img, joint_2d, joint_3d, heatmap
 
     def img_preprocessing(self, idx, rgb_img):
@@ -272,8 +277,7 @@ class CustomDataset_g(Dataset):
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         joint_2d = np.array(self.meta[idx]["joint_2d"])
         joint_3d = np.array(self.meta[idx]["camera_coor_3d"])
-        
-        
+
         joint_3d_transformed = torch.tensor(joint_3d - joint_3d[0]).float()
         scale = self.meta[idx]["scale"]
         rot = self.meta[idx]["rot"]
@@ -581,5 +585,3 @@ def i_rotate(img, degree, move_x, move_y):
     )
 
     return result
-
-
