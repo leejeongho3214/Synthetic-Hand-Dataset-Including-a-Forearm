@@ -355,8 +355,8 @@ class HandMeshTSVDataset(object):
         return (
             transfromed_img[(2, 1, 0), :, :],
             joint_2d,
-            torch.from_numpy(np.asarray(annotations["3d_joints"])).float()[:, :3],
-            # torch.from_numpy(joints_3d_transformed).float()[:, :3],
+            # torch.from_numpy(np.asarray(annotations["3d_joints"])).float()[:, :3],
+            torch.from_numpy(joints_3d_transformed).float()[:, :3],
             heatmap,
         )
 
