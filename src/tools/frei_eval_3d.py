@@ -34,7 +34,7 @@ def dump(pred_out_path, xyz_pred_list, verts_pred_list):
 
 
 def main(args):
-    n_l = ["src/tools/output/frei/aux_gcn_loss_1_h_2"]
+    n_l = ["src/tools/output/frei/base_new"]
     model_list = ["/".join(n.split("/")[2:]) for n in n_l]
 
     for name in model_list:

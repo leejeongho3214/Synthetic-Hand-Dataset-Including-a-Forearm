@@ -329,21 +329,21 @@ if __name__ == '__main__':
         set_name='evaluation'
     )
 
-import pandas as pd
+# import pandas as pd
 
-new_index = np.arange(0, 50, 0.5)
-df = pd.DataFrame(want, index = new_index)
-df.index.stop = 50
-plt.figure(figsize=(15, 8))  # 그래프의 크기 설정 (선택사항)
-plt.scatter(df.index, df, label='Data', s=10, color='blue', marker='o')  # s는 점의 크기
+# new_index = np.arange(0, 50, 0.5)
+# df = pd.DataFrame(want, index = new_index)
+# df.index.stop = 50
+# plt.figure(figsize=(15, 8))  # 그래프의 크기 설정 (선택사항)
+# plt.scatter(df.index, df, label='Data', s=10, color='blue', marker='o')  # s는 점의 크기
 
-plt.plot(df, linewidth=1, label='Line')
-plt.grid(True)
-plt.title('3D PCK on pose(FreiHAND)')
-plt.xlabel('error (mm)')
-plt.ylabel('3D PCK of joint')
+# plt.plot(df, linewidth=1, label='Line')
+# plt.grid(True)
+# plt.title('3D PCK on pose(FreiHAND)')
+# plt.xlabel('error (mm)')
+# plt.ylabel('3D PCK of joint')
 
-# 범례 추가
-plt.legend(loc='best', labels=['MeshGraphormer(ICCV2021): AUC=0.874', 'Ours: AUC=0.865'])
+# # 범례 추가
+# plt.legend(loc='best', labels=['MeshGraphormer(ICCV2021): AUC=0.874', 'Ours: AUC=0.865'])
 
-plt.savefig('a')
+# plt.savefig('a')
