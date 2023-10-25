@@ -112,7 +112,7 @@ class Runner(object):
 
     def test_log(self, iteration, eta_seconds, end):
         # tt = " ".join(ctime(eta_seconds + end).split(" ")[1:-1])
-        epe = np.array(self.epe).mean()
+        epe = np.array(self.epe).mean(axis=0).mean()
         if iteration % (self.args.logging_steps / 2) == 0:
             self.args.logger.debug(
                 " ".join(["Test =>> epoch: {ep}", "iter: {iter}", "/{maxi}"]).format(
@@ -246,6 +246,8 @@ class Runner(object):
                     (self.len_total - iteration)
                     + (self.args.epoch - self.epoch - 1) * self.len_total
                 )
+                
+                
 
                 self.train_log(iteration, eta_seconds, end)
             self.writer.add_scalar(f"Loss/train", self.log_losses.avg, self.epoch)

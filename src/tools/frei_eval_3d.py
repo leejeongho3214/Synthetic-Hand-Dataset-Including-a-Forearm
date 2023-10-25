@@ -34,7 +34,7 @@ def dump(pred_out_path, xyz_pred_list, verts_pred_list):
 
 
 def main(args):
-    n_l = ["src/tools/output/frei/base_new"]
+    n_l = ["src/tools/output/frei/aux_gcn_new"]
     model_list = ["/".join(n.split("/")[2:]) for n in n_l]
 
     for name in model_list:
@@ -47,7 +47,13 @@ def main(args):
         pred_name = name.split("/")[-1]
         pred_out_path = os.path.join(name, f"pred_{pred_name}.json")
 
-        test_dataset = Frei(args)
+        test_dataset = make_hand_data_loader(
+            args,
+            args.val_yaml,
+            False,
+            is_train=False,
+            scale_factor=args.img_scale_factor
+        )
         testset_loader = data.DataLoader(
             dataset=test_dataset,
             batch_size=args.batch_size,
