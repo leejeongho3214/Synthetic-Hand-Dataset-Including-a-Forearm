@@ -44,7 +44,7 @@ class Json_3d(Dataset):
         self.raw_img = raw_img
         self.root = f"../../datasets/data_230710/images/{phase}"
         self.store_path = os.path.join(
-            f"../../datasets/data_230710/annotations/{phase}", "anno.pkl"
+            f"../../datasets/data_230710/annotations/{phase}", "anno_10k.pkl"
         )
         self.dict = []
 
@@ -357,8 +357,8 @@ def visualize_bbox(image, bbox):
 
 def main():
     raw_image = 800
-    Json_3d(raw_image, phase="train").get_json(-1)
-    Json_3d(raw_image, phase="val").get_json(-1)
+    Json_3d(raw_image, phase="train").get_json(100000)
+    # Json_3d(raw_image, phase="val").get_json(-1)
     print("ENDDDDDD")
 
 

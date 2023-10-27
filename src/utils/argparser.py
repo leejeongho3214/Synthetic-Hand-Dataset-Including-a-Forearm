@@ -74,8 +74,7 @@ def load_model(args):
     args.num_gpus = 1
     args.device = torch.device(args.device)
 
-    _model = get_our_net(args)  ## output: 21 x 2
-
+    _model = get_our_net(args)
     log_dir = f"tensorboard/{args.name}"
     writer = SummaryWriter(log_dir)
 

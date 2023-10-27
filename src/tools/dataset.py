@@ -17,6 +17,16 @@ from matplotlib import pyplot as plt
 import os
 from src.utils.dataset_loader import GAN, Frei, SyntheticHands
 from src.utils.dataset_utils import GenerateHeatmap
+import json
+from src.utils.image_ops import (
+    img_from_base64,
+    crop,
+    flip_img,
+    flip_pose,
+    flip_kp,
+    transform,
+    rot_aa,
+)
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 try:
@@ -47,9 +57,28 @@ def build_dataset(args):
             scale_factor=args.img_scale_factor
         )
 
-        if args.dataset == "both":
-            o_dataset = CustomDataset_g(args, general_path + "/annotations/train")
-            train_dataset = ConcatDataset([train_dataset, o_dataset])
+    elif args.dataset == "both":
+        train_dataset = make_hand_data_loader(
+            args,
+            args.train_yaml,
+            False,
+            is_train=True,
+            scale_factor=args.img_scale_factor,
+        )
+        test_dataset = make_hand_data_loader(
+            args,
+            args.val_yaml,
+            False,
+            is_train=False,
+            scale_factor=args.img_scale_factor
+        )
+        o_dataset = CustomDataset_g2(args, 
+                                    args.train_yaml,
+                                    False,
+                                    is_train=True,
+                                    scale_factor=args.img_scale_factor,
+                                    path = general_path)
+        train_dataset = ConcatDataset([train_dataset, o_dataset])
 
     elif args.dataset == "dart":
         train_dataset = DARTset(args, data_split="train")
@@ -67,6 +96,12 @@ def build_dataset(args):
         train_path = os.path.join(general_path, "annotations/train")
         eval_path = os.path.join(general_path, "annotations/val")
         train_dataset = CustomDataset_g(args, train_path)
+        # train_dataset = CustomDataset_g2(args, 
+        #                                 args.train_yaml,
+        #                                 False,
+        #                                 is_train=True,
+        #                                 scale_factor=args.img_scale_factor,
+        #                                 path = general_path)
         test_dataset = CustomDataset_g(args, eval_path)
 
     return train_dataset, test_dataset
@@ -102,32 +137,6 @@ class CustomDataset_g(Dataset):
                 self.__dict__.get("img_res"),
             )
         )
-
-        # if (
-        #     self.args.name.split("/")[-1] == "center"
-        # ):  ## _n means just none. If this cache is about center, the name have just blank space.
-        #     self.cache_path = os.path.join(
-        #         self.path, f"cache_{self.scale_factor}_new.pkl"
-        #     )
-        # else:
-        #     self.cache_path = os.path.join(
-        #         self.path, f"cache_{self.scale_factor}_new_n.pkl"
-        #     )
-
-        # if self.args.cache and os.path.exists(self.cache_path):
-        #     with open(self.cache_path, "rb") as st_json:
-        #         self.meta = pickle.load(st_json)
-        #         if self.phase == "train":
-        #             print(
-        #                 colored(
-        #                     f"Loading the cache file {self.cache_path.split('/')[-1]}",
-        #                     "green",
-        #                 )
-        #             )
-        # else:
-        #     with open(self.pkl_path, "rb") as st_json:
-        #         self.meta = pickle.load(st_json)
-        # self.meta = self.make_cache()
 
         with open(self.pkl_path, "rb") as st_json:
             self.meta = pickle.load(st_json)
@@ -585,3 +594,260 @@ def i_rotate(img, degree, move_x, move_y):
     )
 
     return result
+
+
+class CustomDataset_g2(object):
+    def __init__(
+        self,
+        args,
+        img_file,
+        label_file=None,
+        hw_file=None,
+        linelist_file=None,
+        is_train=True,
+        cv2_output=False,
+        scale_factor=1,
+        aug=None,
+        path = None
+    ):
+        self.args = args
+        with open(os.path.join(path, 'annotations/train/anno_10k.pkl'), "rb") as st_json:
+            self.meta = pickle.load(st_json)
+
+        self.img_path = os.path.join(path, 'images/train')
+        self.cv2_output = cv2_output
+        self.normalize_img = transforms.Normalize(
+            mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
+        )
+        self.bg_path = "../../datasets/data_230710/background"
+        self.bg_list = os.listdir(self.bg_path)
+        self.is_train = is_train
+        # rescale bounding boxes by a factor of [1-options.scale_factor,1+options.scale_factor]
+        self.scale_factor = 0.25
+        self.noise_factor = 0.4
+        # Random rotation in the range [-rot_factor, rot_factor]
+        self.rot_factor = 90
+        self.img_res = 224
+        self.joints_definition = (
+            "Wrist",
+            "Thumb_1",
+            "Thumb_2",
+            "Thumb_3",
+            "Thumb_4",
+            "Index_1",
+            "Index_2",
+            "Index_3",
+            "Index_4",
+            "Middle_1",
+            "Middle_2",
+            "Middle_3",
+            "Middle_4",
+            "Ring_1",
+            "Ring_2",
+            "Ring_3",
+            "Ring_4",
+            "Pinky_1",
+            "Pinky_2",
+            "Pinky_3",
+            "Pinky_4",
+        )
+        self.root_index = self.joints_definition.index("Wrist")
+        self.aug = aug
+
+
+    def augm_params(self):
+        """Get augmentation parameters."""
+        flip = 0  # flipping
+        pn = np.ones(3)  # per channel pixel-noise
+
+        if self.args.multiscale_inference == False:
+            rot = 0  # rotation
+            sc = 1.0  # scaling
+        elif self.args.multiscale_inference == True:
+            rot = self.args.rot
+            sc = self.args.sc
+
+        if self.is_train:
+            sc = 1.0
+            # Each channel is multiplied with a number
+            # in the area [1-opt.noiseFactor,1+opt.noiseFactor]
+            pn = np.random.uniform(1 - self.noise_factor, 1 + self.noise_factor, 3)
+
+            # The rotation is a number in the area [-2*rotFactor, 2*rotFactor]
+            rot = min(
+                2 * self.rot_factor,
+                max(-2 * self.rot_factor, np.random.randn() * self.rot_factor),
+            )
+
+            # The scale is multiplied with a number
+            # in the area [1-scaleFactor,1+scaleFactor]
+            sc = min(
+                1 + self.scale_factor,
+                max(1 - self.scale_factor, np.random.randn() * self.scale_factor + 1),
+            )
+            # but it is zero with probability 3/5
+            if np.random.uniform() <= 0.6:
+                rot = 0
+
+        return flip, pn, rot, sc
+
+    def rgb_processing(self, rgb_img, center, scale, rot, flip, pn):
+        """Process rgb image and do augmentation."""
+        rgb_img = crop(rgb_img, center, scale, [rgb_img.shape[0], rgb_img.shape[1]], rot=rot)
+        # flip the image
+        if flip:
+            rgb_img = flip_img(rgb_img)
+        # in the rgb image we add pixel noise in a channel-wise manner
+        rgb_img[:, :, 0] = np.minimum(255.0, np.maximum(0.0, rgb_img[:, :, 0] * pn[0]))
+        rgb_img[:, :, 1] = np.minimum(255.0, np.maximum(0.0, rgb_img[:, :, 1] * pn[1]))
+        rgb_img[:, :, 2] = np.minimum(255.0, np.maximum(0.0, rgb_img[:, :, 2] * pn[2]))
+        # (3,224,224),float,[0,1]
+        rgb_img = np.transpose(rgb_img.astype("float32"), (2, 0, 1)) / 255.0
+        return rgb_img
+
+    def j2d_processing(self, kp, center, scale, r, f):
+        """Process gt 2D keypoints and apply all augmentation transforms."""
+        nparts = kp.shape[0]
+        for i in range(nparts):
+            kp[i, 0:2] = transform(
+                kp[i, 0:2] + 1, center, scale, [self.img_res, self.img_res], rot=r
+            )
+        # convert to normalized coordinates
+        kp = 2.0 * kp / self.img_res - 1.0
+        # flip the x coordinates
+        if f:
+            kp = flip_kp(kp)
+        kp = kp.astype("float32")
+        return kp
+
+    def j3d_processing(self, S, r, f):
+        """Process gt 3D keypoints and apply all augmentation transforms."""
+        # in-plane rotation
+        rot_mat = np.eye(3)
+        S = S.astype("float32")
+        if not r == 0:
+            rot_rad = -r * np.pi / 180
+            sn, cs = np.sin(rot_rad), np.cos(rot_rad)
+            rot_mat[0, :2] = [cs, -sn]
+            rot_mat[1, :2] = [sn, cs]
+        S = np.einsum("ij,kj->ki", rot_mat, S)
+
+        # flip the x coordinates
+        if f:
+            S = flip_kp(S)
+        return S
+
+    def pose_processing(self, pose, r, f):
+        """Process SMPL theta parameters  and apply all augmentation transforms."""
+        # rotation or the pose parameters
+        pose = pose.astype("float32")
+        pose[:3] = rot_aa(pose[:3], r)
+        # flip the pose parameters
+        if f:
+            pose = flip_pose(pose)
+        # (72),float
+        pose = pose.astype("float32")
+        return pose
+
+    def get_line_no(self, idx):
+        return idx if self.line_list is None else self.line_list[idx]
+
+
+
+    def get_target_from_annotations(self, annotations, img_size, idx):
+        # This function will be overwritten by each dataset to
+        # decode the labels to specific formats for each task.
+        return annotations
+
+    def get_img_info(self, idx):
+        if self.hw_tsv is not None:
+            line_no = self.get_line_no(idx)
+            row = self.hw_tsv[line_no]
+            try:
+                # json string format with "height" and "width" being the keys
+                return json.loads(row[1])[0]
+            except ValueError:
+                # list of strings representing height and width in order
+                hw_str = row[1].split(" ")
+                hw_dict = {"height": int(hw_str[0]), "width": int(hw_str[1])}
+                return hw_dict
+
+    def get_img_key(self, idx):
+        line_no = self.get_line_no(idx)
+        # based on the overhead of reading each row.
+        if self.hw_tsv:
+            return self.hw_tsv[line_no][0]
+        elif self.label_tsv:
+            return self.label_tsv[line_no][0]
+        else:
+            return self.img_tsv[line_no][0]
+
+    def __len__(self):
+        return len(self.meta)
+
+    def __getitem__(self, idx):
+        name = "/".join(self.meta[idx]["file_name"].split("/")[1:])
+        image = cv2.imread(os.path.join(self.img_path, name))  # PIL image
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        ori_joint_2d = np.array(self.meta[idx]["joint_2d"])
+        joint_3d = np.array(self.meta[idx]["camera_coor_3d"])
+        joint_3d = (joint_3d - joint_3d[0]) / 18
+
+        rot = self.meta[idx]["rot"]
+        bbox = self.meta[idx]["bbox"]
+
+        # scale = self.meta[idx]["scale"]
+        # center = (
+        #     int((bbox[0] + bbox[2]) / 2),
+        #     int((bbox[1] + bbox[3]) / 2),
+        # )
+
+        # Get augmentation parameters
+        flip, pn, rot, sc = self.augm_params()
+
+        size = 224
+
+        bg_img = cv2.imread(
+            os.path.join(self.bg_path, self.bg_list[idx % len(self.bg_list)])
+        )
+        bg_img = cv2.cvtColor(bg_img, cv2.COLOR_BGR2RGB)
+        bg_img = cv2.resize(bg_img, (image.shape[0],image.shape[1])) 
+
+        # Store image before normalization to use it in visualization
+        
+        
+        index = np.where(
+            (image[:, :, 0] == 0)
+            & (image[:, :, 1] == 0)
+            & (image[:, :, 2] == 0)
+        )
+        image[index] = bg_img[index]
+        
+        
+        # Process image
+        img = self.rgb_processing(image, (image.shape[0]/2, image.shape[1]/2), sc * 1, rot, flip, pn)
+        img = torch.from_numpy(img).float()
+        img = transforms.Resize((size, size), antialias=True)(img)
+        
+        transfromed_img = self.normalize_img(img)
+        
+        joints_3d_transformed = self.j3d_processing(joint_3d.copy(), rot, flip)
+
+        # 2d pose augmentation
+        joints_2d_transformed = self.j2d_processing(
+            ((ori_joint_2d/ 800)* 224).copy(), (112, 112), sc * 1, rot, flip
+        )
+        joint_2d = (
+            (torch.from_numpy(joints_2d_transformed).float() *100 + 112) / size
+        ).float()
+
+        heatmap = GenerateHeatmap(56, 21)(
+            (torch.from_numpy(joints_2d_transformed).float() *100 + 112) / 4
+        )
+
+        return (
+            transfromed_img[(2, 1, 0), :, :],
+            joint_2d,
+            torch.from_numpy(joints_3d_transformed).float()[:, :3],
+            heatmap,
+        )

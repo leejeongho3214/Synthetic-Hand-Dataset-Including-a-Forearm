@@ -50,7 +50,7 @@ class Runner(object):
         self.epoch = epoch
         self.criterion_keypoints = torch.nn.MSELoss(reduction="none").cuda(args.device)
         self.log_losses = AverageMeter()
-        self.epe = list()
+        self.epe = []
         self.log_2d_losses = AverageMeter()
         self.log_3d_losses = AverageMeter()
         self.log_aux_losses = AverageMeter()
@@ -152,7 +152,7 @@ class Runner(object):
         #         total=self.log_losses.avg,
         #     )
         # self.bar.next()
-        
+
         if iteration == 0:
             self.bar.suffix = (
                 "({iteration}/{data_loader}) "
@@ -179,7 +179,7 @@ class Runner(object):
                 total=epe * 100,
             )
         self.bar.next()
-        
+
         return epe
 
     def our(self, end):
@@ -219,7 +219,7 @@ class Runner(object):
                 self.log_2d_losses.update(loss_2d.item(), batch_size)
                 self.log_3d_losses.update(loss_3d.item(), batch_size)
                 self.log_aux_losses.update(loss_aux.item(), batch_size)
-
+                
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
@@ -227,7 +227,7 @@ class Runner(object):
                 if (
                     iteration == 0
                     or iteration == int(len(self.train_loader) / 2)
-                    or iteration == len(self.train_loader) - 1
+                    or iteration == len(self.train_loader) - 4
                 ):
                     visualize_3d(
                         images,
@@ -246,8 +246,6 @@ class Runner(object):
                     (self.len_total - iteration)
                     + (self.args.epoch - self.epoch - 1) * self.len_total
                 )
-                
-                
 
                 self.train_log(iteration, eta_seconds, end)
             self.writer.add_scalar(f"Loss/train", self.log_losses.avg, self.epoch)
@@ -274,23 +272,19 @@ class Runner(object):
                     #     self.criterion_keypoints, pred_3d_joints, gt_3d_joints
                     # )
                     # self.log_losses.update(loss.item(), batch_size)
-                    
+
                     for i in range(batch_size):
                         gt = gt_3d_joints[i].detach().cpu().numpy()
                         pred = pred_3d_joints[i].detach().cpu().numpy()
                         aligned_pred = align_w_scale(gt, pred)
-                        
+
                         gt = np.squeeze(gt)
                         aligned_pred = np.squeeze(aligned_pred)
                         diff = gt - aligned_pred
                         euclidean_dist = np.sqrt(np.sum(np.square(diff), axis=1))
                         self.epe.append(euclidean_dist)
 
-                    if (
-                        iteration == 0
-                        or iteration == int(len(self.valid_loader) / 2)
-                        or iteration == len(self.valid_loader) - 1
-                    ):
+                    if iteration % 10 == 0 and iteration < len(self.valid_loader) - 4:
                         visualize_3d(
                             images,
                             gt_2d_joint * 224,
@@ -302,7 +296,6 @@ class Runner(object):
                             self.args,
                         )
 
-                    
                     self.batch_time.update(time.time() - end)
 
                     end = time.time()

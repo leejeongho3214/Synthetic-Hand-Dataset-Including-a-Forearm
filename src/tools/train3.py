@@ -1,4 +1,3 @@
-import gc
 import os
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "3"
@@ -36,7 +35,6 @@ def main(args):
     args.logger.debug(
         "Train_len: {}, Val_len: {}".format(len(train_dataset), len(val_dataset))
     )
-    best_loss = np.inf
     for epoch in range(epo, args.epoch):
         Graphormer_model, optimizer, batch_time, best_loss = train(
             args,

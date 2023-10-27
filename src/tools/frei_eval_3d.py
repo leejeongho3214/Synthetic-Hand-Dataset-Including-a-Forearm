@@ -34,51 +34,79 @@ def dump(pred_out_path, xyz_pred_list, verts_pred_list):
 
 
 def main(args):
-    n_l = ["src/tools/output/frei/aux_gcn_new"]
-    model_list = ["/".join(n.split("/")[2:]) for n in n_l]
+    resume_path = os.path.join('output', args.name)
+    _model = get_our_net(args)
+    state_dict = torch.load(os.path.join(resume_path, "checkpoint-good/state_dict.bin"))
+    _model.load_state_dict(state_dict["model_state_dict"], strict=False)
+    _model.cuda()
 
-    for name in model_list:
-        args.name = os.path.join(name, "checkpoint-good/state_dict.bin")
-        args.model = args.name.split("/")[1]
-        _model = get_our_net(args)
-        state_dict = torch.load(args.name)
-        _model.load_state_dict(state_dict["model_state_dict"], strict=False)
-        _model.cuda()
-        pred_name = name.split("/")[-1]
-        pred_out_path = os.path.join(name, f"pred_{pred_name}.json")
-
-        test_dataset = make_hand_data_loader(
-            args,
-            args.val_yaml,
-            False,
-            is_train=False,
-            scale_factor=args.img_scale_factor
-        )
-        testset_loader = data.DataLoader(
-            dataset=test_dataset,
-            batch_size=args.batch_size,
-            num_workers=args.num_workers,
-            shuffle=False,
-        )
-        
-        pbar = tqdm(total=len(testset_loader))
-        xyz_list, verts_list = list(), list()
-
+    test_dataset = make_hand_data_loader(
+        args,
+        args.val_yaml,
+        False,
+        is_train=False,
+        scale_factor=args.img_scale_factor
+    )
+    testset_loader = data.DataLoader(
+        dataset=test_dataset,
+        batch_size=args.batch_size,
+        num_workers=args.num_workers,
+        shuffle=False,
+    )
+    
+    pred_list, gt_list, epe_list = list(), list(), list()
+    _model.eval()
+    with torch.no_grad():
         for idx, (images, _, gt_3d_joints, _) in enumerate(testset_loader):
-            _model.eval()
-            with torch.no_grad():
-                images = images.cuda()
-                gt_3d_joints = gt_3d_joints.cuda()
-                _, pred_3d_joints, _ = _model(images)
-                pred_3d_joints = np.array(pred_3d_joints.cpu())
-                for xyz in pred_3d_joints:
-                    xyz_list.append(xyz)
-                    verts_list.append(np.zeros([778, 3]))
-            pbar.update(1)
-        pbar.close()
-        dump(pred_out_path, xyz_list, verts_list)
+            images = images.cuda()
+            gt_3d_joints = gt_3d_joints.cuda()
+            _, pred_3d_joints, _ = _model(images)
+            for idx, pred_joint in enumerate(pred_3d_joints):
+                pred_list.append(np.array(pred_joint.detach().cpu()))
+                gt_list.append(np.array(gt_3d_joints[idx].detach().cpu()))
+                
+        for i in range(len(pred_list)):
+            aligned_pred = align_w_scale(gt_list[i], pred_list[i])
+            gt = np.squeeze(gt_list[i])
+            aligned_pred = np.squeeze(aligned_pred)
+            diff = gt - aligned_pred
+            euclidean_dist = np.sqrt(np.sum(np.square(diff), axis=1))
+            epe_list.append(euclidean_dist)
+            
+    thresholds = np.linspace(0.0, 0.05, 100)
+    norm_factor = np.trapz(np.ones_like(thresholds), thresholds)
+    pck_curve = list()
+    auc_all = list()
+    pck_curve_all = list()
+    for i in range(21):
+        pck_curve = list()
+        for t in thresholds:       
+            error = np.array(epe_list)[:, i]
+            pck = np.mean((error <= t).astype('float'))
+            pck_curve.append(pck)
+            
+        pck_curve = np.array(pck_curve)
+        pck_curve_all.append(pck_curve)
+        auc = np.trapz(pck_curve, thresholds)
+        auc /= norm_factor
+        auc_all.append(auc)
+        
+    auc_all = np.mean(np.array(auc_all))
+            
+    epe = np.array(epe_list).mean(axis = 0).mean() * 100
+    print(f"PA-MPJPE => {epe:.02f} cm, AUC => {auc_all:.02f}")
+    
+    score_path = 'general_scores.txt'
 
-        os.system("python eval.py --pred_file_name %s" % pred_out_path)
+    if os.path.isfile(score_path):
+        mode = "a"
+    else:
+        mode = "w"
+    
+    with open(score_path, mode) as fo:
+        fo.write("\nname: %s\n" % args.name)
+        fo.write('auc=%.3f, xyz_al_mean3d: %.3f cm\n' % (auc_all, epe))
+        fo.write("======" * 14)
 
 
 if __name__ == "__main__":

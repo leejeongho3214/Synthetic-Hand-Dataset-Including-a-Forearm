@@ -261,12 +261,7 @@ def main(gt_path, pred_path, output_dir, pred_file_name=None, set_name=None):
         # align predictions
         xyz_pred_aligned = align_w_scale(xyz, xyz_pred)
         My_list.append([xyz.tolist(), xyz_pred_aligned.tolist()])
-        if shape_is_mano:
-            verts_pred_aligned = align_w_scale(verts, verts_pred)
-        else:
-            # use trafo estimated from keypoints
-            trafo = align_w_scale(xyz, xyz_pred, return_trafo=True)
-            verts_pred_aligned = align_by_trafo(verts_pred, trafo)
+
 
         # Aligned errors
         eval_xyz_aligned.feed(
@@ -275,12 +270,6 @@ def main(gt_path, pred_path, output_dir, pred_file_name=None, set_name=None):
             xyz_pred_aligned
         )
 
-        if shape_is_mano:
-            eval_mesh_err_aligned.feed(
-                verts,
-                np.ones_like(verts[:, 0]),
-                verts_pred_aligned
-            )
 
     xyz_al_mean3d, _, xyz_al_auc3d, pck_xyz_al, thresh_xyz_al, pck_list = eval_xyz_aligned.get_measures(
         0.0, 0.05, 100)
