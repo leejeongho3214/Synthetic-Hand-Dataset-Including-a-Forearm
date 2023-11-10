@@ -4,7 +4,7 @@ import numpy as np
 import sys
 
 os.environ["MKL_THREADING_LAYER"] = "GNU"
-os.environ["CUDA_VISIBLE_DEVICES"] = "3"
+os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 import torch
 from torch.utils import data
@@ -56,6 +56,27 @@ def main(args):
     
     pred_list, gt_list, epe_list = list(), list(), list()
     _model.eval()
+    
+    starter, ender = torch.cuda.Event(enable_timing=True), torch.cuda.Event(enable_timing=True)
+    repetitions = 300
+    timings=np.zeros((repetitions,1))
+    dummy_input = torch.zeros((32, 3, 224, 224)).cuda()
+
+    for _ in range(10):
+        _ = _model(dummy_input)
+        
+    with torch.no_grad():
+        for rep in range(repetitions):
+            starter.record()
+            _ = _model(dummy_input)
+            ender.record()
+            # WAIT FOR GPU SYNC
+            torch.cuda.synchronize()
+            curr_time = starter.elapsed_time(ender)
+            timings[rep] = curr_time
+    
+    return
+    
     with torch.no_grad():
         for idx, (images, _, gt_3d_joints, _) in enumerate(testset_loader):
             images = images.cuda()

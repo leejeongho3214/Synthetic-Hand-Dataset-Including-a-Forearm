@@ -66,3 +66,4 @@ sys.path.append("/usr/your/path/Wearable_Pose_Model")
 ### More details => [eval.md](docs/Evaluation.md)
 
 ### Paper => [paper.md](docs/paper.md)
+

@@ -26,3 +26,9 @@ frei.py
 our.py
 visualize_joint_in_image.py
 
+.env
+camera_vis.py
+t-sne.ipynb
+docs
+freihand
+T-sne_image

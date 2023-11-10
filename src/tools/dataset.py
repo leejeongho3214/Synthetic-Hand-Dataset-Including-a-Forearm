@@ -1,4 +1,3 @@
-# import pickle
 from torchvision import transforms
 from PIL import Image
 from torch.utils.data import Dataset, ConcatDataset, random_split
@@ -611,7 +610,7 @@ class CustomDataset_g2(object):
         path = None
     ):
         self.args = args
-        with open(os.path.join(path, 'annotations/train/anno_10k.pkl'), "rb") as st_json:
+        with open(os.path.join(path,   'annotations/train/anno_0.1M.pkl'), "rb") as st_json:
             self.meta = pickle.load(st_json)
 
         self.img_path = os.path.join(path, 'images/train')
