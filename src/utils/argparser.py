@@ -28,7 +28,7 @@ def parse_args(eval=False):
     parser.add_argument("--epoch", default=100, type=int)
     parser.add_argument("--graph_num", default=4, type=int)
     parser.add_argument(
-        "--loss_aux", default=1, type=float, help="Multiple this value to hrnet loss"
+        "--loss_aux", default=0, type=float, help="Multiple this value to hrnet loss"
     )
     parser.add_argument(
         "--loss_2d", default=0, help="Multiple this value to 2d loss", type=float

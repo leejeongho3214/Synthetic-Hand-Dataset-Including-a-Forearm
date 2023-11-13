@@ -1,11 +1,5 @@
-# Wearable_Pose_Model ✨✨
-
-
-This is our research code of [Our_Model](docs/2022_KSCI.pdf). 
-
-Our Model is a transformer-based for hand pose.</br>
-The image is obtained from wrist-attached RGB camera.</br>
-In this work, We study how to use our synthetic images instead of making real-world dataset.</br></br>
+# SHaF: Synthetic Hand Dataset Including a Forearm (APIN 2023) ✨✨
+It is a new hand image dataset called Synthetic Hand Dataset Including a Forearm (SHaF) and an efficient transformer-based three-dimensional (3D) hand pose estimation model. This model achieves the superior performance of the estimation model over that of previous state-of-the-art models.
 
  <img src="docs/model.png" width="650"> </br></br>
 
@@ -52,18 +46,6 @@ sys.path.append("/usr/your/path/Wearable_Pose_Model")
 
 ## Result</br>
 ### Evaluation Metric
-* PCKb
-    * The probablity of the correct keypoint within threshold
-    * Threshold is according to hand bounding box 
-* EPEv
-    * The mean euclidean distance between ground truth and prediction of the visible joints (max 21)
-* AUC under PCKb
-    * Area under the curve (AUC)
-    * It represents the percentage of correct keypoints (PCK) of which the Euclidean error is below a threshold t, according to hand bbox
-* 3D MPJPE
-    * Mean Per Joint Position Error (MPJPE)
-    * Calculated after aligning the root joint (= wrist) of the estimated and groundtruth 3D pose </br>
-### More details => [eval.md](docs/Evaluation.md)
-
-### Paper => [paper.md](docs/paper.md)
+* PA-MPJPE
+* AUC
 

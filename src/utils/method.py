@@ -208,7 +208,8 @@ class Runner(object):
                 )
                 loss_aux = JointsMSELoss(use_target_weight=False).cuda()(
                     aux_pred, heatmap, None
-                )
+                ) if self.args.loss_aux != 0 else torch.tensor(0)
+                
                 loss = (
                     loss_3d * self.args.loss_3d
                     + loss_2d * self.args.loss_2d

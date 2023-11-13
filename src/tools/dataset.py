@@ -28,10 +28,8 @@ from src.utils.image_ops import (
 )
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
-try:
-    from src.utils.dart_loader import DARTset
-except:
-    print("Not import dart")
+from src.utils.dart_loader import DARTset
+
 
 np.random.seed(77)
 np.set_printoptions(precision=6, suppress=True)
@@ -87,20 +85,20 @@ def build_dataset(args):
         dataset = GAN(args)
         train_dataset, test_dataset = random_split(dataset, [0.9, 0.1])
 
-    elif args.dataset == "SyntheticHands":
+    elif args.dataset == "SynthHands":
         dataset = SyntheticHands(args)
         train_dataset, test_dataset = random_split(dataset, [0.9, 0.1])
 
     else:
         train_path = os.path.join(general_path, "annotations/train")
         eval_path = os.path.join(general_path, "annotations/val")
-        train_dataset = CustomDataset_g(args, train_path)
-        # train_dataset = CustomDataset_g2(args, 
-        #                                 args.train_yaml,
-        #                                 False,
-        #                                 is_train=True,
-        #                                 scale_factor=args.img_scale_factor,
-        #                                 path = general_path)
+        # train_dataset = CustomDataset_g(args, train_path)
+        train_dataset = CustomDataset_g2(args, 
+                                        args.train_yaml,
+                                        False,
+                                        is_train=True,
+                                        scale_factor=args.img_scale_factor,
+                                        path = general_path)
         test_dataset = CustomDataset_g(args, eval_path)
 
     return train_dataset, test_dataset
@@ -594,7 +592,6 @@ def i_rotate(img, degree, move_x, move_y):
 
     return result
 
-
 class CustomDataset_g2(object):
     def __init__(
         self,
@@ -610,7 +607,7 @@ class CustomDataset_g2(object):
         path = None
     ):
         self.args = args
-        with open(os.path.join(path,   'annotations/train/anno_0.1M.pkl'), "rb") as st_json:
+        with open(os.path.join(path, 'annotations/train/anno_0.1M.pkl'), "rb") as st_json:
             self.meta = pickle.load(st_json)
 
         self.img_path = os.path.join(path, 'images/train')
@@ -750,8 +747,6 @@ class CustomDataset_g2(object):
 
     def get_line_no(self, idx):
         return idx if self.line_list is None else self.line_list[idx]
-
-
 
     def get_target_from_annotations(self, annotations, img_size, idx):
         # This function will be overwritten by each dataset to

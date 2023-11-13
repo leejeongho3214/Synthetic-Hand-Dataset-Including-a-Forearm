@@ -41,7 +41,7 @@ class GAN(torch.utils.data.Dataset):
 
         trans_image = trans(image)
 
-        return trans_image, anno_2d, anno_3d
+        return trans_image, anno_2d, anno_3d, anno_3d
     
 class SyntheticHands(torch.utils.data.Dataset):
     def __init__(self, args):
@@ -75,7 +75,7 @@ class SyntheticHands(torch.utils.data.Dataset):
 
         trans_image = trans(image)
 
-        return trans_image, anno_3d, anno_3d
+        return trans_image, anno_3d, anno_3d, anno_3d
 
 class Frei(torch.utils.data.Dataset):
     def __init__(self, args):
