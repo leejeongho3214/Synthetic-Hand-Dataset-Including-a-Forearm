@@ -8,7 +8,7 @@ __pycache__/
 .DS_Store
 .vscode/
 
-!docs/
+!docs/*.png
 manotorch
 pytorch3d
 manopth
