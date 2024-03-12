@@ -1,5 +1,5 @@
 # Enhancing 3D Hand Pose Estimation Using SHaF: Synthetic Hand Dataset Including a Forearm (APIN 2023 under review...) ✨✨
-It is a new hand image dataset called Synthetic Hand Dataset Including a Forearm (SHaF) and an efficient transformer-based three-dimensional (3D) hand pose estimation model. This model achieves the superior performance of the estimation model over that of previous state-of-the-art models.
+It is a novel synthetic hand dataset called Synthetic Hand Dataset Including a Forearm (SHaF) and an efficient transformer-based three-dimensional (3D) hand pose estimation model. This model achieves the superior performance of the estimation model over that of previous state-of-the-art (SOTA) models.
 
  <img src="docs/model.png" width="650"> </br></br>
 
@@ -22,11 +22,9 @@ conda env create -f requirements.yaml
 ```
 </br>
 
-
 ## Model Download</br>
 Please download our files that need to run our code. [download](https://dkuniv-my.sharepoint.com/:f:/g/personal/72210297_dankook_ac_kr/Em6dacaP1AlNmTAmaBbX2osBxkTx8km8k7BeHT2d-TWF5A?e=poqt1A)</br>
 </br>
-
 
 ## Train</br>
 If you locates in Wearabel_Pose_Model folder, run the code below and the training will begin
