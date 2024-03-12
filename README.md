@@ -47,3 +47,11 @@ sys.path.append("/usr/your/path/Wearable_Pose_Model")
 * PA-MPJPE
 * AUC
 
+### Quantitative Evaluation
+ <img src="docs/Table1.png" width="650"> </br></br>
+ <img src="docs/Table2.png" width="300"> </br></br>
+ <img src="docs/Table3_4.png" width="650"> </br></br>
+ <img src="docs/Table5.png" width="650"> </br></br>
+ <img src="docs/Table6.png" width="650"> </br></br>
+
+
