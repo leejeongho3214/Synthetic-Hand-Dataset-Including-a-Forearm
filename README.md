@@ -1,4 +1,4 @@
-# SHaF: Synthetic Hand Dataset Including a Forearm (APIN 2023 review...) ✨✨
+# Enhancing 3D Hand Pose Estimation Using SHaF: Synthetic Hand Dataset Including a Forearm (APIN 2023 under review...) ✨✨
 It is a new hand image dataset called Synthetic Hand Dataset Including a Forearm (SHaF) and an efficient transformer-based three-dimensional (3D) hand pose estimation model. This model achieves the superior performance of the estimation model over that of previous state-of-the-art models.
 
  <img src="docs/model.png" width="650"> </br></br>
