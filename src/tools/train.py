@@ -1,7 +1,8 @@
-import gc
+import sys
 import os
-
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+current_dir = os.path.dirname(os.path.abspath(__file__))
+desired_relative_path = os.path.join(current_dir, '..', '..')
+sys.path.append(desired_relative_path)
 
 from torch.utils import data
 from src.utils.argparser import parse_args, load_model, train, valid

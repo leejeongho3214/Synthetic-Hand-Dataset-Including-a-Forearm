@@ -79,12 +79,11 @@ class FileHandler(StreamHandler):
         return '<%s %s (%s)>' % (self.__class__.__name__, self.baseFilename, level)
 
 
-def setup_logger(name, save_dir, distributed_rank, filename="log.txt"):
+def setup_logger(name, save_dir, filename="Evaluation.txt"):
     logger = logging.getLogger(name)
     logger.setLevel(logging.DEBUG)
     # don't log results for the non-master process
-    if distributed_rank > 0:
-        return logger
+
     ch = logging.StreamHandler(stream=sys.stdout)
     # ch.terminator = ''
     ch.setLevel(logging.INFO)

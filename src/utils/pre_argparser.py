@@ -10,7 +10,7 @@ from src.utils.dir import reset_file
 def pre_arg(args, eval):
     output_dir = os.path.join('output', args.name)
     if args.reset or not os.path.isfile(os.path.join(output_dir,'checkpoint-good/state_dict.bin')): reset_file(os.path.join(output_dir, "log.txt"))
-    if not output_dir.split('/')[1] == "output" and not os.path.isfile((output_dir)):  mkdir(output_dir); logger = setup_logger(args.name, output_dir, get_rank())
+    if not output_dir.split('/')[1] == "output" and not os.path.isfile((output_dir)):  mkdir(output_dir); logger = setup_logger(args.name, output_dir, filename= 'log.tex')
     else: logger = None
     
     args.dataset = args.name.split("/")[0]
@@ -51,8 +51,4 @@ def pre_arg(args, eval):
     args.device = str('cuda')
     args.seed = int(88)
 
-
-
-
-    
     return args, logger

@@ -12,9 +12,8 @@ from src.utils.comm import is_main_process
 from src.utils.miscellaneous import mkdir
 import pickle5 as pickle
 import sys
-from matplotlib import pyplot as plt
 import os
-from src.utils.dataset_loader import GAN, Frei, SyntheticHands
+from src.utils.dataset_loader import GAN, SyntheticHands
 from src.utils.dataset_utils import GenerateHeatmap
 import json
 from src.utils.image_ops import (
@@ -83,23 +82,20 @@ def build_dataset(args):
 
     elif args.dataset == "GAN":
         dataset = GAN(args)
-        train_dataset, test_dataset = random_split(dataset, [0.9, 0.1])
+        train_dataset, test_dataset = random_split(dataset, [0.9, 0.1], generator=torch.Generator().manual_seed(523))
 
     elif args.dataset == "SynthHands":
         dataset = SyntheticHands(args)
-        train_dataset, test_dataset = random_split(dataset, [0.9, 0.1])
+        train_dataset, test_dataset = random_split(dataset, [0.9, 0.1], generator=torch.Generator().manual_seed(523))
 
     else:
-        train_path = os.path.join(general_path, "annotations/train")
-        eval_path = os.path.join(general_path, "annotations/val")
-        # train_dataset = CustomDataset_g(args, train_path)
-        train_dataset = CustomDataset_g2(args, 
+        d_dataset = CustomDataset_g2(args, 
                                         args.train_yaml,
                                         False,
                                         is_train=True,
                                         scale_factor=args.img_scale_factor,
                                         path = general_path)
-        test_dataset = CustomDataset_g(args, eval_path)
+        train_dataset, test_dataset = random_split(d_dataset, [0.9, 0.1], generator=torch.Generator().manual_seed(523))
 
     return train_dataset, test_dataset
 
